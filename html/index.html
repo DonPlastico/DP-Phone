@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.2.9/purify.min.js"
+        integrity="sha512-VOTFfd4vxPpuE98m9UQTN7j2N2/Blw44lZMhRTnZQqA2gOHq7Yvn5bdIDjjAZuFqqkDtppcjMW+dN3GYbhM94g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <title>DP-Phone</title>
+    <link rel="stylesheet" href="./style.css">
+
+    <!-- CDNs -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+        integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <!-- JQuery -->
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/emojionearea/3.4.2/emojionearea.min.js"
+        integrity="sha512-hkvXFLlESjeYENO4CNi69z3A1puvONQV5Uh+G4TUDayZxSLyic5Kba9hhuiNLbHqdnKNMk2PxXKm0v7KDnWkYA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script> <!-- Bootstrap -->
+    <script src="https://code.jquery.com/color/jquery.color-2.2.0.min.js"
+        integrity="sha256-aSe2ZC5QeunlL/w/7PsVKmV+fa0eDbmybn/ptsKHR6I=" crossorigin="anonymous"></script>
+    <!-- CDN de Color -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+        integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- CDN de Iconify -->
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/emojionearea/3.4.2/emojionearea.min.css"
+        integrity="sha512-vEia6TQGr3FqC6h55/NdU3QSM5XR6HSl5fW71QTKrgeER98LIMGwymBVM867C1XHIkYD9nMTfWK2A0xcodKHNA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <!-- Bootstrap -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="./js/jquery.timeago.js"></script>
+</head>
+
+<body style="background-color: transparent !important" ;>
+    <div id="popup">
+        <div class="popupclass">
+            <div id="close"></div>
+        </div>
+    </div>
+    <div class="container disableSelection">
+        <img src="./img/phone.png" class="phone-frame">
+        <div class="phone-container phone-background">
+            <!-- Cabecera del teléfono -->
+            <div class="phone-header">
+                <div id="phone-time">08:05</div>
+                <div id="phone-icons">
+                    <i class="fas fa-angle-down phone-tab-button" id="phone-arrow" data-toggle="tooltip"
+                        data-placement="left" title="Guardar teléfono"></i>
+                    <i class="fas fa-signal" id="phone-signal" data-toggle="tooltip" data-placement="left"
+                        title="QBCore 5G"></i>
+                </div>
+            </div>
+
+            <!-- Pantalla de bloqueo -->
+            <div id="lockscreen-container" style="display: none;">
+                <div class="lockscreen-header">
+                    <i class="fas fa-lock" id="lockscreen-icon"></i>
+                </div>
+                <div class="lockscreen-title" id="lockscreen-title">Introduce el código</div>
+
+                <div id="pin-login-section"
+                    style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                    <div class="lockscreen-dots">
+                        <div class="pin-dot" id="dot-1"></div>
+                        <div class="pin-dot" id="dot-2"></div>
+                        <div class="pin-dot" id="dot-3"></div>
+                        <div class="pin-dot" id="dot-4"></div>
+                    </div>
+
+                    <div class="lockscreen-keypad">
+                        <div class="keypad-row">
+                            <div class="keypad-btn" data-val="1">1</div>
+                            <div class="keypad-btn" data-val="2">2</div>
+                            <div class="keypad-btn" data-val="3">3</div>
+                        </div>
+                        <div class="keypad-row">
+                            <div class="keypad-btn" data-val="4">4</div>
+                            <div class="keypad-btn" data-val="5">5</div>
+                            <div class="keypad-btn" data-val="6">6</div>
+                        </div>
+                        <div class="keypad-row">
+                            <div class="keypad-btn" data-val="7">7</div>
+                            <div class="keypad-btn" data-val="8">8</div>
+                            <div class="keypad-btn" data-val="9">9</div>
+                        </div>
+                        <div class="keypad-row">
+                            <div class="keypad-btn action-btn" id="keypad-cancel"
+                                style="visibility: hidden; pointer-events: none;"><i class="fas fa-times"></i></div>
+
+                            <div class="keypad-btn" data-val="0">0</div>
+
+                            <div class="keypad-btn action-btn" id="keypad-delete"><i class="fas fa-backspace"></i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fingerprint-login-section"
+                    style="display: none; flex-direction: column; align-items: center; width: 100%;">
+                    <div class="fingerprint-icon-container" id="fingerprint-btn">
+                        <iconify-icon icon="ion:finger-print"></iconify-icon>
+                    </div>
+
+                    <div class="fingerprint-fallback-btn" id="fallback-to-pin">
+                        ACCEDER A TRAVÉS DEL PIN
+                    </div>
+                </div>
+
+                <div id="faceid-login-section"
+                    style="display: none; flex-direction: column; align-items: center; width: 100%;">
+                    <div class="faceid-icon-container" id="faceid-icon">
+                        <iconify-icon icon="hugeicons:face-id"></iconify-icon>
+                    </div>
+
+                    <div class="fingerprint-fallback-btn" id="fallback-to-pin-face">
+                        ACCEDER A TRAVÉS DEL PIN
+                    </div>
+                </div>
+            </div>
+
+            <div id="cloud-account-screen" style="display: none;">
+                <div class="cloud-content">
+                    <div class="cloud-header">
+                        <div class="cloud-icon-wrapper">
+                            <i class="fas fa-cloud"></i>
+                        </div>
+                        <h2>DP-Cloud</h2>
+                        <p class="cloud-subtitle">Sincroniza tu vida en San Andreas</p>
+                    </div>
+
+                    <div id="cloud-view-main" class="cloud-view">
+                        <button class="cloud-btn cloud-primary" id="btn-cloud-register-view">Crear Cuenta Nueva</button>
+                        <button class="cloud-btn cloud-secondary" id="btn-cloud-login-view">Iniciar Sesión</button>
+
+                        <div class="cloud-divider"><span>o</span></div>
+
+                        <button class="cloud-btn cloud-outline" id="btn-cloud-skip">Omitir (Uso Local)</button>
+                    </div>
+
+                    <div id="cloud-view-register" class="cloud-view" style="display: none;">
+                        <h3 class="cloud-view-title">Crear Cuenta</h3>
+                        <div class="cloud-input-group">
+                            <input type="text" id="cloud-reg-user" class="cloud-input" placeholder="Usuario"
+                                spellcheck="false" autocomplete="off">
+                            <input type="password" id="cloud-reg-pass" class="cloud-input" placeholder="Contraseña">
+                        </div>
+                        <button class="cloud-btn cloud-primary" style="margin-top: 1vh;"
+                            id="btn-cloud-register-submit">Crear</button>
+                        <button class="cloud-btn cloud-text" id="btn-cloud-reg-back">Atrás</button>
+                    </div>
+
+                    <div id="cloud-view-login" class="cloud-view" style="display: none;">
+                        <h3 class="cloud-view-title">Iniciar Sesión</h3>
+                        <div class="cloud-input-group">
+                            <input type="text" id="cloud-log-user" class="cloud-input" placeholder="Usuario"
+                                spellcheck="false" autocomplete="off">
+                            <input type="password" id="cloud-log-pass" class="cloud-input" placeholder="Contraseña">
+                        </div>
+                        <button class="cloud-btn cloud-secondary" style="margin-top: 1vh;"
+                            id="btn-cloud-login-submit">Acceder</button>
+                        <button class="cloud-btn cloud-text" id="btn-cloud-log-back">Atrás</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notificación del teléfono -->
+            <div class="phone-notification-container">
+                <div class="notification-icon"></div>
+                <div class="notification-title"></div>
+                <div class="notification-text"></div>
+                <div class="notification-time"></div>
+            </div>
+
+            <div class="phone-notification-container-new">
+                <div class="notification-icon-new"></div>
+                <div class="notification-title-new"></div>
+                <div class="notification-text-new"></div>
+                <div class="notification-time-new"></div>
+                <div class="notification-accept"></div>
+                <div class="notification-deny"></div>
+            </div>
+
+            <!-- Marco de confirmación con spinner-->
+            <div class="spinner-input-frame">
+                <div class="box-frame">
+                    <div class="content-frame">
+                        <div class="main-spinning-frame">
+                            <div class="div-spinning">
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="checkmark-input-frame">
+                <div class="box-frame">
+                    <div class="content-frame">
+                        <div class="main-checkmark-frame">
+                            <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                                <circle class="checkmark-circle-frame" cx="26" cy="26" r="25" fill="none"></circle>
+                                <path class="checkmark-check-frame" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aplicaciones del inicio -->
+            <div class="phone-applications">
+
+                <div class="phone-home-applications">
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="1"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="2"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="3"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="4"></div>
+
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="5"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="6"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="7"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="8"></div>
+
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="9"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="10"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="11"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="12"></div>
+
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="13"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="14"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="15"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="16"></div>
+
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="17"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="18"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="19"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="20"></div>
+
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="21"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="22"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="23"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="24"></div>
+
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="25"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="26"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="27"></div>
+                    <div class="phone-application" data-toggle="tooltip" data-placement="bottom" title=""
+                        data-appslot="28"></div>
+
+                    <div class="phone-widget" id="widget-1">
+                        <div class="phone-widget-inner"></div>
+                    </div>
+                    <div class="phone-widget" id="widget-2">
+                        <div class="phone-widget-inner"></div>
+                    </div>
+                    <div class="phone-widget" id="widget-3">
+                        <div class="phone-widget-inner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenedor de todas las aplicaciones -->
+            <div class="phone-application-container">
+
+                <div class="phone-call-app">
+                    <div class="phone-call-incoming">
+                        <div class="phone-call-incoming-title">Llamada entrante</div>
+                        <div class="phone-call-incoming-caller">Número desconocido</div>
+                        <div class="phone-call-incoming-picture"></div>
+
+                    </div>
+
+                    <div class="phone-call-outgoing">
+                        <div class="phone-call-outgoing-title">Llamando...</div>
+                        <div class="phone-call-outgoing-caller">Número desconocido</div>
+                        <div class="phone-call-outgoing-picture"></div>
+
+                        <i class="fas fa-phone" id="outgoing-cancel"></i>
+                    </div>
+
+                    <div class="phone-call-ongoing">
+                        <div class="phone-call-ongoing-title">En llamada</div>
+                        <div class="phone-call-ongoing-caller">Número desconocido</div>
+                        <div class="phone-call-ongoing-picture"></div>
+                        <div class="phone-call-ongoing-time">05:05</div>
+
+                        <i class="fas fa-phone" id="ongoing-cancel"></i>
+                    </div>
+                </div>
+
+                <div class="contacts-app">
+
+                    <div class="phone-contacts">
+
+                        <div class="phone-menu-body" id="phone-contacts-new-ui">
+                            <div class="phone-menu-main">
+                                <input class="phone-menu-text phone-number-call-name" type="text"><i
+                                    class="fas fa-address-book" id="phone-menu-icon"></i><span
+                                    class="phone-menu-title">Nombre de contacto</span>
+                                <input class="phone-menu-text phone-number-call-number" type="text"><i
+                                    class="fas fa-phone" id="phone-menu-icon"></i><span class="phone-menu-title">Número
+                                    de teléfono</span>
+                                <p> </p>
+                                <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                                <div class="phone-menu-button phone-menu-accept" id="phone-number-savecontact">Guardar
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="phone-menu-body" id="phone-contacts-edit-ui">
+                            <div class="phone-menu-main">
+                                <input class="phone-menu-text phone-number-call-name-edit" type="text"><i
+                                    class="fas fa-address-book" id="phone-menu-icon"></i><span
+                                    class="phone-menu-title">Nombre de contacto</span>
+                                <input class="phone-menu-text phone-number-call-number-edit" type="text" min="0"><i
+                                    class="fas fa-phone" id="phone-menu-icon"></i><span class="phone-menu-title">Número
+                                    de teléfono</span>
+                                <p> </p>
+                                <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                                <div class="phone-menu-button phone-menu-accept" id="phone-number-savecontact-edit">
+                                    Guardar</div>
+                            </div>
+                        </div>
+
+                        <div class="phone-contacts-header">
+                            <span id="phone-search-text">Buscar</span>
+                            <input type="text" id="phone-contact-search" placeholder="" spellcheck="false">
+                            <i class="fas fa-search" id="contact-search-icon"></i>
+                            <i id="phone-plus-icon" class="fas fa-user-plus"></i>
+                        </div>
+
+                        <div class="phone-contact-list">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="phone-app">
+
+                    <div class="phone-recent">
+                        <span id="phone-recent-search-text">Buscar</span>
+                        <input type="text" id="phone-recent-search" placeholder="" spellcheck="false">
+                        <i class="fas fa-search" id="recent-search-icon"></i>
+                        <i class="fas fa-phone" id="phone-recent-call-number"></i>
+
+
+                        <div class="phone-menu-body" id="phone-call-person-menu">
+                            <div class="phone-menu-main">
+                                <input class="phone-menu-text phone-number-call-free" type="text" min="0"><i
+                                    class="fas fa-phone" id="phone-menu-icon"></i><span class="phone-menu-title">Número
+                                    de teléfono</span>
+                                <p> </p>
+                                <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                                <div class="phone-menu-button phone-menu-accept" id="phone-number-call-free-btn">Llamar
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="phone-recent-header">
+                            <span id="phone-header-text">¡Nada aquí!</span>
+                            <i class="fas fa-frown" id="header-frown-icon"></i>
+                        </div>
+
+                        <div class="phone-recent-calls">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="houses-app">
+                    <div class="houses-app-header">
+                        <div class="houses-app-header-tab houses-app-header-tab-selected" data-housetab="myhouses">
+                            <p>Mis casas</p>
+                        </div>
+                        <div class="houses-app-header-tab" data-housetab="mykeys">
+                            <p>Mis llaves</p>
+                        </div>
+                    </div>
+
+                    <div class="house-app-myhouses-container">
+                        <div class="myhouses-house">
+                            <div class="myhouse-house-icon"><i class="fas fa-home"></i></div>
+                            <div class="myhouse-house-titel">Grove St. 1 | Tier 1</div>
+                            <div class="myhouse-house-details"><i class="fas fa-key"></i>&nbsp;&nbsp;5</div>
+                        </div>
+                    </div>
+
+                    <div class="house-app-mykeys-container">
+                    </div>
+
+                    <div class="phone-menu-body" id="house-transfer-new-box">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text myhouse-option-transfer-container-citizenid" type="text"><i
+                                class="fas fa-id-card" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">CSN</span>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="myhouse-option-transfer-confirm">
+                                Confirmar
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="myhouses-options-container">
+                        <div class="myhouses-options">
+                            <div class="myhouses-options-header">Grove St. 1</div>
+                            <div class="myhouses-option" id="myhouse-option-transfer">TRANSFERIR</div>
+                            <div class="myhouses-option" id="myhouse-option-keys">LLAVES</div>
+                            <br>
+                            <br>
+                            <div class="myhouses-option" id="myhouse-option-close">CERRAR</div>
+                        </div>
+
+                        <div class="myhouse-option-transfer-container">
+                            <div class="myhouse-option-transfer-container-header">Transferir casa</div>
+                            <input class="myhouse-option-transfer-container-citizenid" type="text" spellcheck="false"
+                                placeholder="CSN" required>
+                            <br>
+                            <br>
+                            <br>
+                            <br>
+                            <br>
+                            <div class="myhouses-option" id="myhouse-option-transfer-confirm">CONFIRMAR</div>
+                            <div class="myhouses-option" id="myhouse-option-transfer-back">VOLVER</div>
+                        </div>
+
+                        <div class="myhouse-option-keys-container">
+                            <div class="keys-container">
+                            </div>
+                            <div class="myhouses-option" id="myhouse-option-keys-back">VOLVER</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="garage-app">
+                    <span id="messages-search-text">Buscar</span>
+                    <div class="garage-app-header">
+                        <i class="fas fa-search" id="garage-search-icon"></i>
+                        <input type="text" id="garage-search" placeholder="" spellcheck="false">
+                    </div>
+                    <div class="garage-homescreen">
+                        <div class="garage-vehicles">
+                        </div>
+                    </div>
+
+                    <div class="phone-menu-body" id="garage-sellvehicle-menu">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text garage-sellvehicle-stateid" type="text" maxlength="3"><i
+                                class="fas fa-id-card" id="phone-menu-icon"></i><span class="phone-menu-title">ID de
+                                estado</span>
+                            <input class="phone-menu-text garage-sellvehicle-price" type="text" maxlength="8"><i
+                                class="fas fa-dollar-sign" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">Precio</span>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="garage-sellvehicle">Vender</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gallery-app">
+                    <div class="gallery-app-header">
+                        Mi galería
+                    </div>
+                    <div class="gallery-homescreen">
+                        <div class="gallery-images">
+                        </div>
+                    </div>
+
+                    <div class="gallery-detailscreen">
+                        <div class="gallery-details">
+                            <div class="imagedata"><img class="image" id="imagedata" style="width: 100%;" src="" alt="">
+                            </div>
+                            <div class="make-post-button">
+                                <div style="width: 35%;" id="make-post-button" data-toggle="tooltip" title="Compartir">
+                                    <i class="fas fa-share-square"></i>
+                                </div>
+                                <div id="delete-button" data-toggle="tooltip" title="Eliminar">
+                                    <i class="fas fa-trash-alt"></i>
+                                </div>
+                                <div style="background: whitesmoke;" id="return-button" data-toggle="tooltip"
+                                    title="Volver">
+                                    <i class="fas fa-undo-alt"></i>
+                                </div>
+                                <div id="gallery-coppy-button" data-toggle="tooltip" title="Copiar enlace">
+                                    <i class="fas fa-copy"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="gallery-postscreen">
+                        <div class="gallery-details">
+                            <div class="imagebleetData"><textarea id="new-textarea" spellcheck="false"
+                                    required></textarea></div>
+                            <div class="posts-button">
+                                <div id="bleet-button">
+                                    <iconify-icon icon="game-icons:bleeding-eye"
+                                        style="font-size: 1.33em; vertical-align: middle;"></iconify-icon>
+                                </div>
+                                <div id="advert-button">
+                                    <i class="fas fa-ad fa-lg"></i>
+                                </div>
+                            </div>
+                            <div class="return-button">
+                                <div id="returndetail-button">
+                                    VOLVER
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="camera-app">
+                    <div class="camera-homescreen">
+                        <div class="camera-image">
+                            <div class="loader"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-app">
+                    <!-- VISTA PRINCIPAL -->
+                    <div class="settings-main-view">
+                        <div class="settings-header-top">
+                            <span id="settings-title">Ajustes</span>
+                            <div class="settings-search-container">
+                                <i class="fas fa-search" id="settings-search-icon"></i>
+                                <input type="text" id="settings-search" placeholder="Buscar..." spellcheck="false"
+                                    disabled>
+                            </div>
+                        </div>
+
+                        <div class="settings-scroll-container">
+                            <!-- Tarjeta de Perfil -->
+                            <div class="settings-profile-card">
+                                <img src="./img/default.png" class="settings-profile-img" alt="Perfil">
+                                <div class="settings-profile-info">
+                                    <div class="settings-profile-name">USUARIO PROXIMAMENTE</div>
+                                    <div class="settings-profile-sub">ID: <span class="settings-stateid">0000</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="settings-divider">
+
+                            <!-- Grupo 1: Conectividad -->
+                            <div class="settings-group">
+                                <div class="settings-item">
+                                    <div class="settings-item-icon" style="background-color: #ff9f0a;">
+                                        <i class="fas fa-plane"></i>
+                                    </div>
+                                    <div class="settings-item-texts">
+                                        <div class="settings-item-title">Modo Avión</div>
+                                        <div class="settings-item-desc">Deshabilitar llamadas, datos, etc...</div>
+                                    </div>
+                                    <div class="settings-item-action">
+                                        <label class="settings-switch">
+                                            <input type="checkbox" id="toggle-airplane-mode">
+                                            <span class="settings-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="settings-item-icon" style="background-color: #5e5ce6;">
+                                        <i class="fas fa-video"></i>
+                                    </div>
+                                    <div class="settings-item-texts">
+                                        <div class="settings-item-title">Modo Streaming</div>
+                                        <div class="settings-item-desc">Desenfocar imágenes y vídeos</div>
+                                    </div>
+                                    <div class="settings-item-action">
+                                        <label class="settings-switch">
+                                            <input type="checkbox" id="toggle-streaming-mode">
+                                            <span class="settings-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Grupo 2: Sonido y Notificaciones -->
+                            <div class="settings-group">
+                                <div class="settings-item">
+                                    <div class="settings-item-icon" style="background-color: #ff375f;"><i
+                                            class="fas fa-bell"></i></div>
+                                    <div class="settings-item-texts">
+                                        <div class="settings-item-title">Notificaciones</div>
+                                        <div class="settings-item-desc">Elige qué aplicación envía notificaciones</div>
+                                    </div>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="settings-item-icon" style="background-color: #ff2d55;"><i
+                                            class="fas fa-volume-up"></i></div>
+                                    <div class="settings-item-texts">
+                                        <div class="settings-item-title">Sonidos</div>
+                                        <div class="settings-item-desc">Cambiar sonidos de notificaciones o llamadas
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Grupo 3: General y Pantalla -->
+                            <div class="settings-group">
+                                <!-- ESTE ABRE EL SUBMENÚ "GENERAL" -->
+                                <div class="settings-item open-submenu" data-submenu="general" data-title="General">
+                                    <div class="settings-item-icon" style="background-color: #8e8e93;"><i
+                                            class="fas fa-cog"></i>
+                                    </div>
+                                    <div class="settings-item-texts">
+                                        <div class="settings-item-title">General</div>
+                                        <div class="settings-item-desc">Actualización de software, idioma, etc.</div>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-item-chevron"></i>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="settings-item-icon" style="background-color: #0a84ff;">
+                                        <i class="fas fa-sun"></i>
+                                    </div>
+                                    <div class="settings-item-texts">
+                                        <div class="settings-item-title">Pantalla y Brillo</div>
+                                        <div class="settings-item-desc">Ajustar pantalla y brillo del teléfono</div>
+                                    </div>
+                                </div>
+                                <div class="settings-item open-submenu" data-submenu="fondos" data-title="Fondos">
+                                    <div class="settings-item-icon" style="background-color: #30d158;">
+                                        <i class="fas fa-image"></i>
+                                    </div>
+                                    <div class="settings-item-texts">
+                                        <div class="settings-item-title">Fondos de Pantalla</div>
+                                        <div class="settings-item-desc">Fondos de pantalla y personalización</div>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-item-chevron"></i>
+                                </div>
+                                <div class="settings-item open-submenu" data-submenu="seguridad"
+                                    data-title="Contraseña">
+                                    <div class="settings-item-icon" style="background-color: #ff9f0a;">
+                                        <i class="fas fa-fingerprint"></i>
+                                    </div>
+                                    <div class="settings-item-texts">
+                                        <div class="settings-item-title">Contraseña, Huella, Face ID</div>
+                                        <div class="settings-item-desc">Seguridad de tu teléfono</div>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-item-chevron"></i>
+                                </div>
+                            </div>
+
+                            <!-- Grupo 4: Teléfono -->
+                            <div class="settings-group">
+                                <div class="settings-item open-submenu" data-submenu="telefono" data-title="Teléfono">
+                                    <div class="settings-item-icon" style="background-color: #32ade6;">
+                                        <i class="fas fa-phone-alt"></i>
+                                    </div>
+                                    <div class="settings-item-texts">
+                                        <div class="settings-item-title">Teléfono</div>
+                                        <div class="settings-item-desc">Cambiar identificador de llamadas</div>
+                                    </div>
+                                    <i class="fas fa-chevron-right settings-item-chevron"></i>
+                                </div>
+                            </div>
+
+                            <div style="height: 5vh;"></div>
+                        </div>
+                    </div>
+
+                    <!-- VISTA SECUNDARIA (SUBMENÚS) -->
+                    <div class="settings-sub-view">
+                        <div class="settings-sub-header">
+                            <div class="settings-back-btn"><i class="fas fa-chevron-left"></i> Ajustes</div>
+                            <div class="settings-sub-title">Título</div>
+
+                            <div id="fondos-header-controls" style="display: none;">
+                                <div class="settings-search-container">
+                                    <i class="fas fa-search" id="settings-search-icon"></i>
+                                    <input type="text" id="wallpaper-search" placeholder="Buscar fondo..."
+                                        spellcheck="false">
+                                </div>
+                                <div class="settings-search-container" style="top: 11.5vh;">
+                                    <i class="fas fa-link" id="settings-search-icon"></i>
+                                    <input type="text" id="custom-wallpaper-url"
+                                        placeholder="URL de imagen (PNG/JPG)..." spellcheck="false" style="width: 80%;">
+                                    <div class="url-apply-btn" style="margin-left: auto; margin-right: 0.5vh;"><i
+                                            class="fas fa-check"></i></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-sub-scroll-container">
+
+                            <div class="settings-sub-content" id="sub-fondos" style="display: none;">
+                                <div class="settings-wallpapers-container" id="wallpapers-list"
+                                    style="padding-top: 1vh;">
+                                </div>
+                                <div style="height: 3vh;"></div>
+                            </div>
+
+                            <!-- CONTENIDO SUBMENÚ: GENERAL -->
+                            <div class="settings-sub-content" id="sub-general" style="display: none;">
+
+                                <div class="settings-group">
+                                    <div class="settings-item-simple">
+                                        <div class="settings-item-title">Actualización de software</div>
+                                        <div class="settings-item-action"><i
+                                                class="fas fa-chevron-right settings-item-chevron-sub"></i></div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-group">
+                                    <div class="settings-item-simple">
+                                        <div class="settings-item-title">Idioma y región</div>
+                                        <div class="settings-item-action"><i
+                                                class="fas fa-chevron-right settings-item-chevron-sub"></i></div>
+                                    </div>
+                                    <div class="settings-item-simple">
+                                        <div class="settings-item-title">Fecha y hora</div>
+                                        <div class="settings-item-action"><i
+                                                class="fas fa-chevron-right settings-item-chevron-sub"></i></div>
+                                    </div>
+                                </div>
+
+                                <!-- Este abre el sub-sub-menú (Información) -->
+                                <div class="settings-group">
+                                    <div class="settings-item-simple open-submenu" data-submenu="informacion"
+                                        data-title="Información">
+                                        <div class="settings-item-title">Información del dispositivo</div>
+                                        <div class="settings-item-action"><i
+                                                class="fas fa-chevron-right settings-item-chevron-sub"></i></div>
+                                    </div>
+                                </div>
+
+                                <!-- Botón Peligroso: Formatear -->
+                                <div class="settings-group"
+                                    style="margin-top: 4vh; border: 1px solid #7a2a2a; box-shadow: 0 0 10px rgba(255, 68, 68, 0.2);">
+                                    <div class="settings-item-simple" id="btn-format-phone"
+                                        style="justify-content: center;">
+                                        <div class="settings-item-title" style="color: #ff4444; font-weight: 600;">
+                                            FORMATEAR MÓVIL</div>
+                                    </div>
+                                </div>
+                                <div class="settings-group-footer" style="color: #ffcccc; margin-top: 1vh;">
+                                    <strong>ADVERTENCIA IRREVERSIBLE:</strong> Al pulsar este botón, tu dispositivo se
+                                    restablecerá a los valores de fábrica. Perderás <b>absolutamente todos</b> tus
+                                    datos: contactos guardados, historial de llamadas, fotografías de la galería, notas,
+                                    aplicaciones instaladas y configuraciones personales. No hay vuelta atrás. Procede
+                                    bajo tu propia responsabilidad.
+                                </div>
+                            </div>
+
+                            <!-- CONTENIDO SUBMENÚ: INFORMACIÓN -->
+                            <div class="settings-sub-content" id="sub-informacion" style="display: none;">
+
+                                <div class="info-card-large">
+                                    <div class="info-card-logo">
+                                        <img src="img/iFruit.png" alt="iFruit logo">
+                                    </div>
+                                    <div class="card-label">Versión</div>
+                                    <div class="card-value">iFruit OS v1.7</div>
+                                </div>
+
+                                <div class="info-squares-container">
+                                    <div class="info-square">
+                                        <div class="card-label">Nombre del dispositivo</div>
+                                        <div class="card-value">iFruit 2 SE</div>
+                                    </div>
+                                    <div class="info-square info-storage">
+                                        <div class="card-label">Almacenamiento</div>
+                                        <div class="card-value">0 GB / 512 Gb</div>
+                                        <div class="storage-bar-background">
+                                            <div class="storage-bar-fill" style="width: 0%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-group">
+                                    <div class="settings-item-info-row">
+                                        <div class="info-label">Modelo del dispositivo:</div>
+                                        <div class="info-value settings-stateid">...</div>
+                                    </div>
+                                    <div class="settings-item-info-row">
+                                        <div class="info-label">Procesador:</div>
+                                        <div class="info-value">PROLABS G-Octa Bionic</div>
+                                    </div>
+                                    <div class="settings-item-info-row">
+                                        <div class="info-label">Almacenamiento:</div>
+                                        <div class="info-value">512 GB (UFS 4.1)</div>
+                                    </div>
+                                    <div class="settings-item-info-row">
+                                        <div class="info-label">Memoria RAM:</div>
+                                        <div class="info-value">16 GB + 4 GB</div>
+                                    </div>
+                                    <div class="settings-item-info-row">
+                                        <div class="info-label">Batería:</div>
+                                        <div class="info-value">4800 mAh Li-Polymer</div>
+                                    </div>
+                                    <div class="settings-item-info-row">
+                                        <div class="info-label">Identificador de hardware:</div>
+                                        <div class="info-value">iFruit-3SE</div>
+                                    </div>
+                                </div>
+
+                                <div style="height: 3vh;"></div>
+                            </div>
+
+                            <!-- CONTENIDO SUBMENÚ: TELÉFONO -->
+                            <div class="settings-sub-content" id="sub-telefono">
+                                <!-- Div individual arriba -->
+                                <div class="settings-group">
+                                    <div class="settings-item-simple">
+                                        <div class="settings-item-title">Mi número</div>
+
+                                        <!-- Lo que va a la derecha -->
+                                        <div class="settings-item-action">
+                                            <div class="settings-item-value settings-phone" style="margin-right: 1vh;">
+                                                000000</div>
+                                            <i class="far fa-copy settings-copy-btn" data-toggle="tooltip"
+                                                title="Copiar"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Dos divs juntos abajo -->
+                                <div class="settings-group">
+                                    <div class="settings-item-simple">
+                                        <div class="settings-item-title">Identificador de llamada</div>
+
+                                        <!-- Lo que va a la derecha -->
+                                        <div class="settings-item-action">
+                                            <label class="settings-switch">
+                                                <input type="checkbox" id="toggle-caller-id" checked>
+                                                <span class="settings-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="settings-item-simple">
+                                        <div class="settings-item-title">Números/Contactos bloqueados</div>
+
+                                        <!-- Lo que va a la derecha -->
+                                        <div class="settings-item-action">
+                                            <i class="fas fa-chevron-right settings-item-chevron-sub"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="settings-group-footer">
+                                    Si está activado, el resto de personas verán tu número de teléfono. Si está
+                                    desactivado, saldrá como llamada oculta.
+                                </div>
+                            </div>
+
+                            <!-- CONTENIDO SUBMENÚ: SEGURIDAD / PIN -->
+                            <div class="settings-sub-content" id="sub-seguridad" style="display: none;">
+
+                                <!-- Ver PIN actual -->
+                                <div class="settings-group">
+                                    <div class="settings-item-simple">
+                                        <div class="settings-item-title">PIN actual</div>
+                                        <div class="settings-item-action"
+                                            style="display: flex; align-items: center; gap: 0.8vh;">
+                                            <div id="pin-reveal-box"
+                                                style="filter: blur(6px); background: rgba(255,255,255,0.08); border-radius: 0.6vh; padding: 0.3vh 1vh; font-size: 1.4vh; letter-spacing: 0.2vh; color: #fff; min-width: 5vh; text-align: center; transition: filter 0.3s ease; user-select: none; ">
+                                                0000</div>
+                                            <div id="pin-reveal-btn"
+                                                style="background: rgba(255,255,255,0.1); border-radius: 0.6vh; padding: 0.4vh 1vh; font-size: 1.3vh; color: #aaa; cursor: pointer; display: flex; justify-content: center; align-items: center; min-width: 3.5vh;">
+                                                <i class="fas fa-eye"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="settings-group-footer">El PIN protege el acceso a tu teléfono.</div>
+
+                                <div class="settings-group" style="margin-top: 2vh;">
+
+                                    <!-- Cambiar PIN -->
+                                    <div class="settings-item-simple" id="btn-change-pin" style="cursor: pointer;">
+                                        <div class="settings-item-title">Cambiar PIN</div>
+                                        <div class="settings-item-action">
+                                            <i class="fas fa-chevron-right settings-item-chevron-sub"></i>
+                                        </div>
+                                    </div>
+
+                                    <!-- Utilizar Huella -->
+                                    <div class="settings-item-simple">
+                                        <div class="settings-item-title">Utilizar Huella</div>
+                                        <div class="settings-item-action">
+                                            <label class="settings-switch">
+                                                <input type="checkbox" id="toggle-fingerprint">
+                                                <span class="settings-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Utilizar Face ID -->
+                                    <div class="settings-item-simple">
+                                        <div class="settings-item-title">Utilizar Face ID</div>
+                                        <div class="settings-item-action">
+                                            <label class="settings-switch">
+                                                <input type="checkbox" id="toggle-faceid">
+                                                <span class="settings-slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <div style="height: 3vh;"></div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="wn-app">
+
+                    <div class="phone-menu-body" id="wn-box-new-add-text">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text wn-input-yek" type="text" maxlength="100"><i
+                                class="fas fa-sticky-note" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">Texto</span>
+                            <input class="phone-menu-text wn-input-doo" type="text"><i class="fas fa-image"
+                                id="phone-menu-icon"></i><span class="phone-menu-title">URL (JPG/PNG)</span>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="wn-submit-to-send-text">Enviar</div>
+                        </div>
+                    </div>
+
+                    <div class="wn-header">
+                        <div class="wn-send-news-for-chat" data-toggle="tooltip" title="Enviar News"><i
+                                class="fas fa-bullhorn"></i></div>
+                    </div>
+
+                    <div class="wn-list">
+                    </div>
+                </div>
+
+                <div class="documents-app">
+
+                    <div class="phone-menu-body" id="documents-box-new-add-new">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text documents-input-title" type="text" maxlength="20"><i
+                                class="fas fa-sticky-note" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">Titulo</span>
+                            <textarea id="documents-textarea" spellcheck="false" required placeholder=""
+                                maxlength="4000"></textarea>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="documents-save-note-for-doc">Guardar
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="phone-menu-body" id="documents-send-stateid">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text documents-input-stateid" type="text" maxlength="3"><i
+                                class="fas fa-id-card" id="phone-menu-icon"></i><span class="phone-menu-title">ID del
+                                estado</span>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="documents-send-perm">Enviar</div>
+                        </div>
+                    </div>
+
+                    <div class="documents-header">
+                        <div class="documents-tupe-text-btn" data-toggle="tooltip" title="New Text"><i
+                                class="fas fa-edit"></i></div>
+                        <span id="documents-search-text">Buscar</span>
+                        <i class="fas fa-search" id="documents-search-icon"></i>
+                        <input type="text" id="documents-search" placeholder="" spellcheck="false">
+
+                        <div class="documents-dropdown">
+                            <div class="documents-select">
+                                <span>Tipo</span>
+                                <i class="fa fa-chevron-left"></i>
+                            </div>
+                            <input type="hidden" name="gender">
+                            <ul class="documents-dropdown-menu"></ul>
+                        </div>
+
+                        <div class="documents-extra-buttons">
+                            <div class="documents-extra-button" id="documents-share-local" data-toggle="tooltip"
+                                title="Share (Local)"><i class="fas fa-share-alt"></i></div>
+                            <div class="documents-extra-button" id="documents-share-perm" data-toggle="tooltip"
+                                title="Share (Permanent)"><i class="fas fa-share"></i></div>
+                            <div class="documents-extra-button" id="documents-delete" data-toggle="tooltip"
+                                title="Delete"><i class="fas fa-trash"></i></div>
+                            <div class="documents-extra-button" id="documents-save" data-toggle="tooltip" title="Save">
+                                <i class="fas fa-save"></i>
+                            </div>
+                        </div>
+
+                        <div class="documents-extra-buttons-registration">
+                            <div class="documents-extra-button-registration" id="documents-share-local"
+                                data-toggle="tooltip" title="Share (Local)"><i class="fas fa-share-alt"></i></div>
+                        </div>
+                    </div>
+
+                    <div class="documents-list">
+                    </div>
+                </div>
+
+                <div class="ping-app">
+                    <div class="ping-header">
+                        <div class="channel">
+                            <img src="./img/erpinger.png" class="erpinger">
+                            <input class="ping-menu-text ierplol" type="text"><i class="fas fa-id-card-alt"
+                                id="ping-menu-icon"></i><span class="ping-menu-title">ID</span>
+                            <div style="display: block;" id="ping-send" class="ping-sender-piinger"><i
+                                    class="fas fa-map-pin"></i>ENVIAR PING</div>
+                        </div>
+                    </div>
+
+                    <div class="ping-list">
+                        <img class="imagepingapp" src="img/map-photo-ping.png">
+                    </div>
+                </div>
+
+                <div class="calculator-app">
+                    <div class="calculator-header">
+                        <p>CALCULADORA</p>
+                    </div>
+
+                    <div class="calculator-list">
+                        <form name="calc" class="calc">
+                            <input id="monitorcalc" type="text" value="" disabled name="display">
+                            <input id="shakhescalc" type="button" value="AC" onclick="ac()">
+                            <input id="shakhescalc" type="button" value="C" onclick="c()">
+                            <input id="shakhescalc" type="button" value="%" onclick="data(this.value)">
+                            <input id="minishalhcalc" type="button" value="-" onclick="data(this.value)">
+                            <input id="" type="button" value="1" onclick="data(this.value)">
+                            <input id="" type="button" value="2" onclick="data(this.value)">
+                            <input id="" type="button" value="3" onclick="data(this.value)">
+                            <input id="minishalhcalc" type="button" value="*" onclick="data(this.value)">
+                            <input id="" type="button" value="4" onclick="data(this.value)">
+                            <input id="" type="button" value="5" onclick="data(this.value)">
+                            <input id="" type="button" value="6" onclick="data(this.value)">
+                            <input id="minishalhcalc" type="button" value="/" onclick="data(this.value)">
+                            <input id="" type="button" value="7" onclick="data(this.value)">
+                            <input id="" type="button" value="8" onclick="data(this.value)">
+                            <input id="" type="button" value="9" onclick="data(this.value)">
+                            <input id="minishalhcalc" type="button" value="+" onclick="data(this.value)">
+                            <input id="" type="button" value="." onclick="data(this.value)">
+                            <input id="" type="button" value="0" onclick="data(this.value)">
+                            <input id="" type="button" value="=" onclick="equal()">
+                            <div style="clear: both;"></div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="crypto-app">
+                    <div class="crypto-header">
+                        <span id="crypto-search-text">Buscar</span>
+                        <i class="fas fa-search" id="crypto-search-icon"></i>
+                        <input type="text" id="crypto-search" placeholder="" spellcheck="false">
+                    </div>
+
+                    <div class="crypto-lists"></div>
+
+                    <div class="phone-menu-body" id="crypto-purchase-tab">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text crypto-amount" type="text" maxlength="4"><i
+                                class="fas fa-dollar-sign" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">Cantidad</span>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="crypto-send-purchase">Comprar</div>
+                        </div>
+                    </div>
+
+                    <div class="phone-menu-body" id="crypto-sell-tab">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text crypto-amount-sell" type="text" maxlength="4"><i
+                                class="fas fa-dollar-sign" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">Cantidad</span>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="crypto-send-sell">Vender</div>
+                        </div>
+                    </div>
+
+                    <div class="phone-menu-body" id="crypto-exchange-tab">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text crypto-stateid-exchange" type="text" maxlength="3"><i
+                                class="fas fa-id-card" id="phone-menu-icon"></i><span class="phone-menu-title">ID del
+                                estado</span>
+                            <input class="phone-menu-text crypto-amount-exchange" type="text" maxlength="4"><i
+                                class="fas fa-dollar-sign" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">Cantidad</span>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="crypto-send-exchange">Intercambiar
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="advert-app">
+
+                    <div class="advert-home">
+                        <div class="advert-header">
+                            <span id="messages-search-text">Buscar</span>
+                            <i class="fas fa-search" id="advert-search-icon"></i>
+                            <input type="text" id="advert-search" placeholder="" spellcheck="false">
+                        </div>
+                        <div class="advert-list"></div>
+                        <div class="create-advert">
+                            <i class="fas fa-plus test-icon" data-toggle="tooltip" title="Create Ad"></i>
+                        </div>
+                    </div>
+
+                    <div class="phone-menu-body" id="advert-box-textt">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text advert-box-textt-input" type="text" maxlength="200"><i
+                                class="fas fa-sticky-note" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">Mensaje</span>
+                            <input class="phone-menu-text advert-box-image-input" type="text"><i class="fas fa-image"
+                                id="phone-menu-icon"></i><span class="phone-menu-title">URL (JPG/PNG)</span>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="advert-sendmessage-chat">Publicar</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mail-app">
+                    <div class="mail-home">
+                        <div class="mail-header">
+                            <span id="messages-search-text">Buscar</span>
+                            <i class="fas fa-search" id="mail-search-icon"></i>
+                            <input type="text" id="mail-search" placeholder="" spellcheck="false">
+                        </div>
+
+                        <div class="mail-list">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bleeter-app">
+                    <div class="bleeter-home-tab"></div>
+
+                    <div class="bleeter-new-bleet" data-toggle="tooltip" title="Bleet">
+                        <iconify-icon icon="game-icons:bleeding-eye"></iconify-icon>
+                    </div>
+
+                    <span id="messages-search-text">Buscar</span>
+                    <div class="bleeter-footer">
+                        <i class="fas fa-search" id="bleeter-search-icon"></i>
+                        <input type="text" id="bleeter-search" placeholder="" spellcheck="false">
+                    </div>
+
+                    <div class="phone-menu-body" id="twt-box-textt">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text twt-box-textt-input" type="text" maxlength="200"><i
+                                class="fas fa-sticky-note" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">Mensaje</span>
+                            <input class="phone-menu-text twt-box-image-input" type="text"><i class="fas fa-image"
+                                id="phone-menu-icon"></i><span class="phone-menu-title">URL (JPG/PNG)</span>
+                            <div class="bleet-anonymous">
+                                <input type="checkbox" id="anonymous-bleet" name="anonymous-bleet">
+                                <label for="anonymous-bleet">Anónimo</label>
+                            </div>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="twt-sendmessage-chat">Publicar</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bank-app">
+                    <div class="bank-app-loading">
+                        <span id="qbank-text">Banco</span>
+                    </div>
+                    <div class="bank-app-loaded">
+                        <div class="bank-app-header">
+                            <div data-headertype="accounts"
+                                class="bank-app-header-button bank-app-header-button-selected">
+                                <i class="fas fa-university"></i>
+                                <p>Cuenta</p>
+                            </div>
+                            <div data-headertype="invoices" class="bank-app-header-button">
+                                <i class="fas fa-file-invoice"></i>
+                                <p>Facturas</p>
+                            </div>
+                        </div>
+
+                        <div class="bank-app-transfer">
+                            <div class="bank-app-transfer-header">Transferir dinero</div>
+                            <i class="bank-transfer-iban-icon fas fa-credit-card"></i>
+                            <input type="text" id="bank-transfer-iban" class="bank-transfer-input" required
+                                spellcheck="false">
+                            <i class="bank-transfer-mycontacts-icon fas fa-address-book"></i>
+                            <i class="bank-transfer-amount-icon fas fa-dollar-sign"></i>
+                            <input type="number" min="0" oninput="this.value = Math.abs(this.value)"
+                                id="bank-transfer-amount" class="bank-transfer-input" required spellcheck="false">
+                            <div class="bank-app-transfer-buttons">
+                                <div class="bank-app-transfer-button" id="accept-transfer">Transferir</div>
+                                <div class="bank-app-transfer-button" id="cancel-transfer">Cancelar</div>
+                            </div>
+                        </div>
+
+                        <div class="bank-app-accounts">
+                            <div class="bank-app-account">
+                                <div class="bank-app-account-title">Cuenta Corriente</div>
+                                <div class="bank-app-account-number">···· ···· ····</div>
+                                <div class="bank-app-account-balance">$ 0</div>
+                                <div class="bank-app-account-actions"><i class="fas fa-paper-plane"></i></div>
+                            </div>
+                        </div>
+
+                        <div class="bank-app-invoices" style="display:none;">
+                            <div class="bank-app-invoices-list">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bank-app-my-contacts">
+                        <div class="bank-app-my-contacts-header">Contactos</div>
+                        <div class="bank-app-my-contacts-list-header">
+                            <input type="text" id="bank-app-my-contact-search" placeholder="Nombre de contacto"
+                                spellcheck="false">
+                        </div>
+                        <div class="bank-app-my-contacts-list">
+                        </div>
+                        <div class="bank-app-my-contacts-list-back">Volver</div>
+                    </div>
+                </div>
+
+                <div class="store-app" style="display: none;">
+                    <div class="store-app-header">
+                        <div class="store-header-title">iFruit Store</div>
+                    </div>
+
+                    <div class="store-list-container">
+                        <div class="store-list">
+                            <!-- Las apps disponibles se generarán aquí mediante JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="messages-app">
+                    <div class="messages-header">
+                        <div class="messages-header-top"></div>
+                        <i class="fas fa-comment" id="messages-newconvo-icon"></i>
+                        <span id="messages-search-text">Buscar</span>
+                        <div class="messages-header-footer">
+                            <i class="fas fa-search" id="messages-search-icon"></i>
+                            <input type="text" id="messages-contact-search" placeholder="" spellcheck="false">
+                        </div>
+                    </div>
+
+                    <div class="phone-menu-body" id="messages-box-new-add-new">
+                        <div class="phone-menu-main">
+                            <input class="phone-menu-text messages-input-message" type="text" maxlength="200"><i
+                                class="fas fa-sticky-note" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">Mensaje</span>
+                            <input class="phone-menu-text messages-input-number" type="text" min="0"><i
+                                class="fas fa-phone" id="phone-menu-icon"></i><span
+                                class="phone-menu-title">Número</span>
+                            <p> </p>
+                            <div class="phone-menu-button phone-menu-cancel" id="box-new-cancel">Cancelar</div>
+                            <div class="phone-menu-button phone-menu-accept" id="messages-save-note-for-doc">Enviar
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="messages-chats">
+                    </div>
+                    <div class="messages-openedchat">
+                        <div class="messages-header-openedchat">
+                            <div class="messages-header-top-openedchat"></div>
+                            <div class="messages-header-footer-openedchat">
+
+                                <span id="messages-search-input-text">Buscar</span>
+                                <i class="fas fa-search" id="messages-search-input-icon"></i>
+                                <input type="text" id="messages-contact-input-search" placeholder="" spellcheck="false">
+
+                                <div class="messages-openedchat-picture"></div>
+                                <div class="messages-openedchat-name">
+                                    <p></p>
+                                </div>
+                                <div class="messages-openedchat-number">
+                                    <p></p>
+                                </div>
+                                <i id="messages-openedchat-back" class="fas fa-chevron-left"></i>
+                                <i id="messages-openedchat-call" class="fas fa-phone"></i>
+                            </div>
+                        </div>
+                        <div class="messages-openedchat-messages">
+                        </div>
+                        <div class="messages-gallery">
+                            <div class="messages-gallery-close">Cerrar</div>
+                            <div class="messages-gallery-box"></div>
+                        </div>
+                        <div class="messages-openedchat-input">
+                            <input type="text" id="messages-openedchat-message" placeholder="Enviar mensaje"
+                                spellcheck="false">
+                            <i class="fas fa-arrow-up" id="messages-openedchat-send"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phone-currentcall-container">
+                <div class="phone-currentcall-icon-square"><i class="fas fa-square"></i></div>
+                <div class="phone-currentcall-icon"><i class="fas fa-phone-square"></i></div>
+                <div class="phone-currentcall-title" style="text-transform:uppercase;">Llamada saliente</div>
+                <div class="phone-currentcall-contact">Llamando...</div>
+                <div class="notification-time-new"></div>
+                <i class="fas fa-check-circle" id="incoming-answer"></i>
+                <i class="fas fa-times-circle" id="incoming-deny"></i>
+            </div>
+
+            <!-- Phone Home Button -->
+            <div class="phone-footer">
+                <div class="phone-home-container">
+                    <div data-toggle="tooltip" title="Silenciar"
+                        class="phone-home-button-class phone-silent-button silent-mode-one"><i class="fas fa-bell"></i>
+                    </div>
+                    <div data-toggle="tooltip" title="Sonar"
+                        class="phone-home-button-class phone-silent-button silent-mode-two" style="display: none;"><i
+                            class="fas fa-bell-slash"></i></div>
+
+                    <div data-toggle="tooltip" title="Cámara" class="phone-home-button-class phone-take-camera-button">
+                        <i class="fas fa-camera"></i>
+                    </div>
+
+                    <div id="ghost-home-button" data-toggle="tooltip" class="phone-home-button-class phone-tab-button"
+                        style="font-size: 130%;margin-top: -1.1%;"><i class="far fa-circle"></i></div>
+
+                    <div data-toggle="tooltip" title="Orientation (disabled)" class="phone-home-button-class"><i
+                            class="fas fa-sync"></i></div>
+
+                    <div data-toggle="tooltip" title="Ajustes" class="phone-home-button-class phone-application"
+                        data-app="settings"><i class="fas fa-cog"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="screen-notifications-container">
+        <div class="screen-notification-icon">
+            <iconify-icon icon="game-icons:bleeding-eye"></iconify-icon>
+        </div>
+        <div class="screen-notification-title">
+            <p>¡Nuevo Bleet!</p>
+        </div>
+        <div class="screen-notification-content">
+            <p>Esta es una notificación de prueba</p>
+        </div>
+    </div>
+
+    <div class="call-notifications">
+        <div class="call-notifications-icon"><i class="fas fa-phone"></i></div>
+        <div class="call-notifications-title">
+            <p>Llamada entrante</p>
+        </div>
+        <div class="call-notifications-content">
+            <p>Tienes una llamada entrante de Test</p>
+        </div>
+    </div>
+
+    <div class="publicphonebase">
+        <div class="publicphonebody">
+            <div class="publicphonechannelnumpad">
+                <input id="publicphonechannelnumpad" name="publicphonechannelnumpad" type="number"
+                    placeholder="Número de teléfono">
+            </div>
+
+            <div class="publicphonebasebtn">
+                <div class="publicphonecallbtn">
+                    Llamar
+                </div>
+                <div class="publicphoneclosebtn">
+                    Cerrar
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript File's -->
+    <script src="./app.js"></script>
+    <script
+        type="text/javascript">$('#messages-openedchat-message').emojioneArea({ inline: true, searchPosition: "bottom", shortnames: true })</script>
+</body>
+
+</html>
