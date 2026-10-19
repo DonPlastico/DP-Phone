@@ -234,7 +234,7 @@ exports["qb-target"]:AddTargetModel(PublicPhoneobject, {
 --- Solicita todos los datos del teléfono al servidor y los inyecta en PhoneData.
 local function LoadPhone()
     -- ========================================================================
-    -- [NUEVO] CORTAFUEGOS DP-CLOUD: Verificación de Sesión (DESDE EL SERVER)
+    -- CORTAFUEGOS DP-CLOUD: Verificación de Sesión (DESDE EL SERVER)
     -- ========================================================================
     QBCore.Functions.TriggerCallback('DP-Phone:server:CheckCloudStatus', function(isConfigured)
         if not isConfigured then

@@ -907,10 +907,10 @@ $(document).ready(function () {
 
                 break;
             case "LoadPhoneData":
-                // [NUEVO SEGURO] Si los datos del teléfono ya están listos para cargar, 
+                // Si los datos del teléfono ya están listos para cargar, 
                 // aniquilamos la pantalla de onboarding por la fuerza.
                 $('#cloud-account-screen').fadeOut(300);
-                
+
                 QB.Phone.Functions.LoadPhoneData(event.data);
 
                 // Sincronizamos los botones visuales con lo que hay en la BD
@@ -4606,7 +4606,7 @@ $(document).on('click', '.settings-back-btn', function (e) {
         $('.settings-sub-title').text(previous.title);
         $('.settings-back-btn').html('<i class="fas fa-chevron-left"></i> ' + previous.backText);
 
-        // NUEVO: Si volvemos hacia atrás y el menú era Fondos, restaurar el header
+        // Si volvemos hacia atrás y el menú era Fondos, restaurar el header
         if (previous.submenu === 'fondos') {
             $('.settings-sub-view').addClass('view-fondos');
             $('#fondos-header-controls').fadeIn(150);
@@ -4620,7 +4620,7 @@ $(document).on('click', '.settings-back-btn', function (e) {
         $('.settings-main-view').css('left', '0');
         $('.settings-sub-view').css('left', '100%');
 
-        // NUEVO: Resetear el header al salir del todo
+        // Resetear el header al salir del todo
         $('.settings-sub-view').removeClass('view-fondos');
         $('#fondos-header-controls').hide();
 
@@ -4830,7 +4830,7 @@ $(document).on('click', '#btn-change-pin', function (e) {
     // Mostramos el botón de Cancelar
     $('#keypad-cancel').css({ 'visibility': 'visible', 'pointer-events': 'auto' });
 
-    // --- EL FIX: Forzamos que se vea el teclado de PIN y ocultamos lo biométrico ---
+    // --- Forzamos que se vea el teclado de PIN y ocultamos lo biométrico ---
     $('#fingerprint-login-section').hide();
     $('#faceid-login-section').hide();
     $('#pin-login-section').css('display', 'flex');
@@ -5213,4 +5213,51 @@ $(document).on('click', '#btn-cloud-skip', function (e) {
     $.post('https://DP-Phone/CloudSkip', JSON.stringify({}), function (response) {
         $('#cloud-account-screen').fadeOut(300);
     });
+});
+
+// DP-CLOUD: TOGGLE VISIBILIDAD CONTRASEÑA
+$(document).on('click', '.cloud-toggle-password', function () {
+    // Obtenemos el input asociado mediante el atributo data-target
+    let targetId = $(this).data('target');
+    let $input = $('#' + targetId);
+    let $icon = $(this).find('iconify-icon');
+
+    // Alternamos el tipo de input y el icono
+    if ($input.attr('type') === 'password') {
+        $input.attr('type', 'text');
+        $icon.attr('icon', 'mdi:eye-off');
+    } else {
+        $input.attr('type', 'password');
+        $icon.attr('icon', 'mdi:eye');
+    }
+});
+
+// =================================================================
+// AJUSTES: PANTALLA Y BRILLO (LÓGICA)
+// =================================================================
+
+$(document).ready(function () {
+
+    // 1. Lógica del Slider de Brillo
+    $(document).on('input', '#settings-brightness-slider', function () {
+        let brightnessVal = $(this).val();
+        let filterVal = brightnessVal / 100; // Convertimos de 10-100 a 0.1 - 1.0
+
+        // Aplicamos el brillo. 
+        // ⚠️ IMPORTANTE: Cambia '.phone-container' por la clase o ID principal de tu teléfono 
+        // (por ejemplo '#phone-wrapper', '.phone-app', etc.)
+        $('.phone-container').css('filter', 'brightness(' + filterVal + ')');
+    });
+
+    // 2. Lógica del Selector de Tamaño (Escala)
+    $(document).on('change', '#settings-scale-select', function () {
+        let scaleVal = $(this).val();
+
+        // Aplicamos el zoom al teléfono completo. 
+        // El 'zoom' reduce todo el layout proporcionalmente sin romper los transforms de abrir/cerrar.
+        $('.phone-container').css('zoom', scaleVal);
+
+        $('img[src*="phone.png"]').css('zoom', scaleVal);
+    });
+
 });

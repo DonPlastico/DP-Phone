@@ -23,11 +23,10 @@ local WebHook = Config.Webhook
 -- [2] FUNCIONES DE UTILIDAD
 -- ================================================================================
 
+-- Tabla en la memoria del servidor para recordar qué slot exacto está usando cada jugador
+local ActivePhoneSlots = {}
+
 --- Escapa caracteres peligrosos para prevenir inyección SQL básica en queries manuales.
----  Sustituye comillas simples y dobles con su versión escapada.
----  ⚠️  Sólo es una capa de protección mínima; siempre usar queries parametrizadas cuando sea posible.
---- @param source string  Cadena de texto de entrada a sanitizar.
---- @return string        Cadena con comillas escapadas.
 local function escape_sqli(source)
     local replacements = {
         ['"'] = '\\"',
@@ -37,9 +36,6 @@ local function escape_sqli(source)
 end
 
 --- Divide una cadena de texto en un array de palabras (separadas por espacios).
----  Usado en el sistema de búsqueda de jugadores (FetchResult).
---- @param string string  Cadena de entrada.
---- @return table         Array de palabras individuales.
 local function SplitStringToArray(string)
     local retval = {}
     for i in string.gmatch(string, "%S+") do
@@ -48,13 +44,35 @@ local function SplitStringToArray(string)
     return retval
 end
 
---- Obtiene el identificador activo del teléfono físico que el jugador tiene en el inventario
---- (Cuenta en la nube o Dispositivo Local)
---- @param Player table Objeto del jugador de QBCore
---- @return string|boolean Tipo de ID ("account_id" o "device_id")
---- @return string|number|boolean Valor de la ID
+--- Busca el teléfono ACTIVO en el inventario del jugador respetando el SLOT seleccionado.
+--- @param Player table Objeto del jugador
+--- @return table|nil item, number|nil slot
+local function GetActivePhone(Player)
+    local src = Player.PlayerData.source
+    local savedSlot = ActivePhoneSlots[src]
+
+    -- 1. PRIORIDAD (SLOT CONSCIENTE): Comprobamos si el jugador usó un slot específico
+    if savedSlot and Player.PlayerData.items[savedSlot] and Player.PlayerData.items[savedSlot].name == "phone" then
+        local item = Player.PlayerData.items[savedSlot]
+        if item.amount == 1 and item.info and item.info.imei then
+            return item, savedSlot
+        end
+    end
+
+    -- 2. FALLBACK: Si no hay slot guardado (ej. pulsó F1 al entrar) o movió el ítem de sitio,
+    -- buscamos el primer teléfono individual válido que encontremos y guardamos su slot.
+    for slot, item in pairs(Player.PlayerData.items) do
+        if item.name == "phone" and item.amount == 1 and item.info and item.info.imei then
+            ActivePhoneSlots[src] = slot -- Actualizamos la memoria
+            return item, slot
+        end
+    end
+    return nil, nil
+end
+
+--- Obtiene el identificador activo del teléfono físico (Cuenta Nube o Dispositivo)
 local function GetPhoneIdentifier(Player)
-    local phoneItem = Player.Functions.GetItemByName("phone")
+    local phoneItem, _ = GetActivePhone(Player)
     if phoneItem and phoneItem.info then
         if phoneItem.info.account_id then
             return "account_id", phoneItem.info.account_id
@@ -135,7 +153,7 @@ QBCore.Functions.CreateCallback('DP-Phone:server:GetPhoneData', function(source,
         ChatRooms = {}
     }
 
-    -- Si el teléfono no tiene cuenta ni dispositivo vinculado (es nuevo), devolvemos datos vacíos
+    -- Si el teléfono no tiene cuenta ni dispositivo vinculado, devolvemos datos vacíos
     if not idType then
         return cb(PhoneData)
     end
@@ -480,10 +498,43 @@ end)
 -- ================================================================================
 
 --- Registra el ítem 'phone' como usable en QB-Core.
----  Cuando el jugador usa el ítem desde el inventario, se dispara el evento
----  para abrir el teléfono en el cliente.
 QBCore.Functions.CreateUseableItem("phone", function(source, item)
     local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then
+        return
+    end
+
+    -- 1. LÓGICA DE STACKS (Desapilar teléfonos agrupados)
+    if item.amount > 1 then
+        Player.Functions.RemoveItem(item.name, 1, item.slot)
+
+        local newInfo = item.info or {}
+        newInfo.imei = "IMEI-" .. tostring(math.random(11111, 99999)) .. string.char(math.random(65, 90)) ..
+                           string.char(math.random(65, 90))
+
+        Player.Functions.AddItem(item.name, 1, false, newInfo)
+        TriggerClientEvent('QBCore:Notify', src, 'Has separado un teléfono del grupo para encenderlo.', 'primary')
+        Wait(250)
+        return -- [CRÍTICO] Abortamos aquí para obligar al jugador a usar el teléfono ya separado.
+    else
+        -- 2. LÓGICA NORMAL: Generar IMEI si es virgen
+        if not item.info then
+            item.info = {}
+        end
+        if not item.info.imei then
+            item.info.imei = "IMEI-" .. tostring(math.random(11111, 99999)) .. string.char(math.random(65, 90)) ..
+                                 string.char(math.random(65, 90))
+            Player.PlayerData.items[item.slot].info = item.info
+            Player.Functions.SetInventory(Player.PlayerData.items)
+        end
+    end
+
+    -- 3. GUARDAR LA MEMORIA DEL SLOT
+    -- Registramos exactamente qué slot acaba de usar el jugador en su inventario
+    ActivePhoneSlots[src] = item.slot
+
+    -- 4. Disparamos la apertura en el cliente
     TriggerClientEvent('DP-Phone:client:UsePhone', src)
 end)
 
@@ -579,18 +630,17 @@ QBCore.Commands.Add('deletephonedata', 'Resetea el teléfono de un jugador de f�
 
     local citizenid = Target.PlayerData.citizenid
 
-    -- 1. BORRAR METADATA GENERAL (PIN, Apps instaladas, Ajustes visuales)
+    -- 1. BORRAR METADATA GENERAL (PIN del personaje, Apps, Ajustes visuales)
     Target.Functions.SetMetaData('phonepin', nil)
     Target.Functions.SetMetaData('phone', {})
     Target.Functions.SetMetaData('installedapps', {})
     Target.Functions.SetMetaData('appsettings', {})
 
-    -- 2. CERRAR SESIÓN DEL DISPOSITIVO
+    -- 2. CERRAR SESIÓN DEL DISPOSITIVO Y FORMATEAR HARDWARE
     local idType, idValue = GetPhoneIdentifier(Target)
 
     if idType then
-        -- Si estaba en "Modo Local", destruimos sus datos porque se van a quedar huérfanos para siempre.
-        -- Si es "Cuenta en la Nube", NO borramos nada de la base de datos, porque están a salvo en la nube.
+        -- Si estaba en "Modo Local", destruimos sus datos para limpiar la DB
         if idType == "device_id" then
             MySQL.query('DELETE FROM player_contacts WHERE device_id = ?', {idValue})
             MySQL.query('DELETE FROM player_mails WHERE device_id = ?', {idValue})
@@ -600,12 +650,14 @@ QBCore.Commands.Add('deletephonedata', 'Resetea el teléfono de un jugador de f�
             MySQL.query('DELETE FROM phone_bleets WHERE device_id = ?', {idValue})
         end
 
-        -- Quitamos el "Chip" digital del teléfono físico para que vuelva a pedir la pantalla inicial
+        -- [BORRADO FÍSICO] Quitamos Cuenta, Modo Local, PIN e IMEI del ítem
         for slot, item in pairs(Target.PlayerData.items) do
             if item.name == "phone" then
-                if Target.PlayerData.items[slot].info then -- Añadimos este seguro de vida
+                if Target.PlayerData.items[slot].info then
                     Target.PlayerData.items[slot].info.account_id = nil
                     Target.PlayerData.items[slot].info.device_id = nil
+                    Target.PlayerData.items[slot].info.pin = nil
+                    Target.PlayerData.items[slot].info.imei = nil
                 end
                 Target.Functions.SetInventory(Target.PlayerData.items)
                 break
@@ -613,7 +665,7 @@ QBCore.Commands.Add('deletephonedata', 'Resetea el teléfono de un jugador de f�
         end
     end
 
-    -- 3. BORRAR HISTORIAL LEGAL (Multas y sociedades del ciudadano)
+    -- 3. BORRAR HISTORIAL LEGAL (Multas y sociedades - ligado al DNI/CitizenID)
     MySQL.query('DELETE FROM phone_invoices WHERE citizenid = ?', {citizenid})
     MySQL.query('DELETE FROM phone_invoices WHERE sendercitizenid = ?', {citizenid})
     MySQL.query('DELETE FROM phone_chatrooms WHERE room_owner_id = ?', {citizenid})
@@ -1976,33 +2028,38 @@ QBCore.Functions.CreateCallback('DP-Phone:server:CanTransferMoney', function(sou
 end)
 
 -- ============================================================================
---                              SISTEMA DE PIN
+--                              SISTEMA DE PIN (FÍSICO)
 -- ============================================================================
 
--- Obtener el PIN actual del jugador al abrir el móvil
+-- Obtener el PIN del teléfono físico actual en lugar de la cabeza del jugador
 QBCore.Functions.CreateCallback('DP-Phone:server:GetPhonePin', function(source, cb)
     local Player = QBCore.Functions.GetPlayer(source)
+    if not Player then
+        return cb(false)
+    end
 
-    -- Validamos que el jugador y la metadata existan de forma segura
-    if Player and Player.PlayerData and Player.PlayerData.metadata then
-        local pin = Player.PlayerData.metadata['phonepin']
-        if pin then
-            cb(pin) -- Si tiene PIN, lo enviamos
-        else
-            cb(false) -- ¡NUNCA enviar nil por callback! Enviamos false
-        end
+    local phoneItem, _ = GetActivePhone(Player)
+
+    -- Si el teléfono físico tiene un PIN guardado en su propio chip, lo devolvemos
+    if phoneItem and phoneItem.info and phoneItem.info.pin then
+        cb(phoneItem.info.pin)
     else
-        cb(false)
+        cb(false) -- Es un móvil nuevo, no tiene PIN
     end
 end)
 
--- Guardar un PIN nuevo en el personaje actual
+-- Guardar un PIN nuevo directamente en la memoria (info) del teléfono físico
 RegisterNetEvent('DP-Phone:server:SetPhonePin', function(pin)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
-    if Player then
-        -- Guardamos el PIN en su metadata (se queda ligado a su CitizenID automáticamente)
-        Player.Functions.SetMetaData('phonepin', pin)
+    if not Player then
+        return
+    end
+
+    local phoneItem, slot = GetActivePhone(Player)
+    if phoneItem and slot then
+        Player.PlayerData.items[slot].info.pin = pin
+        Player.Functions.SetInventory(Player.PlayerData.items)
     end
 end)
 
@@ -2017,20 +2074,16 @@ local function UpdatePhoneMetadata(src, key, value)
         return false
     end
 
-    -- [FIX] Iteramos sobre los items reales, porque GetItemByName devuelve una copia inútil
-    for slot, item in pairs(Player.PlayerData.items) do
-        if item.name == "phone" then
-            if not Player.PlayerData.items[slot].info then
-                Player.PlayerData.items[slot].info = {}
-            end
+    -- Usamos la nueva función de utilidad para encontrar el teléfono físico real
+    local phoneItem, slot = GetActivePhone(Player)
 
-            -- Inyectamos la ID digital directamente en la memoria del servidor
-            Player.PlayerData.items[slot].info[key] = value
+    if phoneItem and slot then
+        -- Inyectamos la ID digital (account_id o device_id) en el slot exacto
+        Player.PlayerData.items[slot].info[key] = value
 
-            -- Forzamos el guardado del inventario
-            Player.Functions.SetInventory(Player.PlayerData.items)
-            return true
-        end
+        -- Forzamos el guardado del inventario para que persista
+        Player.Functions.SetInventory(Player.PlayerData.items)
+        return true
     end
     return false
 end

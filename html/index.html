@@ -143,9 +143,7 @@
                     <div id="cloud-view-main" class="cloud-view">
                         <button class="cloud-btn cloud-primary" id="btn-cloud-register-view">Crear Cuenta Nueva</button>
                         <button class="cloud-btn cloud-secondary" id="btn-cloud-login-view">Iniciar Sesión</button>
-
                         <div class="cloud-divider"><span>o</span></div>
-
                         <button class="cloud-btn cloud-outline" id="btn-cloud-skip">Omitir (Uso Local)</button>
                     </div>
 
@@ -154,7 +152,12 @@
                         <div class="cloud-input-group">
                             <input type="text" id="cloud-reg-user" class="cloud-input" placeholder="Usuario"
                                 spellcheck="false" autocomplete="off">
-                            <input type="password" id="cloud-reg-pass" class="cloud-input" placeholder="Contraseña">
+                            <div class="cloud-password-wrapper">
+                                <input type="password" id="cloud-reg-pass" class="cloud-input" placeholder="Contraseña">
+                                <span class="cloud-toggle-password" data-target="cloud-reg-pass">
+                                    <iconify-icon icon="mdi:eye"></iconify-icon>
+                                </span>
+                            </div>
                         </div>
                         <button class="cloud-btn cloud-primary" style="margin-top: 1vh;"
                             id="btn-cloud-register-submit">Crear</button>
@@ -166,7 +169,12 @@
                         <div class="cloud-input-group">
                             <input type="text" id="cloud-log-user" class="cloud-input" placeholder="Usuario"
                                 spellcheck="false" autocomplete="off">
-                            <input type="password" id="cloud-log-pass" class="cloud-input" placeholder="Contraseña">
+                            <div class="cloud-password-wrapper">
+                                <input type="password" id="cloud-log-pass" class="cloud-input" placeholder="Contraseña">
+                                <span class="cloud-toggle-password" data-target="cloud-log-pass">
+                                    <iconify-icon icon="mdi:eye"></iconify-icon>
+                                </span>
+                            </div>
                         </div>
                         <button class="cloud-btn cloud-secondary" style="margin-top: 1vh;"
                             id="btn-cloud-login-submit">Acceder</button>
@@ -658,14 +666,17 @@
                                     </div>
                                     <i class="fas fa-chevron-right settings-item-chevron"></i>
                                 </div>
-                                <div class="settings-item">
+                                <div class="settings-item open-submenu" data-submenu="pantalla"
+                                    data-title="Pantalla y brillo">
                                     <div class="settings-item-icon" style="background-color: #0a84ff;">
-                                        <i class="fas fa-sun"></i>
+                                        <iconify-icon icon="mdi:brightness-6"
+                                            style="color: white; font-size: 1.8vh;"></iconify-icon>
                                     </div>
                                     <div class="settings-item-texts">
                                         <div class="settings-item-title">Pantalla y Brillo</div>
                                         <div class="settings-item-desc">Ajustar pantalla y brillo del teléfono</div>
                                     </div>
+                                    <i class="fas fa-chevron-right settings-item-chevron"></i>
                                 </div>
                                 <div class="settings-item open-submenu" data-submenu="fondos" data-title="Fondos">
                                     <div class="settings-item-icon" style="background-color: #30d158;">
@@ -789,6 +800,64 @@
                                     aplicaciones instaladas y configuraciones personales. No hay vuelta atrás. Procede
                                     bajo tu propia responsabilidad.
                                 </div>
+                            </div>
+
+                            <!-- CONTENIDO SUBMENÚ: PANTALLA Y BRILLO -->
+                            <div class="settings-sub-content" id="sub-pantalla" style="display: none;">
+
+                                <div class="settings-group">
+                                    <div class="settings-item-simple settings-brightness-container"
+                                        style="display: flex;flex-direction: column;align-items: stretch;height: auto !important;padding: 1vh;">
+
+                                        <div
+                                            style="display: flex;justify-content: space-between;align-items: center;width: 100%;margin-bottom: 0.5vh;">
+                                            <iconify-icon icon="mdi:brightness-5"
+                                                style="color: #8e8e93; font-size: 1.5vh;"></iconify-icon>
+                                            <iconify-icon icon="mdi:brightness-7"
+                                                style="color: #8e8e93; font-size: 1.5vh"></iconify-icon>
+                                        </div>
+
+                                        <input type="range" id="settings-brightness-slider" min="10" max="100"
+                                            value="100" class="settings-range-slider settings-range-slider-compact">
+                                    </div>
+                                </div>
+                                <div class="settings-group-footer settings-group-footer-small"
+                                    style="margin-top: 1vh; margin-bottom: 2.5vh; color: rgba(255,255,255,0.4);">
+                                    Ajusta el brillo de la pantalla del dispositivo.
+                                </div>
+
+                                <div class="settings-group">
+                                    <div class="settings-item-simple"
+                                        style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div class="settings-item-title">Tamaño de la pantalla</div>
+
+                                        <div class="settings-item-action" style="display: flex; align-items: center;">
+                                            <select id="settings-scale-select"
+                                                class="settings-custom-select">
+                                                <option value="1.0" style="color: black;">100% (Default)</option>
+                                                <option value="0.95" style="color: black;">95%</option>
+                                                <option value="0.90" style="color: black;">90%</option>
+                                                <option value="0.85" style="color: black;">85%</option>
+                                                <option value="0.80" style="color: black;">80%</option>
+                                                <option value="0.75" style="color: black;">75%</option>
+                                                <option value="0.70" style="color: black;">70%</option>
+                                                <option value="0.65" style="color: black;">65%</option>
+                                                <option value="0.60" style="color: black;">60%</option>
+                                                <option value="0.55" style="color: black;">55%</option>
+                                                <option value="0.50" style="color: black;">50%</option>
+                                            </select>
+                                            <div class="settings-item-action">
+                                                <i class="fas fa-chevron-right settings-item-chevron-sub" style="margin-top: 4px;"></i>
+                                                </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="settings-group-footer settings-group-footer-small"
+                                    style="margin-top: 1vh; color: rgba(255,255,255,0.4);">
+                                    Escala el tamaño general del teléfono para ajustarlo a tu resolución en el juego.
+                                </div>
+
+                                <div style="height: 3vh;"></div>
                             </div>
 
                             <!-- CONTENIDO SUBMENÚ: INFORMACIÓN -->

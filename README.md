@@ -11,60 +11,60 @@ A continuación te presento el árbol de archivos actual de `DP-Phone` para que 
 
 DP-Phone
 ├── 📁 html
-│   ├── 📁 img
-│   │   ├── 📁 backgrounds
-│   │   │   ├── 🖼️ bg_0.png
-│   │   │   ├── 🖼️ bg_1.png
-│   │   │   ├── 🖼️ bg_10.png
-│   │   │   ├── 🖼️ bg_11.png
-│   │   │   ├── 🖼️ bg_12.png
-│   │   │   ├── 🖼️ bg_13.png
-│   │   │   ├── 🖼️ bg_14.png
-│   │   │   ├── 🖼️ bg_15.png
-│   │   │   ├── 🖼️ bg_16.png
-│   │   │   ├── 🖼️ bg_17.png
-│   │   │   ├── 🖼️ bg_18.png
-│   │   │   ├── 🖼️ bg_19.png
-│   │   │   ├── 🖼️ bg_2.png
-│   │   │   ├── 🖼️ bg_20.png
-│   │   │   ├── 🖼️ bg_21.png
-│   │   │   ├── 🖼️ bg_22.png
-│   │   │   ├── 🖼️ bg_23.png
-│   │   │   ├── 🖼️ bg_24.png
-│   │   │   ├── 🖼️ bg_25.png
-│   │   │   ├── 🖼️ bg_26.png
-│   │   │   ├── 🖼️ bg_27.png
-│   │   │   ├── 🖼️ bg_28.png
-│   │   │   ├── 🖼️ bg_29.png
-│   │   │   ├── 🖼️ bg_3.png
-│   │   │   ├── 🖼️ bg_30.png
-│   │   │   ├── 🖼️ bg_31.png
-│   │   │   ├── 🖼️ bg_32.png
-│   │   │   ├── 🖼️ bg_33.png
-│   │   │   ├── 🖼️ bg_34.png
-│   │   │   ├── 🖼️ bg_35.png
-│   │   │   ├── 🖼️ bg_36.png
-│   │   │   ├── 🖼️ bg_37.png
-│   │   │   ├── 🖼️ bg_38.png
-│   │   │   ├── 🖼️ bg_39.png
-│   │   │   ├── 🖼️ bg_4.png
-│   │   │   ├── 🖼️ bg_40.png
-│   │   │   ├── 🖼️ bg_41.png
-│   │   │   ├── 🖼️ bg_42.png
-│   │   │   ├── 🖼️ bg_43.png
-│   │   │   ├── 🖼️ bg_5.png
-│   │   │   ├── 🖼️ bg_6.png
-│   │   │   ├── 🖼️ bg_7.png
-│   │   │   ├── 🖼️ bg_8.png
-│   │   │   └── 🖼️ bg_9.png
-│   │   ├── 🖼️ default.png
-│   │   ├── 🖼️ erpinger.png
-│   │   ├── 🖼️ iFruit.png
-│   │   ├── 🖼️ map-photo-ping.png
-│   │   └── 🖼️ phone.png
-│   ├── 📄 app.js
-│   ├── 🌐 index.html
-│   └── 🎨 style.css
+│ ├── 📁 img
+│ │ ├── 📁 backgrounds
+│ │ │ ├── 🖼️ bg_0.png
+│ │ │ ├── 🖼️ bg_1.png
+│ │ │ ├── 🖼️ bg_10.png
+│ │ │ ├── 🖼️ bg_11.png
+│ │ │ ├── 🖼️ bg_12.png
+│ │ │ ├── 🖼️ bg_13.png
+│ │ │ ├── 🖼️ bg_14.png
+│ │ │ ├── 🖼️ bg_15.png
+│ │ │ ├── 🖼️ bg_16.png
+│ │ │ ├── 🖼️ bg_17.png
+│ │ │ ├── 🖼️ bg_18.png
+│ │ │ ├── 🖼️ bg_19.png
+│ │ │ ├── 🖼️ bg_2.png
+│ │ │ ├── 🖼️ bg_20.png
+│ │ │ ├── 🖼️ bg_21.png
+│ │ │ ├── 🖼️ bg_22.png
+│ │ │ ├── 🖼️ bg_23.png
+│ │ │ ├── 🖼️ bg_24.png
+│ │ │ ├── 🖼️ bg_25.png
+│ │ │ ├── 🖼️ bg_26.png
+│ │ │ ├── 🖼️ bg_27.png
+│ │ │ ├── 🖼️ bg_28.png
+│ │ │ ├── 🖼️ bg_29.png
+│ │ │ ├── 🖼️ bg_3.png
+│ │ │ ├── 🖼️ bg_30.png
+│ │ │ ├── 🖼️ bg_31.png
+│ │ │ ├── 🖼️ bg_32.png
+│ │ │ ├── 🖼️ bg_33.png
+│ │ │ ├── 🖼️ bg_34.png
+│ │ │ ├── 🖼️ bg_35.png
+│ │ │ ├── 🖼️ bg_36.png
+│ │ │ ├── 🖼️ bg_37.png
+│ │ │ ├── 🖼️ bg_38.png
+│ │ │ ├── 🖼️ bg_39.png
+│ │ │ ├── 🖼️ bg_4.png
+│ │ │ ├── 🖼️ bg_40.png
+│ │ │ ├── 🖼️ bg_41.png
+│ │ │ ├── 🖼️ bg_42.png
+│ │ │ ├── 🖼️ bg_43.png
+│ │ │ ├── 🖼️ bg_5.png
+│ │ │ ├── 🖼️ bg_6.png
+│ │ │ ├── 🖼️ bg_7.png
+│ │ │ ├── 🖼️ bg_8.png
+│ │ │ └── 🖼️ bg_9.png
+│ │ ├── 🖼️ default.png
+│ │ ├── 🖼️ erpinger.png
+│ │ ├── 🖼️ iFruit.png
+│ │ ├── 🖼️ map-photo-ping.png
+│ │ └── 🖼️ phone.png
+│ ├── 📄 app.js
+│ ├── 🌐 index.html
+│ └── 🎨 style.css
 ├── 📝 Exports.MD
 ├── 📝 README.md
 ├── 📄 config.lua
@@ -94,57 +94,35 @@ Si has entendido el proyecto, la estructura y las reglas, responde ÚNICAMENTE c
 
 
 
-vale, lo de que CADA movil vaya individual no va bien, es decir, yo tiro el movil y al NO ser el mismo movil, deberia de saltarme de nuevo el mensaje de crear pin de nuevo, iniciar/crear/omitir sesion, YA QUE ES UN MOVIL NUEVO, pero no, yo tiro el mio que ya tiene iniciada sesion, y tiene pin y todo, si lo tiro y me doy otro, funciona con ese mimso pin, y tiene sesión iniciada...
-
-Por lo que vamos a hacer algo, como el item de PHONEes así:
-
-phone = {
-
-        name = 'phone',
-
-        label = 'Smartphone',
-
-        weight = 180,
-
-        type = 'item',
-
-        image = 'phone.png',
-
-        unique = true,
-
-        useable = true,
-
-        shouldClose = false,
-
-        description = 'Terminal de comunicación de última generación. Acceso a red 5G, aplicaciones del estado, GPS y banca móvil.'
-
-    },
 
 
 
 
 
-ahora mismo todos los moviles se pueden juntar, bueno pues hagamos que UNA VEZ abra por primera vez un telefono asignemosle de METADATOS un ID de numeros y letras aleatorio para cada movil, y que este NO sea el mismo ID que ningun otro movil, así asociamos que ESE ID de ese MOVIL SIEMPRE va a tener ese pin con esa sesión, así si lo tiro y saco otro nuevo, contara como que el movil es nuevo y pedira el iniciar sesion y crear pin de nuevo... que tal lo ves? así es mas facil si yo le doy el movil por ejemplo con la ID A48WG44H, que tiene pin 7777 y con sesion de DonMaderos, si se la doy al jugador/personaje PACO FERNANDEZ, al abrir ESE movil con el ID A48WG44H, Tendrá el pin 7777 y con sesion de DonMaderos, aunque sea el jugador PACO FERNANDEZ!! que tal lo ves?
+MEJORAS:
+# AJUSTES
+    - Arreglar el DP-Cloud: Cuando tiro el movil y pillo otro, que detecte que es un movil nuevo, por lo que debe pedirme CREAR PIN e CREAR/INICIAR/OMITIR SESIÓN... al hacer esto, si es CREAR/OMITIR debe salir el movil VACIO literalmente, solo con las 2 apps default, pero SI yo INICIO SESION CON UNA CUENTA, debe descargarme AUTOMATICAMENTE las apps que tiene esa cuenta... que si instalo/desisntalo una app, que lo guarde en la base de datos asociado a ESA CUENTA, y que al iniciar sesion automaticamente me instale esas apps.
+    - Hacer la PAGE de SONIDOS: En este, debe salir 2 opciones, AJUSTAR VOLUMEN, TONO DE LLAMADA:
+        1. Slider para ajustar el volumen con un TOOLTIP dinamico sobre la bola, para indicar el volumen en el que se encuentra en el momento (%)
+        2. Un select/option para seleccionar sonidos custom que YO tengo instalados por default, que abajo salga un input para poder poner un URL de youtube y esa canción/audio/video se pondrá como tono de llamada.
+    - Hacer de nuevo el estilo de FONDOS DE PANTALLA:
+    ![alt text](image-1.png)
+    ![alt text](image-2.png)
+    ![alt text](image-3.png)
+    ![alt text](image-4.png)
 
-Vamos primero con el main_sv...
+    - Pensar que hacer en el NOTIFICACIONES, MODO STREAMING, MODO AVIÓN, USUARIO PROXIMAMENTE, SEARCH.
 
+    - Cambiar el SELECT/OPTIONS A UNO CUSTOM (Pantalla y Brillo)
 
+    - En el FONDOS Y PANTALLA lo tengo así de feo (image_8c3f61.png)... Que es una unica CATEGORIA con scroll hacia abajo, quiero que sean scroll hacia la derecha (cada categoria que tenga un div que en vez de que salga hacia abajo, en vez de que desborde por abajo el OVERFLOW Y, que scrolleable hacia la derecha, como inspirado en carrousel...)
 
+Por cada categoria vamos a meter 
 
+# IFRUIT STORE
+    - Hacer que al darle al INSTALAR se oculte este, que salga un loading girando durante 2-5 segundos, una vez termine este loading (circulo cargando), que salte el mensaje de APP INSTALADA, y se oculte este circulo cargando y salgan los ABRIR/DESINSTALAR.
+    - Hacer lo mismo con el DESINSTALAR, que se oculten ambos, que salga el circulo cargando, luego de 2-5 segundos, una vez termine este loading (circulo cargando), que salte el mensaje de APP DESINSTALADA, y se oculte este circulo cargando y salga el INSTALAR.
+    - Hacer que el botón de ARBIR que literalmente te abra la app seleccionada, que vaya como si le doy clic a la APP en el escritorio del movil.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Meter un botoncito de OJO y OJO TACHADO a la derecha del CONTRASEÑA para ver si lo estas poniendo bien o no...
+# PIN/HUELLA/FACEID
+    - Hacer que funcionen bien, hay veces que ignora el ACTIVE DEL FACEID/HUELLA y me obliga a poner el pin, otras veces SIN ESTAR ACTIVADOS NINGUNA DE ESAS salta pidiendo huella o faceid... COSAS ASÍ hay que arreglarlas.

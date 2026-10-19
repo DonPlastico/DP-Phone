@@ -182,7 +182,7 @@ input[type=number]::-webkit-outer-spin-button {
 .phone-background {
     height: 71.5vh;
     width: 32.7vh;
-    bottom: 2.6vh;
+    bottom: 2.5vh;
     border-radius: 3vh;
     right: 3.2vh;
     margin: 5vh;
@@ -1936,7 +1936,7 @@ input[type="button"]:nth-last-of-type(1):hover {
 }
 
 /* ============================================================
-   SETTINGS APP (NUEVO DISEÑO)
+   SETTINGS APP
    ============================================================ */
 
 .settings-app {
@@ -2122,7 +2122,7 @@ input[type="button"]:nth-last-of-type(1):hover {
 .settings-item-title {
     color: white;
     font-family: 'Poppins', sans-serif;
-    font-size: 1.25vh;
+    font-size: 1vh;
     font-weight: 400;
 }
 
@@ -4689,8 +4689,6 @@ input:checked+.settings-slider:before {
     -ms-user-select: none;
     /* Internet Explorer/Edge */
     user-select: none;
-    /* Non-prefixed version, currently
-                                    supported by Chrome, Opera and Firefox */
 }
 
 /* Check Box Input */
@@ -6287,7 +6285,7 @@ input[name="publicphonechannelnumpad"]::-webkit-input-placeholder {
 }
 
 /* ============================================================
-   NUEVO DISEÑO DE PANTALLA DE INFORMACIÓN
+   PANTALLA DE INFORMACIÓN
    ============================================================ */
 
 /* Estilos compartidos para las nuevas tarjetas (label gris arriba, value blanco abajo) */
@@ -6574,11 +6572,7 @@ input[name="publicphonechannelnumpad"]::-webkit-input-placeholder {
     left: 0;
     width: 100%;
     height: 100%;
-
-    /* FIX 1: Adiós al blur bugeado de FiveM. Usamos un tono oscuro premium estilo iOS Dark Mode */
     background: rgb(15, 15, 17);
-
-    /* FIX 2: Lo subimos al máximo de nuevo para que tape el footer, la cámara y absolutamente TODO */
     z-index: 99999;
 
     display: flex;
@@ -6586,8 +6580,6 @@ input[name="publicphonechannelnumpad"]::-webkit-input-placeholder {
     align-items: center;
     color: white;
     font-family: 'Poppins', sans-serif;
-
-    /* FIX 3: Curvas exactas de la pantalla de tu móvil. (Si se ve un pelín distinto, prueba con 3vh o 4vh) */
     border-radius: 3.5vh;
     overflow: hidden;
 }
@@ -6959,9 +6951,111 @@ input[name="publicphonechannelnumpad"]::-webkit-input-placeholder {
     border-color: #0a84ff;
 }
 
+/* =================================================================
+   DP-CLOUD: TOGGLE VISIBILIDAD CONTRASEÑA
+================================================================= */
+.cloud-password-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    /* Mantiene la consistencia del width */
+}
 
+/* Forzamos un padding derecho en el input para que el texto NO pise el icono */
+.cloud-password-wrapper .cloud-input {
+    width: 100%;
+    padding-right: 4.5vh !important;
+}
 
+.cloud-toggle-password {
+    position: absolute;
+    right: 1.5vh;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #8e8e93;
+    /* Tono grisáceo elegante (estilo iOS) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2vh;
+    /* Tamaño del icono Iconify */
+    transition: color 0.2s ease;
+    z-index: 5;
+}
 
+.cloud-toggle-password:hover {
+    color: #ffffff;
+    /* Ilumina el icono al pasar el ratón por encima */
+}
+
+/* =================================================================
+   AJUSTES: PANTALLA Y BRILLO (SLIDER Y SELECT)
+================================================================= */
+
+/* Slider de Brillo (Estilo iOS) */
+.settings-range-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 0.5vh;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+    outline: none;
+    margin-top: 0.8vh;
+}
+
+/* El círculo del slider (Thumb) */
+.settings-range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.5vh;
+    height: 1.5vh;
+    border-radius: 50%;
+    background: #ffffff;
+    /* Círculo blanco */
+    cursor: pointer;
+    box-shadow: 0 0.2vh 0.5vh rgba(0, 0, 0, 0.4);
+    /* Sombra suave */
+    transition: transform 0.1s ease;
+}
+
+.settings-range-slider::-webkit-slider-thumb:active {
+    transform: scale(1.15);
+    /* Efecto de pulsar y arrastrar */
+}
+
+/* Select de Tamaño de Pantalla */
+.settings-custom-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: #8e8e93;
+    font-size: 1.3vh;
+    font-family: inherit;
+    text-align: right;
+    cursor: pointer;
+    margin-right: 5px;
+}
+
+/* Estilo de las opciones al desplegar el menú */
+.settings-custom-select option {
+    background-color: #1c1c1e;
+    /* Fondo oscuro al abrir el desplegable */
+    color: #ffffff !important;
+    /* Forzamos texto blanco por si tu HTML tenía black */
+    font-size: 1.4vh;
+}
+
+/* 1. Reducción general de las descripciones (footers de grupo) */
+.settings-group-footer-small {
+    font-size: 1.2vh !important;
+    /* Texto muy pequeño y sutil */
+    line-height: 1.6vh;
+    padding: 0 1.5vh;
+}
 
 
 
