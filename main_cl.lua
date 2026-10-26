@@ -2223,9 +2223,11 @@ end)
 
 --- @type number|nil  Handle del blip activo en el mapa para el ping actual.
 local Blip
+--- @type string|nil  Nombre del jugador para re-sincronizar el blip si el mapa se reinicia.
+local CurrentPingName
 
 --- El servidor envía la ubicación de un ping de otro jugador a este cliente.
----  Crea un blip en el mapa durante 5 minutos y muestra una notificación.
+--- Crea un blip en el mapa durante 5 minutos y muestra una notificación.
 --- @param Name string   Nombre del jugador que envió el ping.
 --- @param pos  vector3  Coordenadas del ping.
 RegisterNetEvent("DP-Phone:client:sendPing", function(Name, pos)
@@ -2233,8 +2235,12 @@ RegisterNetEvent("DP-Phone:client:sendPing", function(Name, pos)
     if Blip then
         RemoveBlip(Blip)
         Blip = nil
+        CurrentPingName = nil
     end
+
     Blip = AddBlipForCoord(pos.x, pos.y, pos.z)
+    CurrentPingName = Name -- Guardamos el nombre en memoria
+
     SetBlipSprite(Blip, 280)
     SetBlipDisplay(Blip, 4)
     SetBlipScale(Blip, 1.1)
@@ -2243,15 +2249,37 @@ RegisterNetEvent("DP-Phone:client:sendPing", function(Name, pos)
     BeginTextCommandSetBlipName("STRING")
     AddTextComponentSubstringPlayerName(Name .. '\'s ping!')
     EndTextCommandSetBlipName(Blip)
+
+    if GetResourceState('DP-PauseMenu') == 'started' then
+        pcall(function()
+            exports['DP-PauseMenu']:RegisterCustomBlipName(Blip, Name .. " (Ping)", "OTROS")
+        end)
+    end
+
     TriggerEvent('DP-Phone:client:CustomNotification', Name .. '\'s Location Marked', "Ping Available For 5 Minutes",
         'fas fa-map-pin', '#b3e0f2', 7500)
+
     -- El blip se elimina automáticamente después de 5 minutos
     SetTimeout(60000 * 5, function()
-        RemoveBlip(Blip)
-        Blip = nil
-        TriggerEvent('DP-Phone:client:CustomNotification', Name .. '\'s Location Removed', "Ping No Longer Available",
-            'fas fa-map-pin', '#b3e0f2', 7500)
+        if Blip then
+            RemoveBlip(Blip)
+            Blip = nil
+            CurrentPingName = nil
+            TriggerEvent('DP-Phone:client:CustomNotification', Name .. '\'s Location Removed',
+                "Ping No Longer Available", 'fas fa-map-pin', '#b3e0f2', 7500)
+        end
     end)
+end)
+
+-- Grito de re-sincronización
+AddEventHandler('DP-PauseMenu:ClientReady', function()
+    -- Si hay un ping activo cuando el mapa arranca, lo volvemos a registrar
+    if Blip and DoesBlipExist(Blip) and CurrentPingName then
+        pcall(function()
+            exports['DP-PauseMenu']:RegisterCustomBlipName(Blip, CurrentPingName .. " (Ping)",
+                "OTROS")
+        end)
+    end
 end)
 
 --- Envía una solicitud de ping al servidor para localizar a otro jugador.
