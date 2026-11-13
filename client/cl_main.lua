@@ -364,12 +364,12 @@ end)
 RegisterNUICallback('saveUiState', function(data, cb)
     local screen = type(data) == 'table' and data.screen or nil
     local imei = type(data) == 'table' and data.imei or nil
-
+    
     if type(screen) ~= 'string' or not validPhoneScreens[screen] or not imei then
         cb(false);
         return
     end
-
+    
     -- Guardamos el estado usando el IMEI como clave
     SetResourceKvp('dp-phone:last-screen:' .. imei, screen)
     cb(true)
@@ -467,9 +467,6 @@ if Config.devCommands and Config.devCommands.testNotification then
 end
 
 RegisterNetEvent('dp-phone:client:showNotification', function(notificationData)
-    -- AÑADIR ESTA LÍNEA PARA EL SONIDO NATIVO DE GTA V
-    PlaySoundFrontend(-1, "Text_Arrive_Tone", "Phone_SoundSet_Default", false)
-
     SendNUIMessage({
         action = "showNotification",
         data = notificationData
