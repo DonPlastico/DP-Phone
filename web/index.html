@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="normal" />
+    <title>DP-Phone</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="phone" hidden>
+      <!-- Funda exterior (sobresale y permite sombras/texturas) -->
+      <div class="phone-case-outer" aria-hidden="true"></div>
+      <div class="phone-case" aria-hidden="true"></div>
+
+      <!-- Logo de la marca iFruit en el marco físico -->
+      <img
+        src="images/ifruit-logo.webp"
+        alt="iFruit Brand"
+        class="phone-brand-logo"
+        draggable="false" />
+
+      <!-- Cámara y Altavoz frontal -->
+      <div class="phone-front-sensors" aria-hidden="true">
+        <div class="sensor-camera"></div>
+        <div class="sensor-speaker"></div>
+      </div>
+
+      <!-- Controles Físicos -->
+      <div class="volume-controls" role="group" aria-label="Controles de volumen">
+        <button
+          class="hardware-button volume-button"
+          data-action="volume-up"
+          type="button"
+          aria-label="Subir volumen"
+          title="Subir volumen"></button>
+        <button
+          class="hardware-button volume-button"
+          data-action="volume-down"
+          type="button"
+          aria-label="Bajar volumen"
+          title="Bajar volumen"></button>
+      </div>
+      <button
+        class="hardware-button power-button"
+        data-action="power-off"
+        type="button"
+        aria-label="Apagar y cerrar móvil"
+        title="Cerrar móvil"></button>
+      <button
+        class="hardware-button fold-button"
+        type="button"
+        aria-label="Control de plegado (solo visual)"
+        title="Control de plegado (solo visual)"></button>
+
+      <div class="phone-screen palette-monochrome">
+        <!-- Espacio reservado para las futuras Apps -->
+        <div class="application" hidden>
+          <section id="view" class="view" aria-live="polite"></section>
+        </div>
+
+        <!-- PANTALLA DE BLOQUEO -->
+        <section id="lock-screen" class="lock-screen" hidden>
+          <div class="lock-content">
+            <span class="lock-icon ui-icon" data-iconify="lock"> </span>
+            <h2 id="lock-title" class="lock-title">Introduce tu código</h2>
+            <div class="pin-dots" id="pin-dots">
+              <span> </span><span> </span><span> </span><span> </span>
+            </div>
+            <div id="fingerprint-area" class="fingerprint-area" hidden>
+              <button id="btn-fingerprint" class="fingerprint-btn">
+                <span class="ui-icon" data-iconify="fingerprint"> </span>
+              </button>
+            </div>
+            <div id="faceid-area" class="faceid-area" hidden>
+              <span class="ui-icon animate-bounce" data-iconify="face-id"> </span>
+            </div>
+            <div class="numpad" id="numpad">
+              <button data-pin="1">1</button>
+              <button data-pin="2">2</button>
+              <button data-pin="3">3</button>
+              <button data-pin="4">4</button>
+              <button data-pin="5">5</button>
+              <button data-pin="6">6</button>
+              <button data-pin="7">7</button>
+              <button data-pin="8">8</button>
+              <button data-pin="9">9</button>
+              <button class="numpad-action" data-action="clear">
+                <span class="numpad-circle">✕</span>
+              </button>
+              <button data-pin="0">0</button>
+              <button class="numpad-action" data-action="delete">
+                <span class="numpad-circle">
+                  <span class="ui-icon" data-iconify="backspace"> </span>
+                </span>
+              </button>
+            </div>
+            <button id="switch-lock-method" class="switch-lock-method" hidden>
+              ACCEDER A TRAVÉS DEL PIN
+            </button>
+          </div>
+        </section>
+
+        <!-- APP DEL TIEMPO -->
+        <section id="weather-app" class="weather-app" hidden>
+          <div class="weather-bg" id="weather-bg"></div>
+          <div class="weather-content">
+            <header class="weather-header">
+              <div class="weather-location">
+                <span class="ui-icon" data-iconify="map-pin"> </span>
+                <span id="weather-location-text">Los Santos</span>
+              </div>
+              <span id="weather-season" class="weather-season">OTOÑO · 02:51 A.M.</span>
+            </header>
+            <div class="weather-main">
+              <div class="weather-icon-container" id="weather-icon-container">
+                <span
+                  class="ui-icon float-anim"
+                  data-iconify="moon"
+                  id="weather-main-icon"></span>
+              </div>
+              <h1 class="weather-temp" id="weather-temp">16°</h1>
+              <p class="weather-desc" id="weather-desc">Despejado</p>
+              <div class="weather-details">
+                <span>Sensación <strong id="weather-feels-like">17°</strong> </span>
+                <span>Máx <strong id="weather-max">20°</strong> </span>
+                <span>Mín <strong id="weather-min">12°</strong> </span>
+              </div>
+            </div>
+            <div class="weather-alert-card" id="weather-alert-card" hidden>
+              <div class="alert-icon-wrapper">
+                <span class="ui-icon pulse-red" data-iconify="alert-triangle"> </span>
+              </div>
+              <div class="alert-content">
+                <span class="alert-label">CLIMA SEVERO</span>
+                <h3 class="alert-title">Tormenta severa en camino</h3>
+                <div class="alert-timer" id="weather-alert-timer">00h 00m 00s</div>
+                <p class="alert-desc">
+                  Tormenta severa se aproxima a la ciudad. Se recomienda a todos los ciudadanos
+                  buscar refugio y mantenerse informados.
+                </p>
+              </div>
+            </div>
+            <div class="weather-highlights">
+              <div class="highlight-card">
+                <span class="ui-icon" data-iconify="wind"> </span>
+                <div class="highlight-info">
+                  <span class="highlight-label">Viento</span>
+                  <strong class="highlight-value" id="highlight-wind">14 km/h</strong>
+                </div>
+              </div>
+              <div class="highlight-card">
+                <span class="ui-icon" data-iconify="droplet"> </span>
+                <div class="highlight-info">
+                  <span class="highlight-label">Humedad</span>
+                  <strong class="highlight-value" id="highlight-humidity">52%</strong>
+                </div>
+              </div>
+              <div class="highlight-card">
+                <span class="ui-icon" data-iconify="gauge"> </span>
+                <div class="highlight-info">
+                  <span class="highlight-label">Presión</span>
+                  <strong class="highlight-value" id="highlight-pressure">757 mmHg</strong>
+                </div>
+              </div>
+              <div class="highlight-card">
+                <span class="ui-icon" data-iconify="eye"> </span>
+                <div class="highlight-info">
+                  <span class="highlight-label">Visibilidad</span>
+                  <strong class="highlight-value" id="highlight-visibility">10 km</strong>
+                </div>
+              </div>
+            </div>
+            <div class="weather-graph-card">
+              <div class="graph-header">
+                <span class="ui-icon" data-iconify="activity"> </span>
+                <span>PRÓXIMAS 12 HORAS</span>
+              </div>
+              <div class="graph-container" id="weather-graph-container"></div>
+            </div>
+            <div class="weather-weekly">
+              <div class="forecast-header">
+                <span class="ui-icon" data-iconify="calendar"> </span>
+                <span>PRÓXIMOS 7 DÍAS</span>
+              </div>
+              <div class="weekly-list" id="weather-weekly-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TOPBAR Y NOTIFICACIONES -->
+        <header id="desktop-statusbar" class="desktop-statusbar" hidden>
+          <div class="desktop-status-left">
+            <time id="desktop-clock" class="desktop-clock"></time>
+            <time id="desktop-date" class="desktop-date"></time>
+            <span class="desktop-notifications" aria-label="Notificaciones" hidden> </span>
+          </div>
+          <div class="desktop-status-right">
+            <span
+              id="signal-indicator"
+              class="signal-indicator"
+              role="img"
+              aria-label="Cobertura completa">
+              <span class="ui-icon" data-iconify="signal"> </span>
+            </span>
+            <span
+              class="battery-indicator ui-icon"
+              data-iconify="akar-icons:battery-full"
+              role="img"
+              aria-label="Batería completa"></span>
+          </div>
+          <div class="notification-center-content" id="notification-center-content">
+            <section class="qs-panel-top" aria-label="Ajustes rápidos">
+              <div class="qs-tiles">
+                <button class="qs-tile" type="button" aria-pressed="false">
+                  <span class="qs-tile-icon">
+                    <svg
+                      class="nc-svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path d="M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7" />
+                      <path
+                        d="M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3" />
+                      <path d="M9.7 17l4.6 0" />
+                    </svg>
+                  </span>
+                  <span class="qs-tile-label">Linterna</span>
+                </button>
+                <button class="qs-tile" type="button" aria-pressed="false">
+                  <span class="qs-tile-icon">
+                    <svg
+                      class="nc-svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path
+                        d="M16 10h4a2 2 0 0 1 0 4h-4l-4 7h-3l2 -7h-4l-2 2h-3l2 -4l-2 -4h3l2 2h4l-2 -7h3z" />
+                    </svg>
+                  </span>
+                  <span class="qs-tile-label">Modo avión</span>
+                </button>
+                <button class="qs-tile" type="button" aria-pressed="true">
+                  <span class="qs-tile-icon">
+                    <svg
+                      class="nc-svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path d="M7 3l0 18" />
+                      <path d="M10 6l-3 -3l-3 3" />
+                      <path d="M20 18l-3 3l-3 -3" />
+                      <path d="M17 21l0 -18" />
+                    </svg>
+                  </span>
+                  <span class="qs-tile-label">Datos</span>
+                </button>
+                <button class="qs-tile" type="button" aria-pressed="false">
+                  <span class="qs-tile-icon" data-iconify="screenshot"></span>
+                  <span class="qs-tile-label">Captura</span>
+                </button>
+                <button
+                  class="qs-tile"
+                  type="button"
+                  aria-pressed="false"
+                  aria-label="Silencio">
+                  <span class="qs-tile-icon">
+                    <svg
+                      class="nc-svg icon-sound-on"
+                      style="display: none"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path d="M15 8a5 5 0 0 1 0 8" />
+                      <path d="M17.7 5a9 9 0 0 1 0 14" />
+                      <path
+                        d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
+                    </svg>
+                    <svg
+                      class="nc-svg icon-sound-off"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path
+                        d="M15 8a5 5 0 0 1 1.912 4.934m-1.377 2.602a5 5 0 0 1 -.535 .464" />
+                      <path
+                        d="M17.7 5a9 9 0 0 1 2.362 11.086m-1.676 2.299a9 9 0 0 1 -.686 .615" />
+                      <path
+                        d="M9.069 5.054l.431 -.554a.8 .8 0 0 1 1.5 .5v2m0 4v8a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l1.294 -1.664" />
+                      <path d="M3 3l18 18" />
+                    </svg>
+                  </span>
+                  <span class="qs-tile-label">Silencio</span>
+                </button>
+                <button class="qs-tile" type="button" aria-pressed="false">
+                  <span class="qs-tile-icon">
+                    <svg
+                      class="nc-svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path
+                        d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+                    </svg>
+                  </span>
+                  <span class="qs-tile-label">No molestar</span>
+                </button>
+              </div>
+              <div class="qs-sliders-vertical">
+                <div class="qs-slider-vertical">
+                  <span class="qs-slider-icon-v">
+                    <!-- Icono Brillo -->
+                    <svg
+                      class="nc-svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                      <path
+                        d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" />
+                    </svg>
+                  </span>
+                  <input
+                    class="qs-range-vertical"
+                    id="header-brightness"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value="70"
+                    aria-label="Brillo"
+                    style="--p: 0.7" />
+                </div>
+                <div class="qs-slider-vertical">
+                  <span class="qs-slider-icon-v">
+                    <!-- Icono Multimedia -->
+                    <svg
+                      class="nc-svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path d="M15 8a5 5 0 0 1 0 8" />
+                      <path d="M17.7 5a9 9 0 0 1 0 14" />
+                      <path
+                        d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
+                    </svg>
+                  </span>
+                  <input
+                    class="qs-range-vertical"
+                    id="header-multimedia"
+                    type="range"
+                    min="0"
+                    max="200"
+                    value="100"
+                    aria-label="Multimedia"
+                    style="--p: 0.5" />
+                </div>
+                <div class="qs-slider-vertical">
+                  <span class="qs-slider-icon-v">
+                    <!-- Icono Llamadas -->
+                    <svg
+                      class="nc-svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path
+                        d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2" />
+                    </svg>
+                  </span>
+                  <input
+                    class="qs-range-vertical"
+                    id="header-llamadas"
+                    type="range"
+                    min="0"
+                    max="200"
+                    value="100"
+                    aria-label="Llamadas"
+                    style="--p: 0.5" />
+                </div>
+                <div class="qs-slider-vertical">
+                  <span class="qs-slider-icon-v">
+                    <!-- Icono Notificaciones -->
+                    <svg
+                      class="nc-svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round">
+                      <path
+                        d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+                      <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+                    </svg>
+                  </span>
+                  <input
+                    class="qs-range-vertical"
+                    id="header-notificaciones"
+                    type="range"
+                    min="0"
+                    max="200"
+                    value="100"
+                    aria-label="Notificaciones"
+                    style="--p: 0.5" />
+                </div>
+              </div>
+            </section>
+            <div class="nc-divider"></div>
+            <section class="nc-panel-bottom" aria-label="Notificaciones">
+              <div class="nc-header">
+                <h2 class="nc-heading">Notificaciones</h2>
+                <button class="nc-clear-btn" id="nc-clear-all" title="Limpiar todo">
+                  <span class="ui-icon" data-iconify="trash"> </span>
+                </button>
+              </div>
+              <div class="nc-list" id="nc-list">
+                <p class="nc-desc">No hay notificaciones nuevas.</p>
+              </div>
+            </section>
+          </div>
+          <span class="statusbar-home-indicator" aria-hidden="true"> </span>
+        </header>
+        <div
+          id="notification-container"
+          class="notification-container"
+          aria-live="polite"></div>
+
+        <!-- ESCRITORIO -->
+        <section
+          id="desktop-screen"
+          class="desktop-screen"
+          aria-label="Escritorio iFruit OS"
+          hidden>
+          <button id="btn-done-editing" class="done-editing-btn" hidden>Hecho</button>
+          <div id="desktop-app-grid" class="desktop-app-grid" aria-label="Aplicaciones"></div>
+        </section>
+
+        <!-- AJUSTES -->
+        <section id="settings-app" class="settings-app" aria-label="Ajustes" hidden>
+          <header class="store-header">
+            <div class="store-title">
+              <span class="store-logo" data-iconify="settings"> </span>
+              <div>
+                <span class="eyebrow">iFruit OS</span>
+                <h2>Ajustes</h2>
+              </div>
+            </div>
+            <div class="expandable-search" id="settings-search-container">
+              <span class="ui-icon search-icon" data-iconify="search"></span>
+              <input
+                id="settings-search"
+                type="text"
+                placeholder="Buscar…"
+                autocomplete="off" />
+              <button
+                type="button"
+                class="clear-search-btn"
+                tabindex="-1"
+                title="Borrar"
+                aria-label="Borrar búsqueda">
+                <span class="ui-icon" data-iconify="x"></span>
+              </button>
+            </div>
+          </header>
+          <div class="settings-layout">
+            <div class="settings-sidebar">
+              <article
+                class="settings-card"
+                data-keywords="perfil usuario cuenta nombre id ciudadano citizen">
+                <div
+                  class="settings-avatar"
+                  data-iconify="user-filled"
+                  aria-hidden="true"></div>
+                <div class="settings-user-info">
+                  <div class="settings-name-row">
+                    <strong class="settings-name" id="settings-username-display"
+                      >Usuario próximamente</strong
+                    >
+                    <button
+                      class="settings-edit-btn"
+                      id="settings-edit-name-btn"
+                      title="Cambiar nombre">
+                      <span class="ui-icon" data-iconify="edit"> </span>
+                    </button>
+                  </div>
+                  <div class="settings-user-details">
+                    <span class="settings-detail-item">
+                      <span class="ui-icon" data-iconify="phone"></span> 555-0173
+                    </span>
+                    <span class="settings-detail-separator">|</span>
+                    <span class="settings-detail-item">
+                      <span class="ui-icon" data-iconify="user-filled"></span>
+                      <span id="settings-citizen">—</span>
+                    </span>
+                  </div>
+                </div>
+              </article>
+              <div id="settings-list" class="settings-list">
+                <div class="settings-divider"></div>
+                <button
+                  class="setting-item"
+                  data-settings-tab="wallpaper"
+                  data-keywords="apariencia fondos pantalla personalizacion">
+                  <span class="setting-icon" data-iconify="photo"> </span>
+                  <div class="setting-text">
+                    <strong>Apariencia</strong>
+                    <span>Personaliza el aspecto de tu dispositivo</span>
+                  </div>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
+                </button>
+                <button
+                  class="setting-item"
+                  data-settings-tab="display"
+                  data-keywords="pantalla brillo">
+                  <span class="setting-icon" data-iconify="eye"> </span>
+                  <div class="setting-text">
+                    <strong>Pantalla y Brillo</strong>
+                    <span>Ajustar pantalla y brillo del teléfono</span>
+                  </div>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
+                </button>
+                <button
+                  class="setting-item"
+                  data-settings-tab="blockednumbers"
+                  data-keywords="bloqueados numeros telefono llamadas spam">
+                  <span class="setting-icon" data-iconify="shield-x"> </span>
+                  <div class="setting-text">
+                    <strong>Números Bloqueados</strong>
+                    <span>Gestiona los números que no pueden llamarte</span>
+                  </div>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
+                </button>
+                <button
+                  class="setting-item"
+                  data-settings-tab="security"
+                  data-keywords="contraseña huella face id seguridad">
+                  <span class="setting-icon" data-iconify="shield-star"> </span>
+                  <div class="setting-text">
+                    <strong>Contraseña, Huella, Face ID</strong>
+                    <span>Seguridad de tu teléfono</span>
+                  </div>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
+                </button>
+                <button
+                  class="setting-item"
+                  data-settings-tab="privacy"
+                  data-keywords="privacidad formatear reset zona peligro">
+                  <span class="setting-icon" data-iconify="shield-star"> </span>
+                  <div class="setting-text">
+                    <strong>Privacidad</strong>
+                    <span>Opciones de restablecimiento y seguridad</span>
+                  </div>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
+                </button>
+                <div class="settings-divider"></div>
+                <button
+                  class="setting-item"
+                  data-settings-tab="sounds"
+                  data-keywords="sonidos volumen">
+                  <span class="setting-icon" data-iconify="message"> </span>
+                  <div class="setting-text">
+                    <strong>Sonido y Vibración</strong>
+                    <span>Cambiar sonidos de notificaciones a llamadas</span>
+                  </div>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
+                </button>
+                <button
+                  class="setting-item"
+                  data-settings-tab="notifications"
+                  data-keywords="notificaciones alertas">
+                  <span class="setting-icon" data-iconify="bell"> </span>
+                  <div class="setting-text">
+                    <strong>Notificaciones</strong>
+                    <span>Elige qué aplicación envía notificaciones</span>
+                  </div>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
+                </button>
+                <div class="settings-divider"></div>
+                <button
+                  class="setting-item"
+                  data-settings-tab="phone"
+                  data-keywords="telefono informacion dispositivo almacenamiento">
+                  <span class="setting-icon" data-iconify="phone"> </span>
+                  <div class="setting-text">
+                    <strong>Información del Dispositivo</strong>
+                    <span>Especificaciones y gestor de almacenamiento</span>
+                  </div>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
+                </button>
+              </div>
+            </div>
+            <div class="settings-content-panel" id="settings-content-panel">
+              <div class="settings-placeholder" id="settings-default-placeholder">
+                <span class="ui-icon animate-bounce" data-iconify="settings"> </span>
+                <p>Selecciona una opción a la izquierda para ver sus detalles</p>
+              </div>
+            </div>
+          </div>
+          <p id="settings-empty" class="store-empty" hidden>No se han encontrado ajustes.</p>
+        </section>
+
+        <!-- APP LICENCIAS -->
+        <section id="licenses-app" class="licenses-app" hidden>
+          <div class="licenses-content">
+            <div class="licenses-header-title">
+              <span class="eyebrow">TUS CARNETS</span>
+              <h2>LICENCIAS</h2>
+            </div>
+            <div class="licenses-grid">
+              <div class="license-card-item">
+                <div class="license-card-header">
+                  <span class="license-title">LA TIENES</span>
+                  <h3 class="license-main-title">LICENCIA DE COCHE</h3>
+                </div>
+                <div class="license-card-bottom">
+                  <div class="license-status-pill">
+                    <span class="ui-icon" data-iconify="car"></span>
+                    <span>En vigor</span>
+                  </div>
+                  <span class="license-code">Alessandro Vittorio • HPO28805</span>
+                </div>
+                <div class="license-logo-watermark">
+                  <span class="ui-icon" data-iconify="car"></span>
+                </div>
+              </div>
+              <div class="license-card-item">
+                <div class="license-card-header">
+                  <span class="license-title">LA TIENES</span>
+                  <h3 class="license-main-title">LICENCIA DE MOTO</h3>
+                </div>
+                <div class="license-card-bottom">
+                  <div class="license-status-pill">
+                    <span class="ui-icon" data-iconify="bike"></span>
+                    <span>En vigor</span>
+                  </div>
+                  <span class="license-code">Alessandro Vittorio • HPO28805</span>
+                </div>
+                <div class="license-logo-watermark">
+                  <span class="ui-icon" data-iconify="bike"></span>
+                </div>
+              </div>
+              <div class="license-card-item">
+                <div class="license-card-header">
+                  <span class="license-title">LA TIENES</span>
+                  <h3 class="license-main-title">LICENCIA DE PESCA</h3>
+                </div>
+                <div class="license-card-bottom">
+                  <div class="license-status-pill">
+                    <span class="ui-icon" data-iconify="fish"></span>
+                    <span>En vigor</span>
+                  </div>
+                  <span class="license-code">Alessandro Vittorio • HPO28805</span>
+                </div>
+                <div class="license-logo-watermark">
+                  <span class="ui-icon" data-iconify="fish"></span>
+                </div>
+              </div>
+            </div>
+            <div class="licenses-layout-bottom">
+              <div class="licenses-sidebar">
+                <div
+                  class="licenses-header-title"
+                  style="margin-top: 16px; margin-bottom: 12px">
+                  <span class="eyebrow">TU EXPEDIENTE</span>
+                </div>
+                <button class="expediente-item active" id="btn-exp-puntos">
+                  <span class="ui-icon" data-iconify="id-badge"></span>
+                  <div class="expediente-text">
+                    <strong>Puntos del carnet</strong>
+                    <span>Ver saldo actual</span>
+                  </div>
+                  <span class="expediente-value highlight" id="license-points">8/12</span>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"></span>
+                </button>
+                <button class="expediente-item" id="btn-exp-dni">
+                  <span class="ui-icon" data-iconify="credit-card"></span>
+                  <div class="expediente-text">
+                    <strong>ID</strong>
+                    <span id="license-dni-status">Caducado</span>
+                  </div>
+                  <span class="expediente-value alert" id="license-expiry">13/10/2025</span>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"></span>
+                </button>
+                <button class="expediente-item" id="btn-exp-carnets">
+                  <span class="ui-icon" data-iconify="book"></span>
+                  <div class="expediente-text">
+                    <strong>Sacar otro carnet</strong>
+                    <span>Te faltan 4</span>
+                  </div>
+                  <span class="ui-icon chevron" data-iconify="chevron-right"></span>
+                </button>
+              </div>
+              <div class="licenses-detail-panel" id="licenses-detail-panel">
+                <div class="licenses-view" id="view-puntos">
+                  <div class="points-balance-card">
+                    <div class="points-balance-header">
+                      <span class="points-label">SALDO DE PUNTOS</span>
+                      <span class="points-value highlight" id="panel-points-value">8/12</span>
+                    </div>
+                    <div class="points-segmented-bar" id="panel-points-bar"></div>
+                    <p class="points-status-text" id="panel-points-status">
+                      Vas bien: te quedan 8.
+                    </p>
+                  </div>
+                  <div class="points-info-section">
+                    <div class="points-info-title">
+                      <span class="ui-icon" data-iconify="car"></span>
+                      <strong>QUÉ SON</strong>
+                    </div>
+                    <p>
+                      Son 12 y no van por carnet: el coche y la moto comparten el mismo saldo.
+                      Cada sanción de tráfico te quita los suyos, y sin puntos te retiran el
+                      carnet.
+                    </p>
+                  </div>
+                  <div class="points-info-section">
+                    <div class="points-info-title">
+                      <span class="ui-icon" data-iconify="info-circle"></span>
+                      <strong>CÓMO SE RECUPERAN</strong>
+                    </div>
+                    <p>En comisaría, pagando. Te los devuelven todos de una vez.</p>
+                  </div>
+                </div>
+                <div class="licenses-view" id="view-dni" hidden>
+                  <div class="points-balance-card alert-border">
+                    <div class="points-balance-header">
+                      <span class="points-label alert-text">CADUCÓ EL</span>
+                      <span
+                        class="points-value alert-text"
+                        id="panel-id-date"
+                        style="font-size: calc(24px * var(--text-scale))"
+                        >13/10/2026</span
+                      >
+                    </div>
+                    <p class="points-status-text alert-text" id="panel-id-status">
+                      Caducó hace X días.
+                    </p>
+                  </div>
+                  <div class="points-info-section">
+                    <div class="points-info-title">
+                      <span class="ui-icon" data-iconify="id-badge"></span>
+                      <strong>LO ÚNICO QUE CADUCA</strong>
+                    </div>
+                    <p>
+                      Los carnets no caducan; el DNI sí, cada tres meses. Llevarlo caducado no
+                      te impide enseñarlo, pero te pueden multar por ello.
+                    </p>
+                  </div>
+                  <div class="points-info-section">
+                    <div class="points-info-title">
+                      <span class="ui-icon" data-iconify="refresh"></span>
+                      <strong>CÓMO SE RENUEVA</strong>
+                    </div>
+                    <p>
+                      En comisaría. No hace falta que lo lleves encima para que te lo renueven.
+                    </p>
+                  </div>
+                </div>
+                <div class="licenses-view" id="view-carnets-list" hidden>
+                  <div class="points-info-title" style="margin-bottom: 16px">
+                    <span class="ui-icon" data-iconify="book"></span>
+                    <strong>OTROS CARNETS DISPONIBLES</strong>
+                  </div>
+                  <div class="carnets-menu-list accordion-style">
+                    <div class="carnet-item">
+                      <button class="carnet-item-header">
+                        <div class="carnet-item-left">
+                          <span class="ui-icon" data-iconify="car"></span>
+                          <div class="carnet-item-info">
+                            <strong>Licencia de camión</strong>
+                            <span>Teórico aprobado, falta práctico</span>
+                          </div>
+                        </div>
+                        <span class="carnet-price">$1.500</span>
+                        <span class="ui-icon chevron" data-iconify="chevron-down"></span>
+                      </button>
+                      <div class="carnet-item-body">
+                        <div class="carnet-cost-box">
+                          <div class="carnet-cost-row">
+                            <span>Examen teórico</span><span>$1.500</span>
+                          </div>
+                          <div class="carnet-cost-row">
+                            <span>Examen práctico</span><span>$1.500</span>
+                          </div>
+                          <p class="carnet-cost-warning">
+                            Pago requerido por intento. Evaluaciones independientes.
+                          </p>
+                        </div>
+                        <div class="carnet-next-steps">
+                          <div class="points-info-title">
+                            <span class="ui-icon" data-iconify="calendar"></span
+                            ><strong>POR DÓNDE SIGUES</strong>
+                          </div>
+                          <p>Teórico validado. Agenda y aprueba la prueba práctica.</p>
+                        </div>
+                        <button class="carnet-action-btn">
+                          <span class="ui-icon" data-iconify="map-pin"></span> LOCALIZAR CENTRO
+                          EXAMINADOR
+                        </button>
+                      </div>
+                    </div>
+                    <div class="carnet-item">
+                      <button class="carnet-item-header">
+                        <div class="carnet-item-left">
+                          <span class="ui-icon" data-iconify="map"></span>
+                          <div class="carnet-item-info">
+                            <strong>Licencia de barco</strong>
+                            <span>Empiezas por el teórico</span>
+                          </div>
+                        </div>
+                        <span class="carnet-price">$5.000</span>
+                        <span class="ui-icon chevron" data-iconify="chevron-down"></span>
+                      </button>
+                      <div class="carnet-item-body">
+                        <div class="carnet-cost-box">
+                          <div class="carnet-cost-row">
+                            <span>Examen teórico</span><span>$5.000</span>
+                          </div>
+                          <div class="carnet-cost-row">
+                            <span>Examen práctico</span><span>$5.000</span>
+                          </div>
+                          <p class="carnet-cost-warning">
+                            Pago requerido por intento. Evaluaciones independientes.
+                          </p>
+                        </div>
+                        <div class="carnet-next-steps">
+                          <div class="points-info-title">
+                            <span class="ui-icon" data-iconify="calendar"></span
+                            ><strong>POR DÓNDE SIGUES</strong>
+                          </div>
+                          <p>Supera el teórico para habilitar la prueba práctica.</p>
+                        </div>
+                        <button class="carnet-action-btn">
+                          <span class="ui-icon" data-iconify="map-pin"></span> LOCALIZAR CENTRO
+                          EXAMINADOR
+                        </button>
+                      </div>
+                    </div>
+                    <div class="carnet-item">
+                      <button class="carnet-item-header">
+                        <div class="carnet-item-left">
+                          <span class="ui-icon" data-iconify="crosshair"></span>
+                          <div class="carnet-item-info">
+                            <strong>Licencia de aviación</strong>
+                            <span>Empiezas por el teórico</span>
+                          </div>
+                        </div>
+                        <span class="carnet-price">$10.000</span>
+                        <span class="ui-icon chevron" data-iconify="chevron-down"></span>
+                      </button>
+                      <div class="carnet-item-body">
+                        <div class="carnet-cost-box">
+                          <div class="carnet-cost-row">
+                            <span>Examen teórico</span><span>$10.000</span>
+                          </div>
+                          <div class="carnet-cost-row">
+                            <span>Examen práctico</span><span>$10.000</span>
+                          </div>
+                        </div>
+                        <div class="carnet-warning-box">
+                          <span class="ui-icon" data-iconify="info-circle"></span>
+                          <div class="warning-content">
+                            <span class="warning-title">ADEMÁS DEL EXAMEN</span>
+                            <p class="warning-desc">
+                              Este carnet pide tener aprobado tu historial de personaje en la
+                              web. Sin ello no se aprueba, aunque pagues el examen.
+                            </p>
+                          </div>
+                        </div>
+                        <div class="carnet-next-steps">
+                          <div class="points-info-title">
+                            <span class="ui-icon" data-iconify="calendar"></span
+                            ><strong>POR DÓNDE SIGUES</strong>
+                          </div>
+                          <p>Empieza por el teórico. Con el aprobado se abre el práctico.</p>
+                        </div>
+                        <button class="carnet-action-btn">
+                          <span class="ui-icon" data-iconify="map-pin"></span> LOCALIZAR CENTRO
+                          EXAMINADOR
+                        </button>
+                      </div>
+                    </div>
+                    <div class="carnet-item">
+                      <button class="carnet-item-header">
+                        <div class="carnet-item-left">
+                          <span class="ui-icon" data-iconify="crosshair"></span>
+                          <div class="carnet-item-info">
+                            <strong>Licencia de caza</strong>
+                            <span>Empiezas por el teórico</span>
+                          </div>
+                        </div>
+                        <span class="carnet-price">$500</span>
+                        <span class="ui-icon chevron" data-iconify="chevron-down"></span>
+                      </button>
+                      <div class="carnet-item-body">
+                        <div class="carnet-cost-box">
+                          <div class="carnet-cost-row">
+                            <span>Examen teórico</span><span>$500</span>
+                          </div>
+                          <div class="carnet-cost-row">
+                            <span>Examen práctico</span><span>No tiene</span>
+                          </div>
+                        </div>
+                        <button class="carnet-action-btn">
+                          <span class="ui-icon" data-iconify="map-pin"></span> LOCALIZAR CENTRO
+                          EXAMINADOR
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <p
+                    class="points-status-text"
+                    style="margin-top: 16px; font-size: calc(11px * var(--text-scale))">
+                    Los precios son por examen. El teórico y práctico se abonan por separado, y
+                    suspender vuelve a cobrar.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TIENDA iFRUIT -->
+        <section id="store-app" class="store-app" aria-label="iFruit Store" hidden>
+          <header class="store-header">
+            <div class="store-title">
+              <span class="store-logo" data-iconify="shopping-bag"> </span>
+              <div>
+                <span class="eyebrow">iFruit OS</span>
+                <h2>iFruit Store</h2>
+              </div>
+            </div>
+            <div class="expandable-search" id="store-search-container">
+              <span class="ui-icon search-icon" data-iconify="search"></span>
+              <input
+                id="store-search"
+                type="text"
+                placeholder="Buscar aplicaciones"
+                autocomplete="off" />
+              <button
+                type="button"
+                class="clear-search-btn"
+                tabindex="-1"
+                title="Borrar"
+                aria-label="Borrar búsqueda">
+                <span class="ui-icon" data-iconify="x"></span>
+              </button>
+            </div>
+          </header>
+          <div id="store-list" class="store-list" role="list"></div>
+        </section>
+
+        <!-- PANTALLA DE ARRANQUE -->
+        <section
+          id="boot-screen"
+          class="boot-screen"
+          role="status"
+          aria-live="polite"
+          aria-label="Iniciando iFruit OS"
+          hidden>
+          <div class="boot-content">
+            <img class="boot-logo" src="images/ifruit-logo.webp" alt="iFruit" />
+            <strong class="boot-title">iFruit OS</strong>
+            <div
+              class="boot-progress"
+              role="progressbar"
+              aria-label="Progreso de inicio"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0">
+              <span id="boot-progress-fill"> </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- PANTALLA DE CONFIGURACIÓN INICIAL (SETUP) -->
+        <section id="setup-screen" class="setup-screen" hidden>
+          <div class="setup-container">
+            <!-- FASE 1: IDIOMA -->
+            <div class="setup-panel active" id="setup-panel-lang">
+              <div class="setup-header">
+                <span class="setup-logo" data-iconify="language"></span>
+                <h2 id="setup-greeting">Hola</h2>
+                <p>
+                  <span class="ui-icon" data-iconify="world"></span>
+                  <span id="setup-select-language-text">Selecciona tu lenguaje</span>
+                </p>
+              </div>
+              <div class="setup-lang-list">
+                <!-- Solo español por ahora -->
+                <button class="setup-lang-btn active" data-lang="es">
+                  <span>Español</span>
+                  <span class="ui-icon" data-iconify="chevron-right"></span>
+                </button>
+                <!-- Placeholders para futuros idiomas (DESHABILITADOS) -->
+                <button class="setup-lang-btn disabled" disabled>
+                  <span>English</span>
+                </button>
+                <button class="setup-lang-btn disabled" disabled>
+                  <span>Français</span>
+                </button>
+                <button class="setup-lang-btn disabled" disabled>
+                  <span>Deutsch</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- FASE 2: PIN -->
+            <div class="setup-panel locked" id="setup-panel-pin">
+              <div class="setup-header">
+                <span class="setup-logo" data-iconify="lock"></span>
+                <h2>Configurar el PIN</h2>
+                <p>
+                  Un código PIN se usa para proteger tu dispositivo y es necesario para
+                  desbloquearlo.
+                </p>
+              </div>
+
+              <div class="setup-pin-display">
+                <div class="pin-dots" id="setup-pin-dots">
+                  <span></span><span></span><span></span><span></span>
+                </div>
+                <!-- WRAPPER PARA EL INPUT Y EL BOTÓN -->
+                <div class="password-input-wrapper" id="password-input-wrapper" hidden>
+                  <input
+                    type="password"
+                    id="setup-password-input"
+                    class="setup-password-input"
+                    placeholder="Escribe tu contraseña..."
+                    autocomplete="off" />
+                  <button
+                    class="password-confirm-btn"
+                    id="btn-confirm-password"
+                    title="Confirmar contraseña">
+                    <span class="ui-icon" data-iconify="check"></span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="numpad setup-numpad" id="setup-numpad">
+                <button data-pin="1">1</button>
+                <button data-pin="2">2</button>
+                <button data-pin="3">3</button>
+                <button data-pin="4">4</button>
+                <button data-pin="5">5</button>
+                <button data-pin="6">6</button>
+                <button data-pin="7">7</button>
+                <button data-pin="8">8</button>
+                <button data-pin="9">9</button>
+                <button class="numpad-action" data-action="clear">✕</button>
+                <button data-pin="0">0</button>
+                <button class="numpad-action" data-action="delete">
+                  <span class="ui-icon" data-iconify="backspace"></span>
+                </button>
+              </div>
+
+              <!-- BOTONES DE TIPO DE PIN -->
+              <div class="setup-pin-types">
+                <button class="setup-pin-type-btn active" data-type="4">
+                  <span class="type-label">PIN de</span>
+                  <span class="ui-icon" data-iconify="square-number-4"></span>
+                </button>
+                <button class="setup-pin-type-btn" data-type="8">
+                  <span class="type-label">PIN de</span>
+                  <span class="ui-icon" data-iconify="square-number-8"></span>
+                </button>
+                <button class="setup-pin-type-btn" data-type="pass">
+                  <span class="type-label">Contraseña</span>
+                  <span class="ui-icon" data-iconify="key"></span>
+                </button>
+              </div>
+
+              <!-- PIE DEL PANEL -->
+              <div class="setup-pin-footer">
+                <button class="setup-back-btn" data-target="lang">
+                  <span class="ui-icon" data-iconify="chevron-left"></span> Volver atrás
+                </button>
+                <button class="setup-skip-btn" id="setup-pin-skip">
+                  Omitir PIN <span class="ui-icon" data-iconify="chevron-right"></span>
+                </button>
+              </div>
+            </div>
+
+            <!-- FASE 3: CLOUD -->
+            <div class="setup-panel locked" id="setup-panel-cloud">
+              <div class="setup-header">
+                <span class="setup-logo cloud-logo" data-iconify="cloud"></span>
+                <h2>DP-Cloud</h2>
+                <p>Sincroniza tu vida en Los Santos</p>
+              </div>
+
+              <div class="setup-cloud-form">
+                <h3>Iniciar Sesión</h3>
+                <div class="cloud-input-group">
+                  <input
+                    type="text"
+                    id="cloud-user"
+                    placeholder="Usuario"
+                    autocomplete="off" />
+                </div>
+                <div class="cloud-input-group">
+                  <input
+                    type="password"
+                    id="cloud-pass"
+                    placeholder="Contraseña"
+                    autocomplete="off" />
+                </div>
+                <button class="cloud-action-btn" id="cloud-login-btn">Acceder</button>
+              </div>
+
+              <button class="setup-skip-btn" id="setup-cloud-skip">
+                Omitir y guardar en el dispositivo
+              </button>
+              <button class="setup-back-btn" data-target="pin">Volver atrás</button>
+            </div>
+          </div>
+        </section>
+
+        <button
+          id="home-button"
+          class="home-button"
+          type="button"
+          aria-label="Volver al escritorio"
+          hidden></button>
+      </div>
+      <span id="dev-badge" class="dev-badge" hidden
+        >VISTA DE DESARROLLO · DATOS DE PRUEBA</span
+      >
+    </div>
+
+    <script src="js/iconify.js"></script>
+    <script src="js/Apps.js"></script>
+    <script src="js/script.js"></script>
+  </body>
+</html>
