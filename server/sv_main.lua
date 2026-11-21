@@ -1,30 +1,150 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
 -- Convierte lo que devuelve la base de datos (1/0, true/false o "1"/"0") en un booleano estricto.
--- Antes se usaba tonumber(x) == 1, que da false cuando el valor llega como true/false.
 local function dbBool(value)
     return value == true or value == 1 or value == '1' or tonumber(value) == 1
 end
+
+local function srvCfg(key, default)
+    local value = ServerConfig and ServerConfig[key]
+    if value == nil then
+        return default
+    end
+    return value
+end
+
 local scheduledRestartAt = 0
-local ActivePhoneSlots = {}
+local currentBlackout = false
+
+-- ==========================================================
+-- ESTADO POR JUGADOR (se limpia al desconectarse)
+-- ==========================================================
+local ActivePhone = {} -- [src] = imei del móvil que tiene abierto ahora mismo
+local UnlockedPhones = {} -- [src] = { [imei] = true } móviles que ha desbloqueado en esta sesión
+local PinAttempts = {} -- [imei] = { fails = n, lockouts = n, lockedUntil = os.time() }
+local RateLimits = {} -- [src] = { [accion] = GetGameTimer() }
+local SnakeSessions = {} -- [src] = os.time() al empezar partida
+
+AddEventHandler('playerDropped', function()
+    local src = source
+    ActivePhone[src] = nil
+    UnlockedPhones[src] = nil
+    RateLimits[src] = nil
+    SnakeSessions[src] = nil
+end)
 
 -- ==========================================================
 -- UTILS
 -- ==========================================================
-local utils = {}
-function utils.registerCallback(event, cb)
-    lib.callback.register(event, function(source, ...)
-        return cb(source, ...)
-    end)
+local function debugPrint(msg)
+    if Config.debug then
+        print('^3[DP-Phone] ^7' .. msg .. '^0')
+    end
 end
-function utils.cleanTable(tab)
-    local newTable = {}
-    for _, value in ipairs(tab) do
-        if value ~= nil then
-            table.insert(newTable, value)
+
+local function warnPrint(src, msg)
+    print(('^1[DP-Phone] %s (id %s): %s^0'):format(GetPlayerName(src) or '?', tostring(src), msg))
+end
+
+-- true si el jugador ha repetido la misma acción hace menos de `ms` milisegundos
+local function rateLimited(src, action, ms)
+    local now = GetGameTimer()
+    RateLimits[src] = RateLimits[src] or {}
+    local last = RateLimits[src][action]
+    if last and now - last < ms then
+        return true
+    end
+    RateLimits[src][action] = now
+    return false
+end
+
+local function isAdmin(src)
+    if IsPlayerAceAllowed(src, 'command') then
+        return true
+    end
+    for _, perm in ipairs(srvCfg('adminPermissions', {'god', 'admin'})) do
+        if QBCore.Functions.HasPermission(src, perm) then
+            return true
         end
     end
-    return newTable
+    return false
+end
+
+local function isValidString(value, minLen, maxLen)
+    return type(value) == 'string' and #value >= minLen and #value <= maxLen
+end
+
+-- Busca en el inventario del jugador el móvil con ese IMEI (nil si no lo lleva encima)
+local function findPhoneItem(src, imei)
+    if not isValidString(imei, 1, 50) then
+        return nil
+    end
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then
+        return nil
+    end
+    for _, it in pairs(Player.PlayerData.items or {}) do
+        if it and it.name == Config.itemName and it.info and it.info.imei == imei then
+            return it
+        end
+    end
+    return nil
+end
+
+local function isUnlocked(src, imei)
+    return UnlockedPhones[src] ~= nil and UnlockedPhones[src][imei] == true
+end
+
+local function markUnlocked(src, imei)
+    UnlockedPhones[src] = UnlockedPhones[src] or {}
+    UnlockedPhones[src][imei] = true
+end
+
+local function getStoredPin(imei)
+    local pin = MySQL.scalar.await('SELECT pin FROM dp_phone_hardware WHERE imei = ? LIMIT 1', {imei})
+    if pin == nil or pin == '' then
+        return nil
+    end
+    return tostring(pin)
+end
+
+-- Puede ver/cambiar el contenido del móvil: lo lleva encima y, si tiene PIN, lo ha desbloqueado
+local function canUsePhone(src, imei)
+    if not findPhoneItem(src, imei) then
+        return false
+    end
+    if isUnlocked(src, imei) then
+        return true
+    end
+    if not getStoredPin(imei) then
+        markUnlocked(src, imei)
+        return true
+    end
+    return false
+end
+
+-- IMEI del móvil que el jugador tiene abierto, solo si sigue llevándolo encima y está desbloqueado.
+-- (Antes se cogía el PRIMER móvil del inventario: con dos móviles, notas y fotos iban al que no era.)
+local function getUsableActiveImei(src)
+    local imei = ActivePhone[src]
+    if imei and canUsePhone(src, imei) then
+        return imei
+    end
+    return nil
+end
+
+-- Genera un IMEI que no exista ya (lo reserva en la base de datos en el mismo paso)
+local function generateImei()
+    for _ = 1, 50 do
+        local imei = ('IMEI-%05d%s%s'):format(math.random(11111, 99999), string.char(math.random(65, 90)),
+            string.char(math.random(65, 90)))
+        local affected = MySQL.update.await('INSERT IGNORE INTO dp_phone_hardware (imei, is_configured) VALUES (?, 0)',
+            {imei})
+        if affected and affected > 0 then
+            return imei
+        end
+    end
+    return nil
 end
 
 -- Genera un número tipo XXX-XXXX-XXX único
@@ -32,31 +152,33 @@ local function generateSimNumber()
     local number
     local exists = true
     while exists do
-        local p1 = math.random(100, 999)
-        local p2 = math.random(1000, 9999)
-        local p3 = math.random(100, 999)
-        number = string.format("%03d-%04d-%03d", p1, p2, p3)
-        local found = MySQL.scalar.await('SELECT 1 FROM dp_phone_sim WHERE sim_number = ?', {number})
-        if not found then
-            exists = false
-        end
+        number = string.format('%03d-%04d-%03d', math.random(100, 999), math.random(1000, 9999),
+            math.random(100, 999))
+        exists = MySQL.scalar.await('SELECT 1 FROM dp_phone_sim WHERE sim_number = ?', {number}) ~= nil
     end
     return number
+end
+
+local function columnExists(tableName, columnName)
+    return (MySQL.scalar.await([[
+        SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?
+    ]], {tableName, columnName}) or 0) > 0
 end
 
 -- ==========================================================
 -- 1. INYECCIÓN DE BASE DE DATOS
 -- ==========================================================
 CreateThread(function()
-    Wait(500) -- <-- Baja esto de 2000 a 500 (o 0 si quieres)
-    print("^3[DP-Phone] ^7Iniciando verificación de tablas...^0")
+    Wait(500)
+    print('^3[DP-Phone] ^7Iniciando verificación de tablas...^0')
 
     -- Hardware del teléfono
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `dp_phone_hardware` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `imei` varchar(50) NOT NULL UNIQUE,
-            `pin` varchar(10) DEFAULT NULL,
+            `pin` varchar(64) DEFAULT NULL,
             `faceid` tinyint(1) DEFAULT 0,
             `fingerprint` tinyint(1) DEFAULT 0,
             `settings` LONGTEXT DEFAULT NULL,
@@ -66,26 +188,31 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
-    -- AÑADIR COLUMNAS NUEVAS SI NO EXISTEN (Migración segura)
-    local colCheck1 = MySQL.scalar.await([[
-        SELECT COUNT(*) FROM information_schema.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dp_phone_hardware' AND COLUMN_NAME = 'is_configured'
+    -- MIGRACIONES SEGURAS (solo si falta algo)
+    if not columnExists('dp_phone_hardware', 'is_configured') then
+        MySQL.query.await('ALTER TABLE `dp_phone_hardware` ADD COLUMN `is_configured` tinyint(1) DEFAULT 0')
+        print("^2[DP-Phone] ^7Columna 'is_configured' añadida.^0")
+    end
+    if not columnExists('dp_phone_hardware', 'cloud_user') then
+        MySQL.query.await('ALTER TABLE `dp_phone_hardware` ADD COLUMN `cloud_user` varchar(50) DEFAULT NULL')
+        print("^2[DP-Phone] ^7Columna 'cloud_user' añadida.^0")
+    end
+    -- Dueño del móvil (quien hizo la configuración inicial): solo él puede usar huella / Face ID
+    if not columnExists('dp_phone_hardware', 'owner_citizenid') then
+        MySQL.query.await('ALTER TABLE `dp_phone_hardware` ADD COLUMN `owner_citizenid` varchar(60) DEFAULT NULL')
+        print("^2[DP-Phone] ^7Columna 'owner_citizenid' añadida.^0")
+    end
+    -- El PIN era varchar(10) pero el asistente permite contraseñas de hasta 25 caracteres
+    local pinLength = MySQL.scalar.await([[
+        SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dp_phone_hardware' AND COLUMN_NAME = 'pin'
     ]])
-    if colCheck1 == 0 then
-        MySQL.query.await("ALTER TABLE `dp_phone_hardware` ADD COLUMN `is_configured` tinyint(1) DEFAULT 0")
-        print("^2[DP-Phone] ^7Columna 'is_configured' añadida a dp_phone_hardware.^0")
+    if pinLength and tonumber(pinLength) < 64 then
+        MySQL.query.await('ALTER TABLE `dp_phone_hardware` MODIFY `pin` varchar(64) DEFAULT NULL')
+        print("^2[DP-Phone] ^7Columna 'pin' ampliada a 64 caracteres.^0")
     end
 
-    local colCheck2 = MySQL.scalar.await([[
-        SELECT COUNT(*) FROM information_schema.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dp_phone_hardware' AND COLUMN_NAME = 'cloud_user'
-    ]])
-    if colCheck2 == 0 then
-        MySQL.query.await("ALTER TABLE `dp_phone_hardware` ADD COLUMN `cloud_user` varchar(50) DEFAULT NULL")
-        print("^2[DP-Phone] ^7Columna 'cloud_user' añadida a dp_phone_hardware.^0")
-    end
-
-    -- SIM (ampliada: imei, activated)
+    -- SIM
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `dp_phone_sim` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -101,7 +228,7 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
-    -- Galería (sin cambios)
+    -- Galería
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `dp_phone_gallery` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -113,7 +240,7 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
-    -- Contactos (sin FK)
+    -- Contactos
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `dp_phone_contacts` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -126,7 +253,7 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
-    -- Mensajes (sin FK)
+    -- Mensajes
     MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS `dp_phone_messages` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -140,7 +267,72 @@ CreateThread(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
-    print("^2[DP-Phone] ^7Tablas verificadas.^0")
+    -- Usuarios de juegos
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `dp_phone_game_users` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `imei` varchar(50) NOT NULL,
+            `username` varchar(50) NOT NULL UNIQUE,
+            `max_score` int(11) DEFAULT 0,
+            `total_time_played` int(11) DEFAULT 0,
+            `created_at` timestamp NULL DEFAULT current_timestamp(),
+            `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+            PRIMARY KEY (`id`),
+            KEY `idx_imei` (`imei`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]])
+
+    -- Notas
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `dp_phone_notes` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `imei` varchar(50) NOT NULL,
+            `title` varchar(255) DEFAULT '',
+            `content` LONGTEXT DEFAULT NULL,
+            `color` varchar(20) DEFAULT '#ffffff',
+            `is_pinned` tinyint(1) DEFAULT 0,
+            `created_at` timestamp NULL DEFAULT current_timestamp(),
+            `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+            PRIMARY KEY (`id`),
+            KEY `idx_imei` (`imei`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]])
+
+    -- Mensajes: leído / no leído y ubicación compartida
+    if not columnExists('dp_phone_messages', 'is_read') then
+        MySQL.query.await('ALTER TABLE `dp_phone_messages` ADD COLUMN `is_read` tinyint(1) DEFAULT 0')
+    end
+    if not columnExists('dp_phone_messages', 'location') then
+        MySQL.query.await('ALTER TABLE `dp_phone_messages` ADD COLUMN `location` varchar(64) DEFAULT NULL')
+    end
+    -- Índice para cargar rápido una conversación entre dos números
+    if (MySQL.scalar.await([[
+        SELECT COUNT(*) FROM information_schema.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dp_phone_messages' AND INDEX_NAME = 'idx_messages_pair'
+    ]]) or 0) == 0 then
+        MySQL.query.await('ALTER TABLE `dp_phone_messages` ADD KEY `idx_messages_pair` (`sim_number`, `target_number`)')
+    end
+
+    -- Historial de llamadas
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `dp_phone_calls` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `caller` varchar(20) NOT NULL,
+            `receiver` varchar(20) NOT NULL,
+            `status` varchar(12) NOT NULL DEFAULT 'missed',
+            `duration` int(11) NOT NULL DEFAULT 0,
+            `time` timestamp NULL DEFAULT current_timestamp(),
+            PRIMARY KEY (`id`),
+            KEY `idx_calls_caller` (`caller`),
+            KEY `idx_calls_receiver` (`receiver`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]])
+
+    if not srvCfg('fivemanageAPIKey') or ServerConfig.fivemanageAPIKey == 'PON_AQUI_TU_NUEVA_API_KEY' then
+        print('^1[DP-Phone] Falta la API key de Fivemanage en server/sv_config.lua: la cámara no podrá subir fotos.^0')
+    end
+
+    print('^2[DP-Phone] ^7Tablas verificadas.^0')
 end)
 
 -- ==========================================================
@@ -157,46 +349,54 @@ local function OpenPhoneData(source, item)
         return
     end
 
+    ActivePhone[source] = imei
+
     -- Insertar si no existe (por defecto is_configured = 0)
     MySQL.insert.await('INSERT IGNORE INTO dp_phone_hardware (imei, is_configured) VALUES (?, 0)', {imei})
 
-    local hardwareData = MySQL.single.await('SELECT * FROM dp_phone_hardware WHERE imei = ?', {imei})
+    local hardwareData = MySQL.single.await('SELECT * FROM dp_phone_hardware WHERE imei = ?', {imei}) or {}
     local simRow = MySQL.single.await('SELECT * FROM dp_phone_sim WHERE imei = ? LIMIT 1', {imei})
 
     local simData = {}
     if simRow then
         simData = {
             number = simRow.sim_number,
-            activated = simRow.activated == 1
+            activated = dbBool(simRow.activated)
         }
     end
 
-    if Config.debug then
-        local raw = hardwareData and hardwareData.is_configured
-        print(
-            ('^3[DEBUG] OpenPhoneData %s: is_configured crudo = %s (tipo %s)^0'):format(imei, tostring(raw), type(raw)))
-    end
+    local pin = hardwareData.pin
+    local hasPin = pin ~= nil and pin ~= ''
+    local isOwner = hardwareData.owner_citizenid ~= nil and hardwareData.owner_citizenid ==
+                        Player.PlayerData.citizenid
 
-    -- Si los settings están vacíos en DB, usamos un objeto vacío en memoria
-    local settingsDecoded = hardwareData and hardwareData.settings and json.decode(hardwareData.settings) or {}
+    debugPrint(('OpenPhoneData %s: configurado=%s, PIN=%s, dueño=%s'):format(imei,
+        tostring(dbBool(hardwareData.is_configured)), tostring(hasPin), tostring(isOwner)))
 
+    local okSettings, settingsDecoded = pcall(json.decode, hardwareData.settings or '{}')
+    local okApps, appsDecoded = pcall(json.decode, hardwareData.installed_apps or '[]')
+
+    -- ⚠️ El PIN y la API key ya NO se mandan al cliente: el PIN se comprueba en el servidor.
     TriggerClientEvent('dp-phone:client:loadSettings', source, {
         imei = imei,
         sim_number = simRow and simRow.sim_number or nil,
         hardware = {
-            pin = hardwareData and hardwareData.pin or nil,
-            faceid = hardwareData and dbBool(hardwareData.faceid) or false,
-            fingerprint = hardwareData and dbBool(hardwareData.fingerprint) or false,
-            settings = settingsDecoded,
-            installed_apps = hardwareData and json.decode(hardwareData.installed_apps or '[]') or {},
-
-            -- Booleano estricto, valga lo que valga lo que devuelva la DB (1, true, "1"...)
-            is_configured = hardwareData and dbBool(hardwareData.is_configured) or false,
-
-            cloud_user = hardwareData and hardwareData.cloud_user or nil
+            has_pin = hasPin,
+            pin_type = hasPin and (tostring(pin):match('^%d%d%d%d$') and 'pin' or 'password') or nil,
+            unlocked = (not hasPin) or isUnlocked(source, imei),
+            is_owner = isOwner,
+            faceid = dbBool(hardwareData.faceid),
+            fingerprint = dbBool(hardwareData.fingerprint),
+            settings = okSettings and type(settingsDecoded) == 'table' and settingsDecoded or {},
+            installed_apps = okApps and type(appsDecoded) == 'table' and appsDecoded or {},
+            is_configured = dbBool(hardwareData.is_configured),
+            cloud_user = hardwareData.cloud_user
         },
         sim_data = simData
     })
+
+    -- Estado actual de la cobertura (por si hay un apagón en marcha)
+    TriggerClientEvent('dp-phone:client:setBlackout', source, currentBlackout)
 end
 
 -- ==========================================================
@@ -210,27 +410,48 @@ QBCore.Functions.CreateUseableItem(Config.itemName, function(source, item)
     end
 
     if item.amount > 1 then
+        local newImei = generateImei()
+        if not newImei then
+            return TriggerClientEvent('QBCore:Notify', src, 'No se pudo preparar el teléfono. Inténtalo de nuevo.',
+                'error')
+        end
         Player.Functions.RemoveItem(item.name, 1, item.slot)
-        local newInfo = item.info or {}
-        newInfo.imei = "IMEI-" .. tostring(math.random(11111, 99999)) .. string.char(math.random(65, 90)) ..
-                           string.char(math.random(65, 90))
+        local newInfo = {}
+        for k, v in pairs(item.info or {}) do
+            newInfo[k] = v
+        end
+        newInfo.imei = newImei
         Player.Functions.AddItem(item.name, 1, false, newInfo)
         TriggerClientEvent('QBCore:Notify', src, 'Has separado un teléfono del grupo para encenderlo.', 'primary')
-        Wait(250)
         return
-    else
-        if not item.info then
-            item.info = {}
-        end
-        if not item.info.imei then
-            item.info.imei = "IMEI-" .. tostring(math.random(11111, 99999)) .. string.char(math.random(65, 90)) ..
-                                 string.char(math.random(65, 90))
-            Player.PlayerData.items[item.slot].info = item.info
-            Player.Functions.SetInventory(Player.PlayerData.items)
-        end
     end
 
-    ActivePhoneSlots[src] = item.slot
+    if not item.info then
+        item.info = {}
+    end
+    if not item.info.imei then
+        item.info.imei = generateImei()
+        if not item.info.imei then
+            return TriggerClientEvent('QBCore:Notify', src, 'No se pudo preparar el teléfono. Inténtalo de nuevo.',
+                'error')
+        end
+        Player.PlayerData.items[item.slot].info = item.info
+        Player.Functions.SetInventory(Player.PlayerData.items)
+    end
+
+    OpenPhoneData(src, item)
+end)
+
+RegisterNetEvent('dp-phone:server:requestOpen', function(slot)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player or type(slot) ~= 'number' then
+        return
+    end
+    local item = Player.PlayerData.items[slot]
+    if not item or item.name ~= Config.itemName then
+        return
+    end
     OpenPhoneData(src, item)
 end)
 
@@ -240,7 +461,7 @@ end)
 RegisterNetEvent('dp-phone:server:autoActivateSim', function(slot)
     local src = source
     local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then
+    if not Player or type(slot) ~= 'number' then
         return
     end
     local item = Player.PlayerData.items[slot]
@@ -261,46 +482,43 @@ RegisterNetEvent('dp-phone:server:autoActivateSim', function(slot)
 end)
 
 -- ==========================================================
--- 3c. INSERTAR SIM EN EL TELÉFONO
+-- 3c. INSERTAR / EXTRAER SIM (desde la app o desde otros scripts)
 -- ==========================================================
-RegisterNetEvent('dp-phone:server:insertSim', function(imei)
-    local src = source
+local function insertSimInto(src, imei)
     local Player = QBCore.Functions.GetPlayer(src)
-    if not Player or not imei then
-        return
+    if not Player then
+        return false
+    end
+    if not findPhoneItem(src, imei) then
+        return false, 'No llevas este teléfono encima.'
+    end
+    if MySQL.scalar.await('SELECT sim_number FROM dp_phone_sim WHERE imei = ? LIMIT 1', {imei}) then
+        return false, 'Este teléfono ya tiene una SIM insertada.'
     end
 
-    local phoneItem
+    -- Preferimos una SIM ya activada; si solo hay una nueva, se activa al meterla
+    local simItem
     for _, it in pairs(Player.PlayerData.items) do
-        if it and it.name == Config.itemName and it.info and it.info.imei == imei then
-            phoneItem = it
-            break
-        end
-    end
-    if not phoneItem then
-        return TriggerClientEvent('QBCore:Notify', src, 'No llevas este teléfono encima.', 'error')
-    end
-
-    local currentSim = MySQL.single.await('SELECT sim_number FROM dp_phone_sim WHERE imei = ? LIMIT 1', {imei})
-    if currentSim then
-        return TriggerClientEvent('QBCore:Notify', src, 'Este teléfono ya tiene una SIM insertada.', 'error')
-    end
-
-    local simItem, simSlot
-    for _, it in pairs(Player.PlayerData.items) do
-        if it and it.name == Config.simItemName and it.info and it.info.sim_number then
-            simItem = it
-            simSlot = it.slot
-            break
+        if it and it.name == Config.simItemName then
+            if it.info and it.info.sim_number then
+                simItem = it
+                break
+            end
+            simItem = simItem or it
         end
     end
     if not simItem then
-        return TriggerClientEvent('QBCore:Notify', src, 'No llevas ninguna SIM encima.', 'error')
+        return false, 'No llevas ninguna SIM encima.'
     end
 
-    local simNumber = simItem.info.sim_number
+    local simNumber = simItem.info and simItem.info.sim_number
+    if not simNumber then
+        simNumber = generateSimNumber()
+        MySQL.insert.await('INSERT INTO dp_phone_sim (sim_number, activated) VALUES (?, 0)', {simNumber})
+    end
+
     MySQL.update.await('UPDATE dp_phone_sim SET imei = ?, activated = 1 WHERE sim_number = ?', {imei, simNumber})
-    Player.Functions.RemoveItem(Config.simItemName, 1, simSlot)
+    Player.Functions.RemoveItem(Config.simItemName, 1, simItem.slot)
 
     TriggerClientEvent('dp-phone:client:simChanged', src, {
         imei = imei,
@@ -310,47 +528,88 @@ RegisterNetEvent('dp-phone:server:insertSim', function(imei)
             activated = true
         }
     })
-    TriggerClientEvent('QBCore:Notify', src, ('SIM %s insertada correctamente.'):format(simNumber), 'success')
-end)
+    return true, ('SIM %s insertada correctamente.'):format(simNumber), simNumber
+end
 
--- ==========================================================
--- 3d. EXTRAER LA SIM DEL TELÉFONO
--- ==========================================================
-RegisterNetEvent('dp-phone:server:extractSim', function(imei)
-    local src = source
+local endCallsForNumber -- se define en la sección de llamadas
+
+local function extractSimFrom(src, imei)
     local Player = QBCore.Functions.GetPlayer(src)
-    if not Player or not imei then
-        return
+    if not Player then
+        return false
     end
-
-    local phoneItem
-    for _, it in pairs(Player.PlayerData.items) do
-        if it and it.name == Config.itemName and it.info and it.info.imei == imei then
-            phoneItem = it
-            break
-        end
-    end
-    if not phoneItem then
-        return TriggerClientEvent('QBCore:Notify', src, 'No llevas este teléfono encima.', 'error')
+    if not findPhoneItem(src, imei) then
+        return false, 'No llevas este teléfono encima.'
     end
 
     local simRow = MySQL.single.await('SELECT sim_number FROM dp_phone_sim WHERE imei = ? LIMIT 1', {imei})
     if not simRow then
-        return TriggerClientEvent('QBCore:Notify', src, 'Este teléfono no tiene ninguna SIM.', 'error')
+        return false, 'Este teléfono no tiene ninguna SIM.'
     end
 
     local simNumber = simRow.sim_number
+    if endCallsForNumber then
+        endCallsForNumber(simNumber, 'offline')
+    end
+    MySQL.update.await('UPDATE dp_phone_sim SET imei = NULL, activated = 0 WHERE sim_number = ?', {simNumber})
     Player.Functions.AddItem(Config.simItemName, 1, false, {
         sim_number = simNumber
     })
-    MySQL.update.await('UPDATE dp_phone_sim SET imei = NULL, activated = 0 WHERE sim_number = ?', {simNumber})
 
     TriggerClientEvent('dp-phone:client:simChanged', src, {
         imei = imei,
         sim_number = nil,
         sim_data = {}
     })
-    TriggerClientEvent('QBCore:Notify', src, ('SIM %s extraída del teléfono.'):format(simNumber), 'primary')
+    return true, ('SIM %s extraída del teléfono.'):format(simNumber)
+end
+
+RegisterNetEvent('dp-phone:server:insertSim', function(imei)
+    local src = source
+    local ok, msg = insertSimInto(src, imei)
+    if msg then
+        TriggerClientEvent('QBCore:Notify', src, msg, ok and 'success' or 'error')
+    end
+end)
+
+RegisterNetEvent('dp-phone:server:extractSim', function(imei)
+    local src = source
+    local ok, msg = extractSimFrom(src, imei)
+    if msg then
+        TriggerClientEvent('QBCore:Notify', src, msg, ok and 'primary' or 'error')
+    end
+end)
+
+-- Desde la interfaz: sobre el móvil que tienes abierto (y desbloqueado)
+lib.callback.register('dp-phone:server:insertSimActive', function(src)
+    local imei = getUsableActiveImei(src)
+    if not imei then
+        return {
+            ok = false,
+            message = 'Desbloquea el móvil primero.'
+        }
+    end
+    local ok, msg, number = insertSimInto(src, imei)
+    return {
+        ok = ok,
+        message = msg,
+        number = number
+    }
+end)
+
+lib.callback.register('dp-phone:server:extractSimActive', function(src)
+    local imei = getUsableActiveImei(src)
+    if not imei then
+        return {
+            ok = false,
+            message = 'Desbloquea el móvil primero.'
+        }
+    end
+    local ok, msg = extractSimFrom(src, imei)
+    return {
+        ok = ok,
+        message = msg
+    }
 end)
 
 -- ==========================================================
@@ -365,12 +624,10 @@ RegisterNetEvent('dp-phone:server:activateSim', function()
 
     local simItem, simSlot
     for _, it in pairs(Player.PlayerData.items) do
-        if it and it.name == Config.simItemName then
-            if not it.info or not it.info.sim_number then
-                simItem = it
-                simSlot = it.slot
-                break
-            end
+        if it and it.name == Config.simItemName and (not it.info or not it.info.sim_number) then
+            simItem = it
+            simSlot = it.slot
+            break
         end
     end
     if not simItem then
@@ -388,108 +645,1109 @@ end)
 
 -- ==========================================================
 -- 4. GUARDAR DATOS (Hardware)
+-- Solo si llevas ese móvil encima y está desbloqueado (antes valía cualquier IMEI).
 -- ==========================================================
 RegisterNetEvent('dp-phone:server:saveHardware', function(imei, settings, installed_apps)
-    if not imei then
+    local src = source
+    if not canUsePhone(src, imei) then
+        -- Normal si el móvil está bloqueado (la interfaz guarda ajustes al abrir); solo lo avisamos en debug
+        return debugPrint(('Ajustes de %s ignorados: el jugador %s no puede usar ese móvil.'):format(tostring(imei), src))
+    end
+    if rateLimited(src, 'saveHardware', 250) then
         return
     end
 
-    local settingsJson = json.encode(settings or {})
-    local appsJson = json.encode(installed_apps or {})
-    if appsJson == "{}" then
-        appsJson = "[]"
+    local settingsJson = json.encode(type(settings) == 'table' and settings or {})
+    local appsJson = json.encode(type(installed_apps) == 'table' and installed_apps or {})
+    if appsJson == '{}' then
+        appsJson = '[]'
     end
-    if settingsJson == "[]" then
-        settingsJson = "{}"
+    if settingsJson == '[]' then
+        settingsJson = '{}'
+    end
+    -- Ajustes absurdamente grandes = alguien intentando llenar la base de datos
+    if #settingsJson > 65535 or #appsJson > 8192 then
+        return warnPrint(src, 'mandó ajustes demasiado grandes.')
     end
 
     MySQL.update('UPDATE dp_phone_hardware SET settings = ?, installed_apps = ? WHERE imei = ?',
         {settingsJson, appsJson, imei})
 
-    print("^2[DP-Phone] ^7Datos guardados en DB para el IMEI: " .. imei .. "^0")
+    debugPrint('Datos guardados en DB para el IMEI: ' .. imei)
 end)
 
 -- ==========================================================
 -- 4b. GUARDAR SETUP INICIAL
 -- ==========================================================
 RegisterNetEvent('dp-phone:server:saveSetup', function(imei, pin, cloudUser)
-    if type(imei) ~= 'string' or imei == '' then
-        print("^1[DEBUG] saveSetup: No se recibió IMEI^0")
-        return
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player or not findPhoneItem(src, imei) then
+        return warnPrint(src, ('intentó configurar el móvil %s sin llevarlo encima.'):format(tostring(imei)))
     end
 
-    print("^2[DEBUG] saveSetup: Recibido IMEI " .. imei .. " con PIN " .. tostring(pin) .. "^0")
+    -- Un móvil ya configurado solo se puede volver a configurar si está desbloqueado
+    -- (si no, un ladrón podría repetir el asistente y poner su propio PIN).
+    local configured = MySQL.scalar.await('SELECT is_configured FROM dp_phone_hardware WHERE imei = ? LIMIT 1',
+        {imei})
+    if dbBool(configured) and not canUsePhone(src, imei) then
+        return warnPrint(src, ('intentó reconfigurar el móvil bloqueado %s.'):format(imei))
+    end
 
-    -- Nunca pasamos nil en la lista de parámetros (se pierden al final de la tabla): usamos '' y NULLIF
-    local pinValue = pin ~= nil and tostring(pin) or ''
-    local cloudValue = cloudUser ~= nil and tostring(cloudUser) or ''
+    local pinValue = ''
+    if pin ~= nil and pin ~= '' then
+        pin = tostring(pin)
+        -- PIN de 4 cifras o contraseña de 5 a 25 caracteres (lo mismo que permite el asistente)
+        if not (pin:match('^%d%d%d%d$') or (#pin >= 5 and #pin <= 25)) then
+            return warnPrint(src, 'mandó un PIN con formato no válido.')
+        end
+        pinValue = pin
+    end
 
-    -- UNA sola sentencia: crea la fila si no existe y la marca como configurada,
-    -- conservando el PIN y el usuario de la nube anteriores si ahora no llegan.
+    local cloudValue = ''
+    if cloudUser ~= nil and cloudUser ~= '' then
+        cloudValue = tostring(cloudUser):sub(1, 50)
+    end
+
+    -- Crea la fila si no existe, la marca como configurada y guarda quién es el dueño
+    -- (el dueño solo se fija la primera vez: un móvil comprado de segunda mano sigue siendo del primero
+    -- hasta que se restablezca).
     MySQL.query.await([[
-        INSERT INTO dp_phone_hardware (imei, is_configured, pin, cloud_user)
-        VALUES (?, 1, NULLIF(?, ''), NULLIF(?, ''))
+        INSERT INTO dp_phone_hardware (imei, is_configured, pin, cloud_user, owner_citizenid)
+        VALUES (?, 1, NULLIF(?, ''), NULLIF(?, ''), ?)
         ON DUPLICATE KEY UPDATE
             is_configured = 1,
             pin = COALESCE(NULLIF(?, ''), pin),
-            cloud_user = COALESCE(NULLIF(?, ''), cloud_user)
-    ]], {imei, pinValue, cloudValue, pinValue, cloudValue})
+            cloud_user = COALESCE(NULLIF(?, ''), cloud_user),
+            owner_citizenid = COALESCE(owner_citizenid, ?)
+    ]], {imei, pinValue, cloudValue, Player.PlayerData.citizenid, pinValue, cloudValue, Player.PlayerData.citizenid})
 
-    -- Comprobamos lo que ha quedado REALMENTE guardado
-    local stored = MySQL.scalar.await('SELECT is_configured FROM dp_phone_hardware WHERE imei = ? LIMIT 1', {imei})
+    -- Quien acaba de configurar el móvil lo tiene desbloqueado
+    markUnlocked(src, imei)
 
-    if dbBool(stored) then
-        print("^2[DP-Phone] ^7Dispositivo " .. imei .. " configurado correctamente (is_configured = " ..
-                  tostring(stored) .. ").^0")
-    else
-        print("^1[DP-Phone] ERROR: se intentó marcar " .. imei .. " como configurado pero en la DB quedó: " ..
-                  tostring(stored) .. " (tipo " .. type(stored) .. ")^0")
-    end
+    -- ⚠️ Ya NO se imprime el PIN en la consola
+    debugPrint(('Dispositivo %s configurado por %s.'):format(imei, Player.PlayerData.citizenid))
 end)
 
 -- ==========================================================
--- 5. REINICIO Y NOTIFICACIONES
+-- 4c. BLOQUEO: PIN, HUELLA Y FACE ID (comprobados en el servidor)
+-- ==========================================================
+lib.callback.register('dp-phone:server:verifyPin', function(src, imei, pin)
+    if not findPhoneItem(src, imei) then
+        return {
+            ok = false,
+            reason = 'nophone'
+        }
+    end
+
+    local now = os.time()
+    local attempt = PinAttempts[imei]
+    if attempt and attempt.lockedUntil and attempt.lockedUntil > now then
+        return {
+            ok = false,
+            reason = 'locked',
+            wait = math.floor(attempt.lockedUntil - now)
+        }
+    end
+
+    local stored = getStoredPin(imei)
+    if not stored or (pin ~= nil and tostring(pin) == stored) then
+        PinAttempts[imei] = nil
+        markUnlocked(src, imei)
+        return {
+            ok = true
+        }
+    end
+
+    attempt = attempt or {
+        fails = 0,
+        lockouts = 0
+    }
+    attempt.fails = attempt.fails + 1
+    local maxAttempts = srvCfg('pinMaxAttempts', 5)
+
+    if attempt.fails >= maxAttempts then
+        -- Cada bloqueo dura el doble que el anterior (60s, 120s, 240s...)
+        attempt.lockedUntil = now + srvCfg('pinLockSeconds', 60) * (2 ^ attempt.lockouts)
+        attempt.lockouts = attempt.lockouts + 1
+        attempt.fails = 0
+        PinAttempts[imei] = attempt
+        return {
+            ok = false,
+            reason = 'locked',
+            wait = math.floor(attempt.lockedUntil - now)
+        }
+    end
+
+    PinAttempts[imei] = attempt
+    return {
+        ok = false,
+        reason = 'wrong',
+        left = maxAttempts - attempt.fails
+    }
+end)
+
+-- Huella / Face ID: solo funcionan si están activadas en ese móvil y quien lo usa es su dueño
+lib.callback.register('dp-phone:server:biometricUnlock', function(src, imei, method)
+    if method ~= 'fingerprint' and method ~= 'faceid' then
+        return false
+    end
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player or not findPhoneItem(src, imei) then
+        return false
+    end
+
+    local row = MySQL.single.await('SELECT faceid, fingerprint, owner_citizenid FROM dp_phone_hardware WHERE imei = ?',
+        {imei})
+    if not row or not dbBool(row[method]) or row.owner_citizenid ~= Player.PlayerData.citizenid then
+        return false
+    end
+
+    markUnlocked(src, imei)
+    return true
+end)
+
+-- Activar/desactivar huella y Face ID desde Ajustes (solo el dueño y con el móvil desbloqueado)
+RegisterNetEvent('dp-phone:server:saveBiometrics', function(imei, fingerprint, faceid)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player or not canUsePhone(src, imei) then
+        return
+    end
+    MySQL.update.await([[
+        UPDATE dp_phone_hardware SET fingerprint = ?, faceid = ?
+        WHERE imei = ? AND owner_citizenid = ?
+    ]], {fingerprint == true and 1 or 0, faceid == true and 1 or 0, imei, Player.PlayerData.citizenid})
+end)
+
+-- "Ver PIN" en Ajustes: solo con el móvil desbloqueado
+lib.callback.register('dp-phone:server:getPin', function(src, imei)
+    if not canUsePhone(src, imei) then
+        return nil
+    end
+    return getStoredPin(imei)
+end)
+
+-- ==========================================================
+-- 5. REINICIO, COBERTURA Y NOTIFICACIONES
 -- ==========================================================
 AddEventHandler('txAdmin:events:scheduledRestart', function(eventData)
     local secondsRemaining = type(eventData) == 'table' and tonumber(eventData.secondsRemaining)
     if not secondsRemaining then
         return
     end
-    scheduledRestartAt = secondsRemaining > 0 and (os.time() + math.ceil(secondsRemaining)) or nil
-    TriggerClientEvent('dp-phone:client:setScheduledRestart', -1, scheduledRestartAt or 0)
+    scheduledRestartAt = secondsRemaining > 0 and (os.time() + math.ceil(secondsRemaining)) or 0
+    TriggerClientEvent('dp-phone:client:setScheduledRestart', -1, scheduledRestartAt)
 end)
 
 function SendPhoneNotification(targetPlayerId, title, message, appName, icon, avatar, duration)
     TriggerClientEvent('dp-phone:client:showNotification', targetPlayerId, {
         title = title,
         message = message,
-        appName = appName or "Sistema",
-        icon = icon or "info-circle",
+        appName = appName or 'Sistema',
+        icon = icon or 'info-circle',
         avatar = avatar,
         duration = duration or 4000
     })
 end
 exports('SendPhoneNotification', SendPhoneNotification)
 
-RegisterNetEvent('dp-phone:server:setBlackout', function(isBlackout)
-    TriggerClientEvent('dp-phone:client:setBlackout', -1, isBlackout and true or false)
-end)
+local function SetPhoneBlackout(isBlackout)
+    currentBlackout = isBlackout == true
+    TriggerClientEvent('dp-phone:client:setBlackout', -1, currentBlackout)
+end
+-- Para otros scripts del servidor: exports['DP-Phone']:SetBlackout(true/false)
+exports('SetBlackout', SetPhoneBlackout)
 
-RegisterNetEvent('dp-phone:server:requestOpen', function(slot)
-    local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then
-        return
+-- Antes cualquier jugador podía lanzar este evento y dejar sin cobertura a todo el servidor.
+-- Ahora solo funciona desde otro script del servidor o si lo lanza un admin.
+RegisterNetEvent('dp-phone:server:setBlackout', function(isBlackout)
+    local src = tonumber(source)
+    if src and src > 0 and not isAdmin(src) then
+        return warnPrint(src, 'intentó cambiar la cobertura de todo el servidor sin permiso.')
     end
-    local item = Player.PlayerData.items[slot]
-    if not item or item.name ~= Config.itemName then
-        return
-    end
-    OpenPhoneData(src, item)
+    SetPhoneBlackout(isBlackout)
 end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
         TriggerClientEvent('dp-phone:client:ClosePhone', -1)
     end
+end)
+
+-- ==========================================================
+-- SISTEMA DE RANKING VÍBORA (SNAKE)
+-- ==========================================================
+lib.callback.register('dp-phone:server:getSnakeRanking', function(source, imei)
+    local userData = nil
+    if findPhoneItem(source, imei) then
+        local userRow = MySQL.single.await(
+            'SELECT username, max_score, total_time_played FROM dp_phone_game_users WHERE imei = ?', {imei})
+        if userRow then
+            userData = {
+                username = userRow.username,
+                max_score = userRow.max_score,
+                time_played = userRow.total_time_played
+            }
+        end
+    end
+
+    local rankingRows = MySQL.query.await(
+        'SELECT username, max_score, total_time_played FROM dp_phone_game_users ORDER BY max_score DESC LIMIT 100')
+
+    local ranking = {}
+    for _, row in ipairs(rankingRows or {}) do
+        ranking[#ranking + 1] = {
+            username = row.username,
+            max_score = row.max_score,
+            time_played = row.total_time_played
+        }
+    end
+
+    return {
+        ranking = ranking,
+        user = userData
+    }
+end)
+
+lib.callback.register('dp-phone:server:registerSnakeUser', function(source, imei, username)
+    if not canUsePhone(source, imei) then
+        return false
+    end
+    -- 3-15 caracteres: letras, números, punto, guion y guion bajo
+    if not isValidString(username, 3, 15) or not username:match('^[%w_%.%-]+$') then
+        return false
+    end
+
+    if MySQL.scalar.await('SELECT 1 FROM dp_phone_game_users WHERE username = ?', {username}) then
+        return false -- El nombre ya está en uso
+    end
+    if MySQL.scalar.await('SELECT 1 FROM dp_phone_game_users WHERE imei = ?', {imei}) then
+        return false -- Este móvil ya tiene un usuario registrado
+    end
+
+    local inserted = MySQL.insert.await('INSERT INTO dp_phone_game_users (imei, username, max_score) VALUES (?, ?, 0)',
+        {imei, username})
+    return inserted ~= nil
+end)
+
+-- La interfaz avisa al empezar cada partida: así el servidor sabe cuánto ha durado de verdad
+lib.callback.register('dp-phone:server:snakeStart', function(source)
+    if not getUsableActiveImei(source) then
+        return false
+    end
+    SnakeSessions[source] = os.time()
+    return true
+end)
+
+lib.callback.register('dp-phone:server:saveSnakeScore', function(source, imei, score)
+    if not canUsePhone(source, imei) then
+        return false
+    end
+
+    score = math.tointeger(tonumber(score))
+    local startedAt = SnakeSessions[source]
+    SnakeSessions[source] = nil
+    if not score or score < 0 or score % 10 ~= 0 or not startedAt then
+        return false
+    end
+
+    -- Comprobación anti-trampas: no se pueden hacer más puntos de los que permite el tiempo jugado
+    local elapsed = math.max(1, os.time() - startedAt)
+    local maxPossible = math.min(srvCfg('snakeMaxScore', 20000), (elapsed + 2) * srvCfg('snakeMaxPointsPerSecond', 20))
+    if score > maxPossible then
+        warnPrint(source, ('puntuación de Víbora imposible: %d pts en %d s.'):format(score, elapsed))
+        return false
+    end
+
+    local currentData = MySQL.single.await(
+        'SELECT max_score, total_time_played FROM dp_phone_game_users WHERE imei = ?', {imei})
+    if not currentData then
+        return false
+    end
+
+    -- Tiempo jugado REAL en minutos (antes la interfaz mandaba siempre 1)
+    local minutes = math.ceil(elapsed / 60)
+    MySQL.update.await('UPDATE dp_phone_game_users SET max_score = ?, total_time_played = ? WHERE imei = ?',
+        {math.max(currentData.max_score or 0, score), (currentData.total_time_played or 0) + minutes, imei})
+    return true
+end)
+
+-- ==========================================================
+-- SISTEMA DE NOTAS (siempre del móvil que tienes abierto y desbloqueado)
+-- ==========================================================
+local function sanitizeNote(noteData)
+    if type(noteData) ~= 'table' then
+        return nil
+    end
+    local title = type(noteData.title) == 'string' and noteData.title:sub(1, 255) or ''
+    local content = type(noteData.content) == 'string' and noteData.content or ''
+    if #content > 60000 then
+        return nil
+    end
+    local color = type(noteData.color) == 'string' and noteData.color:match('^#%x%x%x%x?%x?%x?$') or '#ffffff'
+    return title, content, color, noteData.is_pinned and 1 or 0
+end
+
+lib.callback.register('dp-phone:server:getNotes', function(source)
+    local imei = getUsableActiveImei(source)
+    if not imei then
+        return {}
+    end
+    return MySQL.query.await('SELECT * FROM dp_phone_notes WHERE imei = ? ORDER BY is_pinned DESC, updated_at DESC',
+        {imei}) or {}
+end)
+
+lib.callback.register('dp-phone:server:saveNote', function(source, noteData)
+    local imei = getUsableActiveImei(source)
+    if not imei then
+        return false
+    end
+
+    local title, content, color, isPinned = sanitizeNote(noteData)
+    if not title then
+        return false
+    end
+
+    local noteId = tonumber(noteData.id)
+    if noteId then
+        MySQL.update.await(
+            'UPDATE dp_phone_notes SET title = ?, content = ?, color = ?, is_pinned = ? WHERE id = ? AND imei = ?',
+            {title, content, color, isPinned, noteId, imei})
+        return true
+    end
+
+    local insertId = MySQL.insert.await(
+        'INSERT INTO dp_phone_notes (imei, title, content, color, is_pinned) VALUES (?, ?, ?, ?, ?)',
+        {imei, title, content, color, isPinned})
+    if insertId then
+        noteData.id = insertId
+        return noteData
+    end
+    return false
+end)
+
+lib.callback.register('dp-phone:server:deleteNote', function(source, noteId)
+    local imei = getUsableActiveImei(source)
+    noteId = tonumber(noteId)
+    if not imei or not noteId then
+        return false
+    end
+    local affected = MySQL.update.await('DELETE FROM dp_phone_notes WHERE id = ? AND imei = ?', {noteId, imei})
+    return (affected or 0) > 0
+end)
+
+-- ==========================================================
+-- CÁMARA Y GALERÍA
+-- La API key vive SOLO en el servidor. El cliente pide una URL de subida de un solo uso
+-- (presigned URL de Fivemanage), sube la foto ahí y nos devuelve el enlace final.
+-- ==========================================================
+lib.callback.register('dp-phone:server:getPhotoUploadUrl', function(source)
+    if not getUsableActiveImei(source) then
+        return nil
+    end
+    if rateLimited(source, 'photo', 1500) then
+        return nil
+    end
+
+    local apiKey = srvCfg('fivemanageAPIKey')
+    if not apiKey or apiKey == '' or apiKey == 'PON_AQUI_TU_NUEVA_API_KEY' then
+        print('^1[DP-Phone] No hay API key de Fivemanage en server/sv_config.lua.^0')
+        return nil
+    end
+
+    local p = promise.new()
+    PerformHttpRequest(('https://api.fivemanage.com/api/v3/file/presigned-url?expiresAt=%d'):format(os.time() + 120),
+        function(status, body)
+            if status ~= 200 or not body then
+                print(('^1[DP-Phone] Fivemanage no dio URL de subida (HTTP %s).^0'):format(tostring(status)))
+                return p:resolve(nil)
+            end
+            local ok, data = pcall(json.decode, body)
+            p:resolve(ok and type(data) == 'table' and data.data and data.data.presignedUrl or nil)
+        end, 'GET', '', {
+            ['Authorization'] = apiKey,
+            ['User-Agent'] = 'DP-Phone'
+        })
+    return Citizen.Await(p)
+end)
+
+local function isAllowedImageUrl(url)
+    if not isValidString(url, 10, 255) then
+        return false
+    end
+    for _, prefix in ipairs(srvCfg('allowedImagePrefixes', {'https://r2.fivemanage.com/'})) do
+        if url:sub(1, #prefix) == prefix then
+            return true
+        end
+    end
+    return false
+end
+
+lib.callback.register('dp-phone:server:savePhoto', function(source, imageUrl)
+    local imei = getUsableActiveImei(source)
+    if not imei then
+        return false
+    end
+    if not isAllowedImageUrl(imageUrl) then
+        warnPrint(source, ('intentó guardar una foto con un enlace no permitido: %s'):format(tostring(imageUrl)))
+        return false
+    end
+    MySQL.insert.await('INSERT INTO dp_phone_gallery (imei, image_url) VALUES (?, ?)', {imei, imageUrl})
+    return true
+end)
+
+lib.callback.register('dp-phone:server:getGalleryPhotos', function(source)
+    local imei = getUsableActiveImei(source)
+    if not imei then
+        return {}
+    end
+    return MySQL.query.await('SELECT * FROM dp_phone_gallery WHERE imei = ? ORDER BY date DESC LIMIT 50', {imei}) or {}
+end)
+
+-- ==========================================================
+-- ==========================================================
+--  COMUNICACIÓN: CONTACTOS, MENSAJES Y LLAMADAS
+-- ==========================================================
+-- ==========================================================
+local MAX_CONTACTS = 300
+local MAX_MESSAGE_LENGTH = 500
+local RING_SECONDS = 30
+
+-- "123 4567 890", "1234567890", "123-4567-890" -> "123-4567-890" (nil si no es un número válido)
+local function normalizeNumber(value)
+    if type(value) ~= 'string' and type(value) ~= 'number' then
+        return nil
+    end
+    local digits = tostring(value):gsub('%D', '')
+    if #digits ~= 10 then
+        return nil
+    end
+    return ('%s-%s-%s'):format(digits:sub(1, 3), digits:sub(4, 7), digits:sub(8, 10))
+end
+
+-- Número de la SIM que hay en el móvil que el jugador tiene abierto (y desbloqueado)
+local function getActiveNumber(src)
+    local imei = getUsableActiveImei(src)
+    if not imei then
+        return nil
+    end
+    return MySQL.scalar.await('SELECT sim_number FROM dp_phone_sim WHERE imei = ? AND activated = 1 LIMIT 1', {imei}),
+        imei
+end
+
+-- ¿Quién está conectado llevando encima el móvil con este número? (nil si está "apagado o fuera de cobertura")
+local function findOnlineByNumber(number)
+    local imei = MySQL.scalar.await('SELECT imei FROM dp_phone_sim WHERE sim_number = ? AND activated = 1 LIMIT 1',
+        {number})
+    if not imei then
+        return nil
+    end
+    for _, playerSrc in pairs(QBCore.Functions.GetPlayers()) do
+        if findPhoneItem(playerSrc, imei) then
+            return playerSrc, imei
+        end
+    end
+    return nil, imei
+end
+
+local function numberExists(number)
+    return MySQL.scalar.await('SELECT 1 FROM dp_phone_sim WHERE sim_number = ? LIMIT 1', {number}) ~= nil
+end
+
+-- Nombre con el que `ownerNumber` tiene guardado a `number` en sus contactos
+local function contactName(ownerNumber, number)
+    return MySQL.scalar.await('SELECT name FROM dp_phone_contacts WHERE sim_number = ? AND number = ? LIMIT 1',
+        {ownerNumber, number})
+end
+
+local function cleanText(value, maxLen)
+    if type(value) ~= 'string' then
+        return nil
+    end
+    value = value:gsub('[%c]', function(c)
+        return c == '\n' and '\n' or ''
+    end)
+    value = value:match('^%s*(.-)%s*$')
+    if value == '' then
+        return nil
+    end
+    return value:sub(1, maxLen)
+end
+
+-- ----------------------------------------------------------
+-- DATOS BÁSICOS (mi número + contactos)
+-- ----------------------------------------------------------
+lib.callback.register('dp-phone:server:getCommsData', function(src)
+    local imei = getUsableActiveImei(src)
+    if not imei then
+        return {
+            locked = true
+        }
+    end
+    local number = MySQL.scalar.await('SELECT sim_number FROM dp_phone_sim WHERE imei = ? AND activated = 1 LIMIT 1',
+        {imei})
+    if not number then
+        return {
+            number = nil,
+            contacts = {}
+        }
+    end
+    local contacts = MySQL.query.await(
+        'SELECT id, name, number FROM dp_phone_contacts WHERE sim_number = ? ORDER BY name ASC LIMIT ?',
+        {number, MAX_CONTACTS}) or {}
+    return {
+        number = number,
+        contacts = contacts,
+        blackout = currentBlackout
+    }
+end)
+
+-- ----------------------------------------------------------
+-- CONTACTOS
+-- ----------------------------------------------------------
+lib.callback.register('dp-phone:server:saveContact', function(src, data)
+    local myNumber = getActiveNumber(src)
+    if not myNumber or type(data) ~= 'table' then
+        return {
+            ok = false,
+            message = 'Necesitas una SIM.'
+        }
+    end
+    if rateLimited(src, 'contact', 300) then
+        return {
+            ok = false
+        }
+    end
+
+    local name = cleanText(data.name, 40)
+    local number = normalizeNumber(data.number)
+    if not name then
+        return {
+            ok = false,
+            message = 'Escribe un nombre.'
+        }
+    end
+    if not number then
+        return {
+            ok = false,
+            message = 'El número debe tener 10 cifras (XXX-XXXX-XXX).'
+        }
+    end
+
+    local id = tonumber(data.id)
+    if id then
+        local affected = MySQL.update.await(
+            'UPDATE dp_phone_contacts SET name = ?, number = ? WHERE id = ? AND sim_number = ?',
+            {name, number, id, myNumber})
+        if (affected or 0) == 0 then
+            return {
+                ok = false,
+                message = 'Ese contacto no existe.'
+            }
+        end
+    else
+        local count = MySQL.scalar.await('SELECT COUNT(*) FROM dp_phone_contacts WHERE sim_number = ?', {myNumber}) or 0
+        if count >= MAX_CONTACTS then
+            return {
+                ok = false,
+                message = ('Máximo %d contactos.'):format(MAX_CONTACTS)
+            }
+        end
+        id = MySQL.insert.await('INSERT INTO dp_phone_contacts (sim_number, name, number) VALUES (?, ?, ?)',
+            {myNumber, name, number})
+    end
+
+    return {
+        ok = true,
+        contact = {
+            id = id,
+            name = name,
+            number = number
+        }
+    }
+end)
+
+lib.callback.register('dp-phone:server:deleteContact', function(src, data)
+    local myNumber = getActiveNumber(src)
+    local id = type(data) == 'table' and tonumber(data.id) or nil
+    if not myNumber or not id then
+        return false
+    end
+    local affected = MySQL.update.await('DELETE FROM dp_phone_contacts WHERE id = ? AND sim_number = ?', {id, myNumber})
+    return (affected or 0) > 0
+end)
+
+-- ----------------------------------------------------------
+-- MENSAJES  (sim_number = quien envía, target_number = quien recibe)
+-- ----------------------------------------------------------
+local function formatMessage(row, myNumber)
+    return {
+        id = row.id,
+        from = row.sim_number,
+        to = row.target_number,
+        mine = row.sim_number == myNumber,
+        text = row.message,
+        image = row.image_url,
+        location = row.location,
+        read = dbBool(row.is_read),
+        time = row.time
+    }
+end
+
+lib.callback.register('dp-phone:server:getConversations', function(src)
+    local myNumber = getActiveNumber(src)
+    if not myNumber then
+        return {}
+    end
+
+    -- Último mensaje de cada conversación + no leídos
+    local rows = MySQL.query.await([[
+        SELECT m.*, c.other, c.unread FROM dp_phone_messages m
+        JOIN (
+            SELECT IF(sim_number = ?, target_number, sim_number) AS other,
+                   MAX(id) AS last_id,
+                   SUM(target_number = ? AND is_read = 0) AS unread
+            FROM dp_phone_messages
+            WHERE sim_number = ? OR target_number = ?
+            GROUP BY other
+        ) c ON m.id = c.last_id
+        ORDER BY m.id DESC
+        LIMIT 100
+    ]], {myNumber, myNumber, myNumber, myNumber}) or {}
+
+    local names = {}
+    for _, row in ipairs(MySQL.query.await('SELECT name, number FROM dp_phone_contacts WHERE sim_number = ?',
+        {myNumber}) or {}) do
+        names[row.number] = row.name
+    end
+
+    local list = {}
+    for _, row in ipairs(rows) do
+        local msg = formatMessage(row, myNumber)
+        list[#list + 1] = {
+            number = row.other,
+            name = names[row.other],
+            unread = tonumber(row.unread) or 0,
+            last = msg
+        }
+    end
+    return list
+end)
+
+lib.callback.register('dp-phone:server:getMessages', function(src, data)
+    local myNumber = getActiveNumber(src)
+    local other = type(data) == 'table' and normalizeNumber(data.number) or nil
+    if not myNumber or not other then
+        return {}
+    end
+
+    local rows = MySQL.query.await([[
+        SELECT * FROM (
+            SELECT * FROM dp_phone_messages
+            WHERE (sim_number = ? AND target_number = ?) OR (sim_number = ? AND target_number = ?)
+            ORDER BY id DESC LIMIT 150
+        ) t ORDER BY id ASC
+    ]], {myNumber, other, other, myNumber}) or {}
+
+    -- Al abrir la conversación, lo recibido queda leído
+    MySQL.update('UPDATE dp_phone_messages SET is_read = 1 WHERE sim_number = ? AND target_number = ? AND is_read = 0',
+        {other, myNumber})
+
+    local list = {}
+    for i, row in ipairs(rows) do
+        list[i] = formatMessage(row, myNumber)
+    end
+    return list
+end)
+
+local function isAllowedImage(url)
+    if type(url) ~= 'string' or #url > 255 then
+        return false
+    end
+    for _, prefix in ipairs(srvCfg('allowedImagePrefixes', {'https://r2.fivemanage.com/'})) do
+        if url:sub(1, #prefix) == prefix then
+            return true
+        end
+    end
+    return false
+end
+
+lib.callback.register('dp-phone:server:sendMessage', function(src, data)
+    local myNumber = getActiveNumber(src)
+    if not myNumber then
+        return {
+            ok = false,
+            message = 'Necesitas una SIM.'
+        }
+    end
+    if type(data) ~= 'table' then
+        return {
+            ok = false
+        }
+    end
+    if currentBlackout then
+        return {
+            ok = false,
+            message = 'Sin cobertura.'
+        }
+    end
+    if rateLimited(src, 'message', 700) then
+        return {
+            ok = false,
+            message = 'Vas demasiado rápido.'
+        }
+    end
+
+    local to = normalizeNumber(data.number)
+    if not to then
+        return {
+            ok = false,
+            message = 'Número no válido.'
+        }
+    end
+    if to == myNumber then
+        return {
+            ok = false,
+            message = 'No puedes escribirte a ti mismo.'
+        }
+    end
+    if not numberExists(to) then
+        return {
+            ok = false,
+            message = 'Ese número no existe.'
+        }
+    end
+
+    local text = cleanText(data.text, MAX_MESSAGE_LENGTH)
+    local image = data.image
+    if image ~= nil and not isAllowedImage(image) then
+        image = nil
+    end
+    -- La ubicación la pone el cliente de Lua (no la interfaz): "x,y"
+    local location = nil
+    if type(data.location) == 'table' and tonumber(data.location.x) and tonumber(data.location.y) then
+        location = ('%.2f,%.2f'):format(tonumber(data.location.x), tonumber(data.location.y))
+    end
+    if not text and not image and not location then
+        return {
+            ok = false
+        }
+    end
+
+    local id = MySQL.insert.await([[
+        INSERT INTO dp_phone_messages (sim_number, target_number, message, image_url, location, is_read)
+        VALUES (?, ?, ?, ?, ?, 0)
+    ]], {myNumber, to, text, image, location})
+    if not id then
+        return {
+            ok = false,
+            message = 'No se pudo enviar.'
+        }
+    end
+
+    local row = MySQL.single.await('SELECT * FROM dp_phone_messages WHERE id = ?', {id})
+
+    -- Entrega en directo si el destinatario lleva el móvil encima
+    local targetSrc = findOnlineByNumber(to)
+    if targetSrc then
+        local msg = formatMessage(row, to)
+        msg.from_name = contactName(to, myNumber)
+        TriggerClientEvent('dp-phone:client:newMessage', targetSrc, msg)
+    end
+
+    return {
+        ok = true,
+        message = formatMessage(row, myNumber)
+    }
+end)
+
+-- ----------------------------------------------------------
+-- LLAMADAS
+-- Estados: 'ringing' (sonando) -> 'active' (hablando) -> fin
+-- ----------------------------------------------------------
+local Calls = {} -- [callId] = { id, caller, callerNumber, callerImei, target, targetNumber, targetImei, state, startedAt, answeredAt }
+local PlayerCall = {} -- [src] = callId
+local nextCallId = 1000
+
+local voiceSystem = (Config.voice or 'pma-voice'):lower()
+
+-- SaltyChat se gestiona desde el servidor; pma-voice desde el cliente (ver cl_main.lua)
+local function voiceJoin(src, call)
+    if voiceSystem == 'saltychat' and GetResourceState('saltychat') == 'started' then
+        exports.saltychat:AddPlayerToCall(tostring(call.id), src)
+    end
+end
+
+local function voiceLeave(src, call)
+    if voiceSystem == 'saltychat' and GetResourceState('saltychat') == 'started' then
+        exports.saltychat:RemovePlayerFromCall(tostring(call.id), src)
+    end
+end
+
+local function logCall(call, status)
+    local duration = 0
+    if call.answeredAt then
+        duration = os.time() - call.answeredAt
+    end
+    MySQL.insert('INSERT INTO dp_phone_calls (caller, receiver, status, duration) VALUES (?, ?, ?, ?)',
+        {call.callerNumber, call.targetNumber, status, duration})
+end
+
+-- Termina la llamada y avisa a los dos. reason: 'ended' | 'rejected' | 'noanswer' | 'offline' | 'cancelled'
+local function finishCall(callId, reason, endedBy)
+    local call = Calls[callId]
+    if not call then
+        return
+    end
+    Calls[callId] = nil
+
+    local status
+    if call.state == 'active' then
+        status = 'answered'
+    elseif reason == 'rejected' then
+        status = 'rejected'
+    else
+        status = 'missed'
+    end
+    logCall(call, status)
+
+    for _, who in ipairs({call.caller, call.target}) do
+        if who then
+            if PlayerCall[who] == callId then
+                PlayerCall[who] = nil
+            end
+            if call.state == 'active' then
+                voiceLeave(who, call)
+            end
+            TriggerClientEvent('dp-phone:client:callUpdate', who, {
+                id = callId,
+                state = 'ended',
+                reason = reason,
+                endedByMe = endedBy == who
+            })
+        end
+    end
+end
+
+endCallsForNumber = function(number, reason)
+    for id, call in pairs(Calls) do
+        if call.callerNumber == number or call.targetNumber == number then
+            finishCall(id, reason or 'ended')
+        end
+    end
+end
+
+lib.callback.register('dp-phone:server:startCall', function(src, data)
+    local myNumber, myImei = getActiveNumber(src)
+    if not myNumber then
+        return {
+            ok = false,
+            reason = 'nosim'
+        }
+    end
+    if PlayerCall[src] then
+        return {
+            ok = false,
+            reason = 'incall'
+        }
+    end
+    if rateLimited(src, 'call', 1500) then
+        return {
+            ok = false,
+            reason = 'spam'
+        }
+    end
+    if currentBlackout then
+        return {
+            ok = false,
+            reason = 'blackout'
+        }
+    end
+
+    local number = type(data) == 'table' and normalizeNumber(data.number) or nil
+    if not number then
+        return {
+            ok = false,
+            reason = 'invalid'
+        }
+    end
+    if number == myNumber then
+        return {
+            ok = false,
+            reason = 'self'
+        }
+    end
+    if not numberExists(number) then
+        return {
+            ok = false,
+            reason = 'notexist'
+        }
+    end
+
+    local targetSrc, targetImei = findOnlineByNumber(number)
+    if not targetSrc then
+        -- Apagado o fuera de cobertura: queda como llamada perdida en su historial
+        logCall({
+            callerNumber = myNumber,
+            targetNumber = number
+        }, 'missed')
+        return {
+            ok = false,
+            reason = 'offline'
+        }
+    end
+    if PlayerCall[targetSrc] then
+        logCall({
+            callerNumber = myNumber,
+            targetNumber = number
+        }, 'missed')
+        return {
+            ok = false,
+            reason = 'busy'
+        }
+    end
+
+    nextCallId = nextCallId + 1
+    local call = {
+        id = nextCallId,
+        caller = src,
+        callerNumber = myNumber,
+        callerImei = myImei,
+        target = targetSrc,
+        targetNumber = number,
+        targetImei = targetImei,
+        state = 'ringing',
+        startedAt = os.time()
+    }
+    Calls[call.id] = call
+    PlayerCall[src] = call.id
+    PlayerCall[targetSrc] = call.id
+
+    TriggerClientEvent('dp-phone:client:incomingCall', targetSrc, {
+        id = call.id,
+        number = myNumber,
+        name = contactName(number, myNumber)
+    })
+
+    -- Si nadie contesta en X segundos: "no contesta"
+    SetTimeout(RING_SECONDS * 1000, function()
+        local c = Calls[call.id]
+        if c and c.state == 'ringing' then
+            finishCall(call.id, 'noanswer')
+        end
+    end)
+
+    return {
+        ok = true,
+        id = call.id,
+        number = number,
+        name = contactName(myNumber, number)
+    }
+end)
+
+lib.callback.register('dp-phone:server:answerCall', function(src, data)
+    local callId = type(data) == 'table' and tonumber(data.id) or nil
+    local call = callId and Calls[callId]
+    if not call or call.target ~= src or call.state ~= 'ringing' then
+        return false
+    end
+    -- Hay que llevar el móvil encima para contestar (no hace falta desbloquearlo, como en la vida real)
+    if not findPhoneItem(src, call.targetImei) then
+        return false
+    end
+
+    call.state = 'active'
+    call.answeredAt = os.time()
+
+    for _, who in ipairs({call.caller, call.target}) do
+        voiceJoin(who, call)
+        TriggerClientEvent('dp-phone:client:callUpdate', who, {
+            id = call.id,
+            state = 'active',
+            channel = call.id,
+            since = call.answeredAt
+        })
+    end
+    return true
+end)
+
+lib.callback.register('dp-phone:server:endCall', function(src, data)
+    local callId = PlayerCall[src]
+    if type(data) == 'table' and tonumber(data.id) and tonumber(data.id) ~= callId then
+        return false
+    end
+    local call = callId and Calls[callId]
+    if not call then
+        PlayerCall[src] = nil
+        return false
+    end
+
+    local reason = 'ended'
+    if call.state == 'ringing' then
+        reason = src == call.target and 'rejected' or 'cancelled'
+    end
+    finishCall(callId, reason, src)
+    return true
+end)
+
+lib.callback.register('dp-phone:server:getRecentCalls', function(src)
+    local myNumber = getActiveNumber(src)
+    if not myNumber then
+        return {}
+    end
+    local rows = MySQL.query.await([[
+        SELECT * FROM dp_phone_calls WHERE caller = ? OR receiver = ? ORDER BY id DESC LIMIT 60
+    ]], {myNumber, myNumber}) or {}
+
+    local names = {}
+    for _, row in ipairs(MySQL.query.await('SELECT name, number FROM dp_phone_contacts WHERE sim_number = ?',
+        {myNumber}) or {}) do
+        names[row.number] = row.name
+    end
+
+    local list = {}
+    for i, row in ipairs(rows) do
+        local outgoing = row.caller == myNumber
+        local other = outgoing and row.receiver or row.caller
+        list[i] = {
+            id = row.id,
+            number = other,
+            name = names[other],
+            outgoing = outgoing,
+            status = row.status,
+            duration = row.duration,
+            time = row.time
+        }
+    end
+    return list
+end)
+
+-- Si alguien se desconecta o deja de llevar el móvil, se corta la llamada
+AddEventHandler('playerDropped', function()
+    local src = source
+    local callId = PlayerCall[src]
+    if callId then
+        finishCall(callId, 'offline', src)
+    end
+end)
+
+CreateThread(function()
+    while true do
+        Wait(5000)
+        for id, call in pairs(Calls) do
+            local callerOk = findPhoneItem(call.caller, call.callerImei) ~= nil
+            local targetOk = findPhoneItem(call.target, call.targetImei) ~= nil
+            if not callerOk or not targetOk then
+                finishCall(id, 'offline', not callerOk and call.caller or call.target)
+            elseif currentBlackout then
+                finishCall(id, 'blackout')
+            end
+        end
+    end
+end)
+
+-- Para otros scripts: ¿está este jugador en una llamada?
+exports('IsInCall', function(src)
+    return PlayerCall[src] ~= nil
 end)

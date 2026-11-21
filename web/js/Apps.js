@@ -116,10 +116,10 @@ window.DESKTOP_APPS = [
     id: "snake",
     cat: "Juegos",
     name: "Víbora",
-    icon: "device-gamepad-2",
+    icon: "emojione-monotone:snake",
     c: ["#8be36a", "#2e9a2f"],
     desc: "El clásico arcade de la serpiente para matar el rato en guardia",
-    size: 80, // ~80 MB
+    size: 185, // ~185 MB
   },
   {
     id: "merge",
@@ -169,24 +169,6 @@ window.DESKTOP_APPS = [
     size: 50, // ~50 MB
   },
   {
-    id: "calendar",
-    cat: "Productividad",
-    name: "Calendario",
-    icon: "calendar",
-    c: ["#ffffff", "#c9ccd2"],
-    desc: "Citas, reuniones y recordatorios",
-    size: 60, // ~60 MB
-  },
-  {
-    id: "clock",
-    cat: "Utilidades",
-    name: "Reloj",
-    icon: "clock",
-    c: ["#3b3b42", "#0c0c10"],
-    desc: "Hora, alarmas, cronómetro y temporizador",
-    size: 30, // ~30 MB
-  },
-  {
     id: "weather",
     cat: "Utilidades",
     name: "Tiempo",
@@ -203,15 +185,6 @@ window.DESKTOP_APPS = [
     c: ["#ffb24d", "#e0701a"],
     desc: "Operaciones básicas y cálculo de repartos",
     size: 25, // ~25 MB
-  },
-  {
-    id: "recorder",
-    cat: "Utilidades",
-    name: "Grabadora",
-    icon: "microphone",
-    c: ["#ff7a7a", "#b01e3a"],
-    desc: "Graba audio de conversaciones y entrevistas",
-    size: 70, // ~70 MB
   },
 
   // --- Finanzas ---

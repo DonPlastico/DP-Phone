@@ -95,98 +95,27 @@
                 </span>
               </button>
             </div>
+            <!-- Para móviles protegidos con contraseña (5-25 caracteres) en vez de PIN de 4 cifras -->
+            <form id="lock-password-form" class="lock-password-form" hidden>
+              <input
+                id="lock-password-input"
+                type="password"
+                maxlength="25"
+                autocomplete="off"
+                placeholder="Contraseña" />
+              <button type="submit" class="lock-password-btn" aria-label="Desbloquear">
+                <span class="ui-icon" data-iconify="check"></span>
+              </button>
+            </form>
             <button id="switch-lock-method" class="switch-lock-method" hidden>
               ACCEDER A TRAVÉS DEL PIN
             </button>
           </div>
         </section>
 
-        <!-- APP DEL TIEMPO -->
-        <section id="weather-app" class="weather-app" hidden>
-          <div class="weather-bg" id="weather-bg"></div>
-          <div class="weather-content">
-            <header class="weather-header">
-              <div class="weather-location">
-                <span class="ui-icon" data-iconify="map-pin"> </span>
-                <span id="weather-location-text">Los Santos</span>
-              </div>
-              <span id="weather-season" class="weather-season">OTOÑO · 02:51 A.M.</span>
-            </header>
-            <div class="weather-main">
-              <div class="weather-icon-container" id="weather-icon-container">
-                <span
-                  class="ui-icon float-anim"
-                  data-iconify="moon"
-                  id="weather-main-icon"></span>
-              </div>
-              <h1 class="weather-temp" id="weather-temp">16°</h1>
-              <p class="weather-desc" id="weather-desc">Despejado</p>
-              <div class="weather-details">
-                <span>Sensación <strong id="weather-feels-like">17°</strong> </span>
-                <span>Máx <strong id="weather-max">20°</strong> </span>
-                <span>Mín <strong id="weather-min">12°</strong> </span>
-              </div>
-            </div>
-            <div class="weather-alert-card" id="weather-alert-card" hidden>
-              <div class="alert-icon-wrapper">
-                <span class="ui-icon pulse-red" data-iconify="alert-triangle"> </span>
-              </div>
-              <div class="alert-content">
-                <span class="alert-label">CLIMA SEVERO</span>
-                <h3 class="alert-title">Tormenta severa en camino</h3>
-                <div class="alert-timer" id="weather-alert-timer">00h 00m 00s</div>
-                <p class="alert-desc">
-                  Tormenta severa se aproxima a la ciudad. Se recomienda a todos los ciudadanos
-                  buscar refugio y mantenerse informados.
-                </p>
-              </div>
-            </div>
-            <div class="weather-highlights">
-              <div class="highlight-card">
-                <span class="ui-icon" data-iconify="wind"> </span>
-                <div class="highlight-info">
-                  <span class="highlight-label">Viento</span>
-                  <strong class="highlight-value" id="highlight-wind">14 km/h</strong>
-                </div>
-              </div>
-              <div class="highlight-card">
-                <span class="ui-icon" data-iconify="droplet"> </span>
-                <div class="highlight-info">
-                  <span class="highlight-label">Humedad</span>
-                  <strong class="highlight-value" id="highlight-humidity">52%</strong>
-                </div>
-              </div>
-              <div class="highlight-card">
-                <span class="ui-icon" data-iconify="gauge"> </span>
-                <div class="highlight-info">
-                  <span class="highlight-label">Presión</span>
-                  <strong class="highlight-value" id="highlight-pressure">757 mmHg</strong>
-                </div>
-              </div>
-              <div class="highlight-card">
-                <span class="ui-icon" data-iconify="eye"> </span>
-                <div class="highlight-info">
-                  <span class="highlight-label">Visibilidad</span>
-                  <strong class="highlight-value" id="highlight-visibility">10 km</strong>
-                </div>
-              </div>
-            </div>
-            <div class="weather-graph-card">
-              <div class="graph-header">
-                <span class="ui-icon" data-iconify="activity"> </span>
-                <span>PRÓXIMAS 12 HORAS</span>
-              </div>
-              <div class="graph-container" id="weather-graph-container"></div>
-            </div>
-            <div class="weather-weekly">
-              <div class="forecast-header">
-                <span class="ui-icon" data-iconify="calendar"> </span>
-                <span>PRÓXIMOS 7 DÍAS</span>
-              </div>
-              <div class="weekly-list" id="weather-weekly-list"></div>
-            </div>
-          </div>
-        </section>
+        <!-- LLAMADA EN CURSO / ENTRANTE (por encima de todo, también de la pantalla de bloqueo) -->
+        <section id="call-screen" class="call-screen" hidden></section>
+        <button id="call-pill" class="call-pill" type="button" hidden></button>
 
         <!-- TOPBAR Y NOTIFICACIONES -->
         <header id="desktop-statusbar" class="desktop-statusbar" hidden>
@@ -461,7 +390,7 @@
           <div id="desktop-app-grid" class="desktop-app-grid" aria-label="Aplicaciones"></div>
         </section>
 
-        <!-- AJUSTES -->
+        <!-- APP AJUSTES -->
         <section id="settings-app" class="settings-app" aria-label="Ajustes" hidden>
           <header class="store-header">
             <div class="store-title">
@@ -623,6 +552,93 @@
             </div>
           </div>
           <p id="settings-empty" class="store-empty" hidden>No se han encontrado ajustes.</p>
+        </section>
+
+        <!-- APP DEL TIEMPO -->
+        <section id="weather-app" class="weather-app" hidden>
+          <div class="weather-bg" id="weather-bg"></div>
+          <div class="weather-content">
+            <header class="weather-header">
+              <div class="weather-location">
+                <span class="ui-icon" data-iconify="map-pin"> </span>
+                <span id="weather-location-text">Los Santos</span>
+              </div>
+              <span id="weather-season" class="weather-season">OTOÑO · 02:51 A.M.</span>
+            </header>
+            <div class="weather-main">
+              <div class="weather-icon-container" id="weather-icon-container">
+                <span
+                  class="ui-icon float-anim"
+                  data-iconify="moon"
+                  id="weather-main-icon"></span>
+              </div>
+              <h1 class="weather-temp" id="weather-temp">16°</h1>
+              <p class="weather-desc" id="weather-desc">Despejado</p>
+              <div class="weather-details">
+                <span>Sensación <strong id="weather-feels-like">17°</strong> </span>
+                <span>Máx <strong id="weather-max">20°</strong> </span>
+                <span>Mín <strong id="weather-min">12°</strong> </span>
+              </div>
+            </div>
+            <div class="weather-alert-card" id="weather-alert-card" hidden>
+              <div class="alert-icon-wrapper">
+                <span class="ui-icon pulse-red" data-iconify="alert-triangle"> </span>
+              </div>
+              <div class="alert-content">
+                <span class="alert-label">CLIMA SEVERO</span>
+                <h3 class="alert-title">Tormenta severa en camino</h3>
+                <div class="alert-timer" id="weather-alert-timer">00h 00m 00s</div>
+                <p class="alert-desc">
+                  Tormenta severa se aproxima a la ciudad. Se recomienda a todos los ciudadanos
+                  buscar refugio y mantenerse informados.
+                </p>
+              </div>
+            </div>
+            <div class="weather-highlights">
+              <div class="highlight-card">
+                <span class="ui-icon" data-iconify="wind"> </span>
+                <div class="highlight-info">
+                  <span class="highlight-label">Viento</span>
+                  <strong class="highlight-value" id="highlight-wind">14 km/h</strong>
+                </div>
+              </div>
+              <div class="highlight-card">
+                <span class="ui-icon" data-iconify="droplet"> </span>
+                <div class="highlight-info">
+                  <span class="highlight-label">Humedad</span>
+                  <strong class="highlight-value" id="highlight-humidity">52%</strong>
+                </div>
+              </div>
+              <div class="highlight-card">
+                <span class="ui-icon" data-iconify="gauge"> </span>
+                <div class="highlight-info">
+                  <span class="highlight-label">Presión</span>
+                  <strong class="highlight-value" id="highlight-pressure">757 mmHg</strong>
+                </div>
+              </div>
+              <div class="highlight-card">
+                <span class="ui-icon" data-iconify="eye"> </span>
+                <div class="highlight-info">
+                  <span class="highlight-label">Visibilidad</span>
+                  <strong class="highlight-value" id="highlight-visibility">10 km</strong>
+                </div>
+              </div>
+            </div>
+            <div class="weather-graph-card">
+              <div class="graph-header">
+                <span class="ui-icon" data-iconify="activity"> </span>
+                <span>PRÓXIMAS 12 HORAS</span>
+              </div>
+              <div class="graph-container" id="weather-graph-container"></div>
+            </div>
+            <div class="weather-weekly">
+              <div class="forecast-header">
+                <span class="ui-icon" data-iconify="calendar"> </span>
+                <span>PRÓXIMOS 7 DÍAS</span>
+              </div>
+              <div class="weekly-list" id="weather-weekly-list"></div>
+            </div>
+          </div>
         </section>
 
         <!-- APP LICENCIAS -->
@@ -976,6 +992,638 @@
           <div id="store-list" class="store-list" role="list"></div>
         </section>
 
+        <!-- APP VÍBORA -->
+        <section id="snake-app" class="snake-app" hidden>
+          <!-- NUEVA PANTALLA DE INICIO (MAP + RANKING) -->
+          <div class="snake-logo-screen" id="snake-logo-screen">
+            <!-- COLUMNA IZQUIERDA: LOGO Y BOTONES -->
+            <div class="snake-home-left">
+              <div class="snake-logo-icon" data-iconify="emojione-monotone:snake"></div>
+              <h1 class="snake-title">Víbora</h1>
+              <p class="snake-desc">
+                El clásico arcade de la serpiente para matar el rato en guardia.
+              </p>
+
+              <div class="snake-main-buttons">
+                <button class="snake-btn-play" id="snake-btn-play">Jugar</button>
+                <button class="snake-btn-options" id="snake-btn-options">Opciones</button>
+              </div>
+            </div>
+
+            <!-- COLUMNA DERECHA: RANKING (Deslizante) -->
+            <div class="snake-home-right" id="snake-ranking-panel">
+              <!-- BOTÓN ÚNICO PARA ABRIR/CERRAR EL RANKING -->
+              <button
+                id="snake-toggle-panel-btn"
+                class="snake-toggle-panel-btn"
+                title="Ranking">
+                <span class="ui-icon" data-iconify="chevron-left"></span>
+              </button>
+
+              <div class="snake-ranking-sidebar">
+                <div class="snake-ranking-sidebar-header">
+                  <span class="ui-icon" data-iconify="flame"></span>
+                  <h2>Ranking Global</h2>
+                </div>
+                <div class="snake-ranking-content" id="snake-ranking-content">
+                  <div class="snake-ranking-loading">Cargando ranking...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PANTALLA DE OPCIONES REDISEÑADA -->
+          <div class="snake-options-screen" id="snake-options-screen" hidden>
+            <div class="snake-options-header">
+              <button class="snake-btn-back" id="snake-btn-back-options">
+                <span class="ui-icon" data-iconify="chevron-left"></span> Volver
+              </button>
+              <h2>Opciones</h2>
+            </div>
+
+            <div class="snake-options-scroll">
+              <div class="snake-options-grid">
+                <!-- COLUMNA IZQUIERDA: JUGABILIDAD -->
+                <div class="snake-options-col">
+                  <!-- Dificultad -->
+                  <div class="snake-option-group">
+                    <!-- Ejemplo de cómo debe quedar la estructura -->
+                    <div class="snake-option-header">
+                      <label>Dificultad / Velocidad</label>
+                      <div class="snake-tooltip-trigger">
+                        <span class="ui-icon" data-iconify="info-circle"></span>
+                        <div class="snake-tooltip">
+                          Para que tu récord cuente en el Ranking Global, debes jugar en
+                          <strong>Difícil</strong>.
+                        </div>
+                      </div>
+                    </div>
+                    <div class="snake-radio-group" id="snake-speed-group">
+                      <button class="snake-radio-btn" data-speed="150">Fácil</button>
+                      <button class="snake-radio-btn active" data-speed="120">Normal</button>
+                      <button class="snake-radio-btn" data-speed="80">Difícil</button>
+                    </div>
+                  </div>
+
+                  <!-- Modo de Juego -->
+                  <div class="snake-option-group">
+                    <div class="snake-option-header">
+                      <label>Modo de juego</label>
+                      <div class="snake-tooltip-trigger">
+                        <span class="ui-icon" data-iconify="info-circle"></span>
+                        <div class="snake-tooltip">
+                          Para que tu récord cuente en el Ranking Global, debes jugar
+                          <strong>Con paredes</strong>.
+                        </div>
+                      </div>
+                    </div>
+                    <div class="snake-radio-group" id="snake-mode-group">
+                      <button class="snake-radio-btn active" data-mode="wrap">Infinito</button>
+                      <button class="snake-radio-btn" data-mode="walls">Con paredes</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: TAMAÑO Y COLORES -->
+                <div class="snake-options-col">
+                  <!-- Tamaño Tablero -->
+                  <div class="snake-option-group">
+                    <div class="snake-option-header">
+                      <label>Tamaño del tablero</label>
+                      <div class="snake-tooltip-trigger">
+                        <span class="ui-icon" data-iconify="info-circle"></span>
+                        <div class="snake-tooltip">
+                          Para que tu récord cuente en el Ranking Global, debes jugar en
+                          <strong>Colosal</strong>.
+                        </div>
+                      </div>
+                    </div>
+                    <div class="snake-radio-group" id="snake-size-group">
+                      <button class="snake-radio-btn" data-size="25">Pequeño</button>
+                      <button class="snake-radio-btn active" data-size="20">Normal</button>
+                      <button class="snake-radio-btn" data-size="15">Grande</button>
+                      <button class="snake-radio-btn" data-size="30">Colosal</button>
+                    </div>
+                  </div>
+
+                  <!-- CONTENEDOR DE COLORES LADO A LADO -->
+                  <div class="snake-colors-row">
+                    <!-- Color de la bola -->
+                    <div class="snake-option-group">
+                      <label>Color de la bola</label>
+                      <div class="snake-color-group" id="snake-food-color-group">
+                        <button
+                          class="snake-color-btn active"
+                          data-color="#ff5a52"
+                          style="background: #ff5a52"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#ffa500"
+                          style="background: #ffa500"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#ffea00"
+                          style="background: #ffea00"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#8be36a"
+                          style="background: #8be36a"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#5a9eff"
+                          style="background: #5a9eff"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#c48bff"
+                          style="background: #c48bff"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#ffffff"
+                          style="background: #ffffff"></button>
+                      </div>
+                    </div>
+
+                    <!-- SEPARADOR -->
+                    <div class="snake-color-separator">|</div>
+
+                    <!-- Color de la Serpiente -->
+                    <div class="snake-option-group">
+                      <label>Color de la Víbora</label>
+                      <div class="snake-color-group" id="snake-snake-color-group">
+                        <button
+                          class="snake-color-btn active"
+                          data-color="#8be36a"
+                          style="background: #8be36a"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#5a9eff"
+                          style="background: #5a9eff"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#ffa500"
+                          style="background: #ffa500"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#ff5a52"
+                          style="background: #ff5a52"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#c48bff"
+                          style="background: #c48bff"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#00ffff"
+                          style="background: #00ffff"></button>
+                        <button
+                          class="snake-color-btn"
+                          data-color="#ff0000"
+                          style="background: #ff0000"></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SECCIÓN DE DESBLOQUEABLES (ANCHO COMPLETO) -->
+              <div class="snake-unlock-section">
+                <div class="snake-unlock-header">
+                  <label>Aspectos de Temporada</label>
+                  <div class="snake-tooltip-trigger">
+                    <span class="ui-icon" data-iconify="info-circle"></span>
+                    <div class="snake-tooltip" style="width: 280px">
+                      <h4 class="snake-tooltip-title">Recompensas de Temporada</h4>
+
+                      <p class="snake-tooltip-text">
+                        Se reparten a final de mes dependiendo de tu posición en el ranking
+                        global:
+                      </p>
+
+                      <div class="snake-tooltip-list">
+                        <div class="snake-tooltip-item">
+                          <span class="snake-tooltip-badge top-1" title="TOP 1 y 2">
+                            <span class="ui-icon" data-iconify="at-icons:medal-1st"></span>
+                          </span>
+                          <span
+                            >Ganan <strong>3 recompensas</strong> aleatorias de su tier.</span
+                          >
+                        </div>
+                        <div class="snake-tooltip-item">
+                          <span class="snake-tooltip-badge top-3" title="TOP 3">
+                            <span class="ui-icon" data-iconify="at-icons:medal-3rd"></span>
+                          </span>
+                          <span>Gana <strong>2 recompensas</strong> aleatorias.</span>
+                        </div>
+                        <div class="snake-tooltip-item">
+                          <span class="snake-tooltip-badge normal">TOP 4+</span>
+                          <span
+                            >Gana <strong>1 recompensa</strong> con un 0.00001% de probabilidad
+                            de ser rara.</span
+                          >
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="snake-unlock-grid">
+                  <!-- Generamos 50 items de ejemplo -->
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Estela de Fuego
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Mapa Espacial
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente Dorada
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Bola de Cristal
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Ojos Láser
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Modo Neón
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Balón de Fútbol
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente Robot
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Estela Arcoíris
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Bola de Oro
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Fondo Matrix
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente Ninja
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Estela de Hielo
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Mapa Desierto
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente Esmeralda
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Bola Envenenada
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Gafas de Sol
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Modo Retro 8-Bit
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Pelota de Baloncesto
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente Alien
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Estela de Estrellas
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Bola de Plasma
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Fondo Cyberpunk
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente Fantasma
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Estela de Sangre
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Mapa de Selva
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente de Cristal
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Bola Lunar
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Corona Real
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Modo Oscuro Total
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Pelota de Tenis
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente Dragón
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Estela de Rayo
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Bola Solar
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Fondo Galaxia
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente de Humo
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Estela de Arena
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Mapa Volcánico
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente de Hielo
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Bola Estelar
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Auriculares Gamer
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Modo Vaporwave
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Pelota de Playa
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente Mecánica
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Estela de Fuego Azul
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Bola de Rubí
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Fondo Océano
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente de Luz
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Estela de Sombra
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Mapa de Ciudad
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Serpiente de Cristal Puro
+                  </div>
+                  <div class="snake-unlock-item locked">
+                    <span class="ui-icon" data-iconify="lock"></span> Bola Dorada Brillante
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL DE REGISTRO (Si no tiene cuenta) -->
+          <div class="snake-modal-overlay" id="snake-register-modal" hidden>
+            <div class="snake-modal">
+              <div class="snake-modal-header">
+                <span class="ui-icon" data-iconify="user-filled"></span>
+                <h3>Crea tu Usuario</h3>
+              </div>
+              <p class="snake-modal-desc">
+                Para guardar tus récords y aparecer en el ranking, necesitas un nombre de
+                usuario. No se permiten espacios.
+              </p>
+
+              <input
+                type="text"
+                id="snake-register-input"
+                placeholder="Ej: SnakeMaster99"
+                autocomplete="off"
+                maxlength="15" />
+              <div id="snake-register-error" class="snake-modal-error" hidden></div>
+
+              <div class="snake-modal-actions">
+                <button class="snake-btn-cancel" id="snake-btn-cancel-register">
+                  Cancelar
+                </button>
+                <button class="snake-btn-confirm" id="snake-btn-confirm-register">
+                  Crear
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="snake-game-screen" id="snake-game-screen" hidden>
+            <div class="snake-header">
+              <span class="snake-score">
+                PUNTOS: <strong id="snake-score-val">0</strong>
+              </span>
+              <span class="snake-record">
+                RÉCORD: <strong id="snake-highscore-val">0</strong>
+              </span>
+
+              <button class="snake-btn-exit" id="snake-btn-exit">
+                <span class="ui-icon" data-iconify="log-out"></span> Salir
+              </button>
+            </div>
+            <div class="snake-canvas-wrapper">
+              <canvas id="snake-canvas"></canvas>
+              <div class="snake-gameover" id="snake-gameover" hidden>
+                <h2>FIN DEL JUEGO</h2>
+                <p>Puntuación: <span id="snake-final-score">0</span></p>
+                <button class="snake-btn-play" id="snake-btn-restart">Reintentar</button>
+                <button class="snake-btn-options" id="snake-btn-go-options">Opciones</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- APP NOTAS -->
+        <section id="notes-app" class="notes-app" hidden>
+          <!-- VISTA 1: Lista de Notas -->
+          <div id="notes-list-view" class="notes-view">
+            <header class="notes-header">
+              <div class="notes-title-row">
+                <h2>Notas</h2>
+                <button id="notes-btn-new" class="notes-btn-primary" title="Nueva nota">
+                  <span class="ui-icon" data-iconify="plus"></span>
+                </button>
+              </div>
+              <div class="notes-search-bar">
+                <span class="ui-icon" data-iconify="search"></span>
+                <input
+                  type="text"
+                  id="notes-search-input"
+                  placeholder="Buscar notas..."
+                  autocomplete="off" />
+              </div>
+            </header>
+
+            <div class="notes-grid" id="notes-grid">
+              <!-- Aquí se inyectan las tarjetas -->
+              <div class="notes-empty" id="notes-empty-state">
+                <span class="ui-icon" data-iconify="notes"></span>
+                <p>No tienes notas aún.<br />¡Crea una nueva!</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- VISTA 2: Editor de Nota -->
+          <div id="notes-editor-view" class="notes-view" hidden>
+            <header class="notes-editor-header">
+              <button class="notes-icon-btn" id="notes-btn-back" title="Volver">
+                <span class="ui-icon" data-iconify="chevron-left"></span>
+              </button>
+              <div class="notes-editor-actions">
+                <button class="notes-icon-btn" id="notes-btn-pin" title="Fijar nota">
+                  <span class="ui-icon" data-iconify="pin"></span>
+                </button>
+                <button class="notes-icon-btn" id="notes-btn-delete" title="Eliminar">
+                  <span class="ui-icon" data-iconify="trash"></span>
+                </button>
+                <button class="notes-save-btn" id="notes-btn-save">Guardar</button>
+              </div>
+            </header>
+
+            <!-- BARRA DE HERRAMIENTAS -->
+            <div class="notes-toolbar" id="notes-toolbar">
+              <button data-command="bold" title="Negrita"><b>B</b></button>
+              <button data-command="italic" title="Cursiva"><i>I</i></button>
+              <button data-command="underline" title="Subrayado"><u>U</u></button>
+              <button data-command="strikeThrough" title="Tachado"><s>S</s></button>
+              <div class="toolbar-divider"></div>
+              <button data-command="formatBlock" data-value="h2" title="Título">H2</button>
+              <button data-command="formatBlock" data-value="h3" title="Subtítulo">H3</button>
+              <div class="toolbar-divider"></div>
+              <button data-command="insertUnorderedList" title="Lista">
+                <span class="ui-icon" data-iconify="list"></span>
+              </button>
+              <button data-command="insertOrderedList" title="Lista numerada">
+                <span class="ui-icon" data-iconify="list-numbers"></span>
+              </button>
+              <button data-command="formatBlock" data-value="blockquote" title="Cita">
+                <span class="ui-icon" data-iconify="quote"></span>
+              </button>
+              <div class="toolbar-divider"></div>
+              <button data-command="createLink" title="Enlace">
+                <span class="ui-icon" data-iconify="link"></span>
+              </button>
+            </div>
+
+            <div class="notes-editor-body">
+              <input
+                type="text"
+                id="note-input-title"
+                placeholder="Título"
+                autocomplete="off" />
+              <!-- AQUÍ CAMBIAMOS EL TEXTAREA POR UN DIV EDITABLE -->
+              <div
+                id="note-input-content"
+                class="notes-rich-editor"
+                contenteditable="true"
+                placeholder="Escribe una nota..."></div>
+            </div>
+
+            <!-- Paleta de Colores -->
+            <div class="notes-color-palette" id="notes-color-palette">
+              <button data-color="#ffffff" style="background: #ffffff" class="active"></button>
+              <button data-color="#f28b82" style="background: #f28b82"></button>
+              <button data-color="#fbbc04" style="background: #fbbc04"></button>
+              <button data-color="#fff475" style="background: #fff475"></button>
+              <button data-color="#ccff90" style="background: #ccff90"></button>
+              <button data-color="#a7ffeb" style="background: #a7ffeb"></button>
+              <button data-color="#cbf0f8" style="background: #cbf0f8"></button>
+              <button data-color="#aecbfa" style="background: #aecbfa"></button>
+              <button data-color="#d7aefb" style="background: #d7aefb"></button>
+            </div>
+          </div>
+        </section>
+
+        <!-- APPS DE COMUNICACIÓN (el contenido lo genera script.js) -->
+        <section id="contacts-app" class="comms-app" hidden></section>
+        <section id="messages-app" class="comms-app" hidden></section>
+        <section id="dialer-app" class="comms-app" hidden></section>
+
+        <!-- APP CAMARA -->
+        <section id="camera-app" class="camera-app" hidden>
+          <div id="camera-view" class="camera-view">
+            <!-- Visor (las esquinas) -->
+            <div class="camera-viewfinder">
+              <div class="viewfinder-corner top-left"></div>
+              <div class="viewfinder-corner top-right"></div>
+              <div class="viewfinder-corner bottom-left"></div>
+              <div class="viewfinder-corner bottom-right"></div>
+            </div>
+
+            <!-- Botón de cerrar -->
+            <button
+              id="camera-btn-close"
+              style="
+                position: absolute;
+                top: 56px;
+                left: 20px;
+                z-index: 10;
+                background: rgba(0, 0, 0, 0.5);
+                border: none;
+                color: white;
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                cursor: pointer;
+                display: grid;
+                place-items: center;
+              ">
+              <span class="ui-icon" data-iconify="x"></span>
+            </button>
+
+            <!-- Zoom: regla (aparece al hacer scroll) + botones 0.5x ... 20x encima del disparador -->
+            <div class="camera-zoom" id="camera-zoom">
+              <div class="camera-zoom-dial" id="camera-zoom-dial" aria-hidden="true">
+                <div class="camera-zoom-dial-value" id="camera-zoom-dial-value">1x</div>
+                <div class="camera-zoom-dial-track">
+                  <div class="camera-zoom-dial-ticks" id="camera-zoom-dial-ticks"></div>
+                  <div class="camera-zoom-dial-needle"></div>
+                </div>
+              </div>
+              <div class="camera-zoom-chips" id="camera-zoom-chips"></div>
+            </div>
+
+            <!-- Controles de la Cámara -->
+            <div class="camera-controls">
+              <button class="camera-btn-flash" id="camera-btn-flash">
+                <span class="ui-icon" data-iconify="flash"></span>
+              </button>
+
+              <button class="camera-btn-shutter" id="camera-btn-shutter">
+                <div class="shutter-inner"></div>
+              </button>
+
+              <button class="camera-btn-gallery" id="camera-btn-gallery">
+                <span class="ui-icon" data-iconify="photo"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Vista 2: Galería de Fotos -->
+          <div id="camera-gallery-view" class="camera-gallery-view" hidden>
+            <header class="camera-header">
+              <button class="camera-back-btn" id="camera-btn-back-gallery">
+                <span class="ui-icon" data-iconify="chevron-left"></span>
+              </button>
+              <h2>Galería</h2>
+            </header>
+
+            <div class="camera-gallery-grid" id="camera-gallery-grid">
+              <!-- Aquí se inyectan las fotos -->
+            </div>
+          </div>
+        </section>
+
         <!-- PANTALLA DE ARRANQUE -->
         <section
           id="boot-screen"
@@ -1111,12 +1759,13 @@
             <div class="setup-panel locked" id="setup-panel-cloud">
               <div class="setup-header">
                 <span class="setup-logo cloud-logo" data-iconify="cloud"></span>
-                <h2>DP-Cloud</h2>
+                <h2>iFruit-Cloud</h2>
                 <p>Sincroniza tu vida en Los Santos</p>
               </div>
 
               <div class="setup-cloud-form">
-                <h3>Iniciar Sesión</h3>
+                <h3>Registrar Cuenta</h3>
+
                 <div class="cloud-input-group">
                   <input
                     type="text"
@@ -1124,6 +1773,7 @@
                     placeholder="Usuario"
                     autocomplete="off" />
                 </div>
+
                 <div class="cloud-input-group">
                   <input
                     type="password"
@@ -1131,16 +1781,105 @@
                     placeholder="Contraseña"
                     autocomplete="off" />
                 </div>
+
+                <!-- NUEVO INPUT: REPETIR CONTRASEÑA -->
+                <div class="cloud-input-group">
+                  <input
+                    type="password"
+                    id="cloud-pass-repeat"
+                    placeholder="Repetir contraseña"
+                    autocomplete="off" />
+                </div>
+
+                <!-- BOTÓN PRINCIPAL -->
                 <button class="cloud-action-btn" id="cloud-login-btn">Acceder</button>
+
+                <!-- NUEVO BOTÓN SECUNDARIO -->
+                <button class="setup-cloud-login-btn" id="cloud-goto-login">
+                  Iniciar sesión
+                </button>
               </div>
 
-              <button class="setup-skip-btn" id="setup-cloud-skip">
-                Omitir y guardar en el dispositivo
-              </button>
-              <button class="setup-back-btn" data-target="pin">Volver atrás</button>
+              <!-- FOOTER CON LA RAYA (Replicando el estilo del PIN) -->
+              <div
+                class="setup-pin-footer"
+                style="
+                  margin-top: 10px;
+                  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+                  padding-top: 16px;
+                  width: 100%;
+                ">
+                <button class="setup-back-btn" data-target="pin">Volver atrás</button>
+                <button class="setup-skip-btn" id="setup-cloud-skip">Omitir y guardar</button>
+              </div>
             </div>
           </div>
         </section>
+
+        <!-- Mini Modal para el enlace -->
+        <div
+          id="notes-link-modal"
+          style="
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            place-items: center;
+          ">
+          <div
+            style="
+              background: var(--palette-monochrome-surface);
+              padding: 20px;
+              border-radius: 8px;
+              width: 300px;
+              border: 1px solid var(--border);
+            ">
+            <h4 style="margin-top: 0; color: #fff; font-size: 16px">Añadir Enlace</h4>
+            <input
+              type="text"
+              id="notes-link-input"
+              placeholder="https://..."
+              style="
+                width: 100%;
+                padding: 8px;
+                margin-bottom: 15px;
+                background: var(--palette-monochrome-bg);
+                border: 1px solid var(--border);
+                color: #fff;
+                border-radius: 4px;
+                outline: none;
+              " />
+            <div style="display: flex; justify-content: flex-end; gap: 10px">
+              <button
+                id="notes-link-cancel"
+                style="
+                  background: transparent;
+                  border: none;
+                  color: var(--muted);
+                  cursor: pointer;
+                ">
+                Cancelar
+              </button>
+              <button
+                id="notes-link-confirm"
+                style="
+                  background: var(--palette-monochrome-accent);
+                  border: none;
+                  padding: 6px 12px;
+                  border-radius: 4px;
+                  color: #111;
+                  font-weight: bold;
+                  cursor: pointer;
+                ">
+                Añadir
+              </button>
+            </div>
+          </div>
+        </div>
 
         <button
           id="home-button"
@@ -1149,6 +1888,7 @@
           aria-label="Volver al escritorio"
           hidden></button>
       </div>
+
       <span id="dev-badge" class="dev-badge" hidden
         >VISTA DE DESARROLLO · DATOS DE PRUEBA</span
       >

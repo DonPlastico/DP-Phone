@@ -408,6 +408,33 @@
     world: {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /><path d="M3.6 9h16.8"/><path d="M3.6 15h16.8"/><path d="M11.5 3a17 17 0 0 0 0 18"/><path d="M12.5 3a17 17 0 0 1 0 18"/></g>',
     },
+    snake: {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 17c0-3 2-4 5-4h6c3 0 5 1 5 4s-2 4-5 4H9c-3 0-5-1-5-4z" /><path d="M8 13V9a4 4 0 0 1 8 0v4" /><path d="M12 3v4" /><circle cx="17" cy="17" r="1" fill="currentColor"/>',
+    },
+    flame: {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3c.5 1.5-.5 3-2 4s-3 2.5-3 5c0 3 2 6 5 6s5-3 5-6c0-1.5-.5-2.5-1-3.5-1 1-1.5 2-2.5 2-1.5 0-2-1-1.5-2.5.5-1.5 1-3 0-5z"/>',
+    },
+    "log-out": {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-2"/><path d="M9 12h12l-3-3m0 6l3-3"/>',
+    },
+    pin: {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4"/><path d="M9 15l-4.5 4.5"/><path d="M14.5 4l5.5 5.5"/>',
+    },
+    list: {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M4 6h1"/><path d="M4 12h1"/><path d="M4 18h1"/></g>',
+    },
+    "list-numbers": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M10 6h11"/><path d="M10 12h11"/><path d="M10 18h11"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18h-2"/><path d="M4 14h2v4"/></g>',
+    },
+    quote: {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5"/><path d="M19 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5"/>',
+    },
+    "checkbox-marked-outline": {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5z"/><path d="M9 12l2 2l4-4"/>',
+    },
+    flash: {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3v7h6l-8 11v-7H5l8-11z"/>',
+    },
   });
 
   const icons = window.DPPhoneIconify;
@@ -416,6 +443,20 @@
   // Función principal para generar el HTML del SVG
   window.iconifySvg = (name, className = "iconify-icon") => {
     let icon = icons?.[name];
+
+    // Si es un icono de Iconify externo (contiene ':')
+    if (!icon && name.includes(":")) {
+      const [prefix, iconName] = name.split(":");
+      const url = `https://api.iconify.design/${prefix}/${iconName}.svg`;
+
+      // Generamos un SVG transparente temporal con un <use> o descargamos el path.
+      // Para evitar problemas de CORS, usamos una etiqueta <img> pero con una clase especial
+      // que le quite el fondo para que se fusione con el botón.
+      const safeClass = className.replace(/[^a-z\d _-]/gi, "");
+
+      // Devolvemos una imagen que se tiñe de blanco puro para parecerse a los SVG
+      return `<img src="${url}" class="${safeClass} external-icon" data-icon="${name}" style="width: 60%; height: 60%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.9;" />`;
+    }
 
     if (!icon) {
       if (!warned.has(name)) {

@@ -14,6 +14,8 @@
   const bootProgressFill = document.querySelector("#boot-progress-fill");
   const signalIndicator = document.querySelector("#signal-indicator");
 
+  phone.classList.add("phone-hidden-state");
+
   const devMode =
     new URLSearchParams(location.search).has("dev") ||
     location.protocol === "file:" ||
@@ -39,6 +41,8 @@
 
   let uiStateSaveQueue = Promise.resolve(true);
   let hasUnreadNotifications = false;
+  let closePhoneTimeout = null;
+  let isClosingPhone = false;
 
   // Variables para persistir el fondo activo
   let savedActiveWallpaperIndex = 0;
@@ -47,6 +51,9 @@
   // Variables para el sistema de seguridad
   const PIN_STORAGE_KEY = "dpPhone.security";
   let securitySettings = JSON.parse(localStorage.getItem(PIN_STORAGE_KEY) || "{}");
+  // El PIN ya NO se guarda en el navegador (era el mismo para todos los móviles del jugador y
+  // cualquiera podía leerlo). Ahora vive en el servidor, por móvil, y se comprueba allí.
+  delete securitySettings.pin;
   let currentPinInput = "";
   let isLocked = false;
   let lockMethod = "pin";
@@ -57,6 +64,11 @@
   let phoneSettings = JSON.parse(
     localStorage.getItem(PHONE_STORAGE_KEY) || '{"callerId": true, "blocked": []}',
   );
+
+  // Blanco/Gris por defecto
+  let snakeFoodColor = localStorage.getItem("snakeFoodColor") || "#ffffff";
+  let snakeBodyColor = localStorage.getItem("snakeBodyColor") || "#d0d0d0";
+  let snakeGameMode = localStorage.getItem("snakeGameMode") || "wrap"; // "wrap" o "walls"
 
   // Helper seguro para acceder a settings del hardware
   function getHardwareSettings() {
@@ -802,14 +814,17 @@
   }
 
   function saveUiState() {
-    if (!window.PhoneData || !window.PhoneData.imei) return Promise.resolve(false);
+    // No intentar guardar si el teléfono se está cerrando
+    if (isClosingPhone || !state.hasBooted) return uiStateSaveQueue;
 
     const snapshot = {
       screen: state.screen === "licenses" ? "desktop" : state.screen,
-      imei: window.PhoneData.imei,
+      imei: window.PhoneData?.imei,
     };
     uiStateSaveQueue = uiStateSaveQueue
       .then(async () => {
+        // Volver a comprobar por si se cerró mientras esperaba
+        if (isClosingPhone) return false;
         const saved = await nui("saveUiState", snapshot);
         if (saved === false) throw new Error("No se pudo guardar el estado.");
         return true;
@@ -948,57 +963,61 @@
     }, 2000);
   }
 
+  // IMEI de los móviles que YA han arrancado en esta sesión (la pantalla de arranque solo sale la primera vez).
+  // Vive en memoria: se vacía solo al reiniciar el recurso, al volver a entrar al servidor
+  // o al cambiar de personaje (acción "resetBoot"). Un móvil nuevo (IMEI nuevo) siempre arranca.
+  const bootedImeis = new Set();
+
   function showPhone() {
-    // Si ya estamos en el teléfono, no hacemos nada (evita parpadeos)
-    if (state.hasBooted && !phone.hidden) return;
+    // Si ya está abierto y en pantalla, no hacemos nada
+    if (state.hasBooted && !phone.hidden && !phone.classList.contains("phone-hidden-state"))
+      return;
+
+    if (closePhoneTimeout) {
+      clearTimeout(closePhoneTimeout);
+      closePhoneTimeout = null;
+    }
+    isClosingPhone = false;
 
     hideOverlayApps();
     state.appOpen = false;
+
+    // Asegurarse de que el teléfono tenga la clase antes de mostrarlo
+    phone.classList.add("phone-hidden-state");
     phone.hidden = false;
     homeButton.hidden = true;
     syncCaseSeams();
-
     renderNotificationCenter();
 
+    // Pequeño timeout para asegurar que el navegador registre la clase inicial
     setTimeout(() => {
-      syncHeaderHeight();
-      if (window.lastMouseX === undefined) {
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        updatePhoneOpacity({ clientX: centerX, clientY: centerY, target: document.body });
-      } else {
+      phone.classList.remove("phone-hidden-state");
+      phone.classList.remove("phone-dimmed"); // Lo quitamos INMEDIATAMENTE para que suba viéndose al 100%
+
+      // Sincronizamos la memoria de JS
+      window.lastMouseX = window.innerWidth / 2;
+      window.lastMouseY = window.innerHeight / 2;
+
+      // Esperamos 850ms a que termine la animación de subida antes de calcular bordes
+      setTimeout(() => {
+        syncHeaderHeight();
         updatePhoneOpacity();
-      }
-    }, 50);
+      }, 850);
+    }, 10);
 
-    // NUEVA LÓGICA: Determinar si el móvil está configurado
-    let isConfigured = false;
-    if (window.PhoneData && window.PhoneData.hardware) {
-      isConfigured = window.PhoneData.hardware.is_configured === true;
-    }
-
-    // Si YA arrancó (skipBoot es true), PERO no está configurado, forzamos el Setup y cancelamos el restore
+    // Si ya hemos arrancado antes, restauramos la pantalla
     if (state.hasBooted) {
-      if (!isConfigured) {
-        bootScreen.hidden = true;
-        desktopStatusbar.hidden = true;
-        application.hidden = true;
-        desktopScreen.hidden = true;
-        homeButton.hidden = true;
-        document.getElementById("setup-screen").hidden = false;
-        initSetupWizard();
-      } else {
-        bootScreen.hidden = true;
-        desktopStatusbar.hidden = false;
-        restoreSavedScreen();
-      }
+      bootScreen.hidden = true;
+      desktopStatusbar.hidden = false;
+      if (lockPhoneIfNeeded()) return; // móvil bloqueado: primero el PIN
+      restoreSavedScreen();
       return;
     }
 
     // Si estamos en medio del boot, no reiniciamos
     if (state.booting) return;
 
-    // --- INICIO DEL BOOT NORMAL ---
+    // --- INICIO DEL BOOT ---
     state.screen = "desktop";
     application.hidden = true;
     desktopStatusbar.hidden = true;
@@ -1036,12 +1055,22 @@
       bootProgress.setAttribute("aria-valuenow", "100");
       bootScreen.hidden = true;
 
+      // --- LÓGICA DE CONFIGURACIÓN INICIAL (SOLO DB) ---
+      let isConfigured = false;
+
+      if (window.PhoneData && window.PhoneData.hardware) {
+        isConfigured = window.PhoneData.hardware.is_configured === true;
+      }
+
       console.log(
         "[DEBUG DP-PHONE] ¿Está configurado?:",
         isConfigured,
         "Valor crudo:",
         window.PhoneData?.hardware?.is_configured,
       );
+
+      // Este móvil ya ha arrancado: hasta reiniciar sesión/recurso no vuelve a salir la pantalla de arranque
+      if (isConfigured && window.PhoneData?.imei) bootedImeis.add(window.PhoneData.imei);
 
       if (!isConfigured) {
         // Si es NUEVO, mostrar Setup Wizard
@@ -1057,6 +1086,7 @@
         application.hidden = true;
         desktopScreen.hidden = false;
         homeButton.hidden = true;
+        lockPhoneIfNeeded(); // pide PIN / huella / Face ID si el móvil lo tiene
         setTimeout(flushPendingNotification, 400);
       }
     }, durationMs);
@@ -1114,6 +1144,11 @@
     desktopStatusbar.hidden = false;
     desktopScreen.hidden = false;
     homeButton.hidden = true;
+
+    // Ocultar juego y detener bucle
+    const snake = document.getElementById("snake-app");
+    if (snake) snake.hidden = true;
+    if (window.snakeInterval) clearInterval(window.snakeInterval);
   }
 
   // ---- iFruit Store: apps instaladas, cola de descargas y lista ----
@@ -1367,14 +1402,80 @@
     handler();
   }
 
+  // ---- CÁMARA: ver el mundo a través de la pantalla ----
+  // La funda (.phone-case-outer) y el marco (.phone-case) son rectángulos RELLENOS que van por detrás de la pantalla.
+  // Con la cámara abierta les recortamos un agujero exacto del tamaño de la pantalla (clip-path) y así,
+  // al ser transparente la pantalla, se ve el juego en vez de la parte trasera del móvil.
+  let cameraHoleObserver = null;
+  let cameraModeActive = false; // para avisar a Lua solo cuando cambia (primera persona)
+
+  function cutCameraHole() {
+    const screen = phoneScreen;
+    const r = parseFloat(getComputedStyle(screen).borderTopLeftRadius) || 20;
+    phone.querySelectorAll(".phone-case-outer, .phone-case").forEach((el) => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const x = screen.offsetLeft - el.offsetLeft;
+      const y = screen.offsetTop - el.offsetTop;
+      const sw = screen.offsetWidth;
+      const sh = screen.offsetHeight;
+      const m = 30; // margen para no recortar las sombras exteriores
+      const outer = `M${-m} ${-m}H${w + m}V${h + m}H${-m}Z`;
+      const hole =
+        `M${x + r} ${y}H${x + sw - r}A${r} ${r} 0 0 1 ${x + sw} ${y + r}` +
+        `V${y + sh - r}A${r} ${r} 0 0 1 ${x + sw - r} ${y + sh}H${x + r}` +
+        `A${r} ${r} 0 0 1 ${x} ${y + sh - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`;
+      el.style.clipPath = `path(evenodd, "${outer} ${hole}")`;
+    });
+  }
+
+  function enterCameraMode() {
+    phoneScreen.classList.add("camera-active"); // pantalla transparente
+    phone.classList.add("camera-mode");
+    cutCameraHole();
+    // Lua pasa a primera persona (y oculta el prop de la mano) mientras la cámara esté abierta
+    cameraModeActive = true;
+    nui("cameraMode", { active: true }).catch(() => {});
+    if (!cameraHoleObserver && window.ResizeObserver) {
+      cameraHoleObserver = new ResizeObserver(cutCameraHole); // por si cambia el tamaño (móvil <-> tablet)
+      cameraHoleObserver.observe(phoneScreen);
+    }
+  }
+
+  function exitCameraMode() {
+    window.dpCameraReset?.(); // suelta el arrastre si estaba girando la cámara
+    if (cameraModeActive) {
+      cameraModeActive = false;
+      nui("cameraMode", { active: false }).catch(() => {}); // Lua restaura tu vista anterior
+    }
+    phoneScreen.classList.remove("camera-active");
+    phone.classList.remove("camera-mode");
+    phone.querySelectorAll(".phone-case-outer, .phone-case").forEach((el) => {
+      el.style.clipPath = "";
+    });
+    if (cameraHoleObserver) {
+      cameraHoleObserver.disconnect();
+      cameraHoleObserver = null;
+    }
+  }
+
   function hideOverlayApps() {
     state.storeOpen = false;
     storeScreen.hidden = true;
     state.settingsOpen = false;
     settingsScreen.hidden = true;
     state.weatherOpen = false;
-    document.getElementById("weather-app").hidden = true;
     document.getElementById("licenses-app").hidden = true;
+    document.getElementById("notes-app").hidden = true;
+    document.getElementById("camera-app").hidden = true;
+    document.getElementById("weather-app").hidden = true;
+    ["contacts-app", "messages-app", "dialer-app"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.hidden = true;
+    });
+
+    exitCameraMode(); // la pantalla vuelve a tener fondo y la funda deja de tener agujero
+
     if (weatherInterval) {
       clearInterval(weatherInterval);
       weatherInterval = null;
@@ -1592,11 +1693,11 @@
             </button>
             <div class="setting-item" style="background:transparent; border:none; padding: 14px 16px;">
               <div class="setting-text"><strong>Utilizar Huella</strong></div>
-              <label class="toggle-switch"><input type="checkbox" id="toggle-fingerprint" ${securitySettings.fingerprint ? "checked" : ""}><span class="slider"></span></label>
+              <label class="toggle-switch"><input type="checkbox" id="toggle-fingerprint"><span class="slider"></span></label>
             </div>
             <div class="setting-item" style="background:transparent; border:none; padding: 14px 16px;">
               <div class="setting-text"><strong>Utilizar Face ID</strong></div>
-              <label class="toggle-switch"><input type="checkbox" id="toggle-faceid" ${securitySettings.faceid ? "checked" : ""}><span class="slider"></span></label>
+              <label class="toggle-switch"><input type="checkbox" id="toggle-faceid"><span class="slider"></span></label>
             </div>
         </div>
       `,
@@ -2527,15 +2628,24 @@
       return;
     }
 
-    if (event.target.id === "toggle-fingerprint") {
-      securitySettings.fingerprint = event.target.checked;
-      saveSecuritySettings();
-      return;
-    }
-
-    if (event.target.id === "toggle-faceid") {
-      securitySettings.faceid = event.target.checked;
-      saveSecuritySettings();
+    if (event.target.id === "toggle-fingerprint" || event.target.id === "toggle-faceid") {
+      const hw = phoneHw();
+      if (hw.has_pin !== true || hw.is_owner !== true) {
+        event.target.checked = false;
+        showNotification({
+          appName: "Seguridad",
+          icon: "alert-triangle",
+          title: "No disponible",
+          message: "Solo el dueño del móvil puede usar huella o Face ID, y el móvil necesita un PIN.",
+        });
+        return;
+      }
+      const key = event.target.id === "toggle-fingerprint" ? "fingerprint" : "faceid";
+      hw[key] = event.target.checked;
+      nui("saveBiometrics", {
+        fingerprint: hw.fingerprint === true,
+        faceid: hw.faceid === true,
+      }).catch(() => {});
       return;
     }
 
@@ -2569,7 +2679,14 @@
       const box = document.querySelector(".pin-blur-box");
       const text = box.querySelector(".pin-hidden-text");
       if (text.textContent === "••••") {
-        text.textContent = securitySettings.pin || "----";
+        text.textContent = "…";
+        nui("getPin")
+          .then((pin) => {
+            text.textContent = typeof pin === "string" && pin ? pin : devMode ? "1234" : "----";
+          })
+          .catch(() => {
+            text.textContent = "----";
+          });
       } else {
         text.textContent = "••••";
       }
@@ -2901,6 +3018,7 @@
   const originalSetActiveSettingsTab = setActiveSettingsTab;
   setActiveSettingsTab = function (tabId) {
     originalSetActiveSettingsTab(tabId);
+    if (tabId === "security") setTimeout(syncSecurityToggles, 10);
     if (tabId === "wallpaper") {
       if (activeCustomUrl) {
         selectedWallpaperIndex = -(customUrls.indexOf(activeCustomUrl) + 1);
@@ -2914,16 +3032,48 @@
     }
   };
 
+  // ---- BLOQUEO DEL MÓVIL (PIN / contraseña / huella / Face ID) ----
+  // El servidor nos dice en hardware: has_pin, pin_type ('pin' | 'password'), unlocked, is_owner,
+  // fingerprint y faceid. La comprobación del PIN y de la biometría se hace SIEMPRE en el servidor.
+  const phoneHw = () => window.PhoneData?.hardware || {};
+  const phoneNeedsUnlock = () => phoneHw().has_pin === true && phoneHw().unlocked !== true;
+  const biometricAvailable = (method) =>
+    phoneHw().has_pin === true && phoneHw().is_owner === true && phoneHw()[method] === true;
+
   function initSecurity() {
-    if (securitySettings.pin) {
-      isLocked = true;
-      lockMethod = "pin";
-      showLockScreen();
-    }
+    // Limpia el PIN antiguo que pudiera quedar guardado en el navegador
+    saveSecuritySettings();
   }
 
   function saveSecuritySettings() {
-    localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(securitySettings));
+    const { pin, ...rest } = securitySettings; // nunca se guarda el PIN en el navegador
+    localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(rest));
+  }
+
+  // Si el móvil abierto tiene PIN y aún no lo has desbloqueado, muestra la pantalla de bloqueo.
+  // Devuelve true si se ha bloqueado.
+  function lockPhoneIfNeeded() {
+    const lockScreen = document.getElementById("lock-screen");
+    if (!phoneNeedsUnlock()) {
+      if (isLocked && lockScreen) {
+        lockScreen.hidden = true;
+        lockScreen.style.display = "";
+      }
+      isLocked = false;
+      return false;
+    }
+
+    isLocked = true;
+    hideOverlayApps();
+    state.appOpen = false;
+    lockMethod = biometricAvailable("faceid")
+      ? "faceid"
+      : biometricAvailable("fingerprint")
+        ? "fingerprint"
+        : "pin";
+    showLockScreen();
+    if (lockMethod === "faceid") setTimeout(() => tryBiometric("faceid"), 700);
+    return true;
   }
 
   function showLockScreen() {
@@ -2949,34 +3099,46 @@
     const fingerprintArea = document.getElementById("fingerprint-area");
     const faceidArea = document.getElementById("faceid-area");
     const switchBtn = document.getElementById("switch-lock-method");
+    const passwordForm = document.getElementById("lock-password-form");
+    const passwordInput = document.getElementById("lock-password-input");
 
     // Verificamos que los elementos existan antes de tocarlos
     if (!title || !pinDots || !numpad) return;
 
-    const hasFingerprint = securitySettings.fingerprint && securitySettings.pin;
-    const hasFaceId = securitySettings.faceid && securitySettings.pin;
+    const usesPassword = phoneHw().pin_type === "password";
+    if (passwordForm) passwordForm.hidden = true;
+    if (passwordInput) passwordInput.value = "";
 
-    if (lockMethod === "fingerprint" && hasFingerprint) {
+    if (lockMethod === "fingerprint" && biometricAvailable("fingerprint")) {
       title.textContent = "Prueba tu huella";
       pinDots.hidden = true;
       numpad.hidden = true;
       if (fingerprintArea) fingerprintArea.hidden = false;
       if (faceidArea) faceidArea.hidden = true;
       if (switchBtn) switchBtn.hidden = false;
-    } else if (lockMethod === "faceid" && hasFaceId) {
-      title.textContent = "Desbloqueado";
+    } else if (lockMethod === "faceid" && biometricAvailable("faceid")) {
+      title.textContent = "Reconociendo tu cara…";
       pinDots.hidden = true;
       numpad.hidden = true;
       if (fingerprintArea) fingerprintArea.hidden = true;
       if (faceidArea) faceidArea.hidden = false;
       if (switchBtn) switchBtn.hidden = false;
     } else {
-      title.textContent = "Introduce tu código";
-      pinDots.hidden = false;
-      numpad.hidden = false;
+      lockMethod = "pin";
+      title.textContent = usesPassword ? "Introduce tu contraseña" : "Introduce tu código";
+      pinDots.hidden = usesPassword;
+      numpad.hidden = usesPassword;
+      if (passwordForm) passwordForm.hidden = !usesPassword;
       if (fingerprintArea) fingerprintArea.hidden = true;
       if (faceidArea) faceidArea.hidden = true;
       if (switchBtn) switchBtn.hidden = true;
+      if (usesPassword && passwordInput) setTimeout(() => passwordInput.focus(), 50);
+    }
+
+    if (window.iconifySvg) {
+      lockScreen.querySelectorAll("[data-iconify]").forEach((el) => {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      });
     }
   }
 
@@ -2984,18 +3146,15 @@
     const lockScreen = document.getElementById("lock-screen");
     if (!lockScreen) return;
     lockScreen.hidden = true;
+    lockScreen.style.display = "";
     isLocked = false;
     currentPinInput = "";
+    document.activeElement?.blur?.(); // por si estaba escribiendo la contraseña
     desktopScreen.hidden = false;
     desktopStatusbar.hidden = false;
-    homeButton.hidden = false;
-
-    const saved = JSON.parse(localStorage.getItem("dpPhone.activeWallpaper") || "{}");
-    if (saved.type === "custom" && saved.url) {
-      desktopScreen.style.backgroundImage = `url("${saved.url}")`;
-    } else if (saved.type === "default" && typeof saved.index === "number") {
-      desktopScreen.style.backgroundImage = `url("images/backgrounds/bg_${saved.index}.webp")`;
-    }
+    homeButton.hidden = true;
+    state.screen = "desktop";
+    state.appOpen = false;
   }
 
   function updatePinDots() {
@@ -3005,42 +3164,97 @@
     });
   }
 
-  function verifyPin(pin) {
-    if (pin === securitySettings.pin) {
-      hideLockScreen();
-      showNotification({
-        appName: "Seguridad",
-        icon: "lock",
-        title: "Desbloqueado",
-        message: "PIN verificado correctamente.",
-      });
-      return true;
-    } else {
-      pinAttempts++;
-      currentPinInput = "";
-      updatePinDots();
-      showNotification({
-        appName: "Seguridad",
-        icon: "alert-triangle",
-        title: "PIN incorrecto",
-        message: "El código introducido no es válido. Inténtalo de nuevo.",
-      });
-      const lockContent = document.querySelector(".lock-content");
-      lockContent.classList.add("shake");
-      setTimeout(() => lockContent.classList.remove("shake"), 500);
-      return false;
+  function onUnlocked(icon, title, message) {
+    if (window.PhoneData?.hardware) window.PhoneData.hardware.unlocked = true;
+    hideLockScreen();
+    showNotification({ appName: "Seguridad", icon, title, message });
+  }
+
+  function lockError(message) {
+    currentPinInput = "";
+    updatePinDots();
+    const passwordInput = document.getElementById("lock-password-input");
+    if (passwordInput) passwordInput.value = "";
+    showNotification({
+      appName: "Seguridad",
+      icon: "alert-triangle",
+      title: "No se ha podido desbloquear",
+      message,
+    });
+    const lockContent = document.querySelector(".lock-content");
+    lockContent?.classList.add("shake");
+    setTimeout(() => lockContent?.classList.remove("shake"), 500);
+  }
+
+  let verifyingPin = false;
+  async function verifyPin(pin) {
+    if (verifyingPin) return false;
+    verifyingPin = true;
+    let result = null;
+    try {
+      result = await nui("verifyPin", { pin: String(pin) });
+    } catch (e) {
+      result = null;
+    } finally {
+      verifyingPin = false;
     }
+
+    // En modo desarrollo nui() devuelve true
+    if (result === true || (result && result.ok)) {
+      onUnlocked("lock", "Desbloqueado", "PIN verificado correctamente.");
+      return true;
+    }
+
+    pinAttempts++;
+    if (result && result.reason === "locked") {
+      lockError(`Demasiados intentos. Espera ${result.wait} segundos.`);
+    } else if (result && result.reason === "wrong") {
+      lockError(
+        result.left === 1
+          ? "Código incorrecto. Te queda 1 intento antes de que se bloquee."
+          : `Código incorrecto. Te quedan ${result.left} intentos.`,
+      );
+    } else {
+      lockError("Código incorrecto. Inténtalo de nuevo.");
+    }
+    return false;
+  }
+
+  // Huella / Face ID: el servidor solo lo acepta si eres el dueño del móvil y lo tienes activado
+  async function tryBiometric(method) {
+    let ok = false;
+    try {
+      const result = await nui("biometricUnlock", { method });
+      ok = result === true;
+    } catch (e) {
+      ok = false;
+    }
+
+    if (!isLocked) return;
+    if (ok) {
+      onUnlocked(
+        method === "faceid" ? "face-id" : "fingerprint",
+        method === "faceid" ? "Cara reconocida" : "Huella verificada",
+        "Desbloqueo biométrico completado.",
+      );
+      return;
+    }
+
+    lockMethod = "pin";
+    showLockScreen();
+    lockError(method === "faceid" ? "No se ha reconocido tu cara." : "Huella no reconocida.");
   }
 
   document.getElementById("numpad")?.addEventListener("click", (e) => {
     const btn = e.target.closest("button");
-    if (!btn) return;
+    if (!btn || verifyingPin) return;
     if (btn.dataset.pin) {
       if (currentPinInput.length < 4) {
         currentPinInput += btn.dataset.pin;
         updatePinDots();
         if (currentPinInput.length === 4) {
-          setTimeout(() => verifyPin(currentPinInput), 200);
+          const pin = currentPinInput;
+          setTimeout(() => verifyPin(pin), 200);
         }
       }
     } else if (btn.dataset.action === "clear") {
@@ -3052,23 +3266,38 @@
     }
   });
 
+  document.getElementById("lock-password-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = document.getElementById("lock-password-input");
+    const value = input ? input.value : "";
+    if (value.length > 0) verifyPin(value);
+  });
+
   document.getElementById("btn-fingerprint")?.addEventListener("click", () => {
     // Simulamos un pequeño retraso de escaneo
-    setTimeout(() => {
-      hideLockScreen();
-      showNotification({
-        appName: "Seguridad",
-        icon: "fingerprint",
-        title: "Huella verificada",
-        message: "Desbloqueo biométrico completado.",
-      });
-    }, 800);
+    setTimeout(() => tryBiometric("fingerprint"), 800);
   });
 
   document.getElementById("switch-lock-method")?.addEventListener("click", () => {
     lockMethod = "pin";
     showLockScreen();
   });
+
+  // Ajustes > Seguridad: los interruptores reflejan lo guardado en ESTE móvil
+  function syncSecurityToggles() {
+    const hw = phoneHw();
+    const canUse = hw.has_pin === true && hw.is_owner === true;
+    [
+      ["toggle-fingerprint", "fingerprint"],
+      ["toggle-faceid", "faceid"],
+    ].forEach(([id, key]) => {
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.checked = hw[key] === true;
+      input.disabled = !canUse;
+      input.closest(".setting-item")?.classList.toggle("is-disabled", !canUse);
+    });
+  }
 
   function renderBlockedList() {
     const container = document.getElementById("blocked-list-container");
@@ -3373,6 +3602,98 @@
     settings: openSettings,
     weather: openWeatherApp,
     licenses: openLicensesApp,
+
+    camera: () => {
+      openCameraApp();
+    },
+    gallery: () => {
+      openGalleryApp();
+    },
+
+    notes: () => {
+      openNotesApp();
+    },
+
+    phone: () => {
+      openDialerApp();
+    },
+    messages: () => {
+      openMessagesApp();
+    },
+    contacts: () => {
+      openContactsApp();
+    },
+
+    snake: async () => {
+      if (!state.hasBooted || state.booting || phone.hidden) return;
+
+      hideOverlayApps();
+      state.screen = "snake";
+      state.appOpen = true;
+
+      document.getElementById("snake-app").hidden = false;
+      document.getElementById("snake-logo-screen").hidden = false;
+      document.getElementById("snake-game-screen").hidden = true;
+      document.getElementById("snake-gameover").hidden = true;
+      document.getElementById("snake-register-modal").hidden = true;
+
+      // Cerrar el panel del ranking por defecto al abrir la app
+      document.getElementById("snake-ranking-panel").classList.remove("active");
+
+      if (window.snakeInterval) clearInterval(window.snakeInterval);
+      homeButton.hidden = false;
+
+      const container = document.getElementById("snake-ranking-content");
+      if (container)
+        container.innerHTML = `<div class="snake-ranking-loading">Cargando ranking...</div>`;
+
+      try {
+        // Pedimos el ranking y el usuario en una sola llamada
+        const data = await nui("getSnakeRanking", {});
+
+        if (data) {
+          // 1. Guardamos el usuario si viene en la respuesta
+          if (data.user && data.user.username) {
+            snakeUser = data.user;
+          } else {
+            snakeUser = null;
+          }
+
+          // 2. Pintamos el ranking
+          if (data.ranking) {
+            renderSnakeRanking(data.ranking);
+          }
+
+          // 3. Si no hay usuario, mostramos el aviso en la parte superior del ranking
+          if (!snakeUser) {
+            // Añadimos un mensaje arriba del ranking sin borrar la lista
+            const warningDiv = document.createElement("div");
+            warningDiv.id = "snake-register-warning-box";
+            warningDiv.style.cssText =
+              "padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 12px; color: #a0a0a0; flex-shrink: 0;";
+            warningDiv.innerHTML = `Aún no tienes un nombre registrado. <br> <button class="snake-btn-ranking" id="btn-force-register" style="margin-top: 8px; padding: 4px 12px; font-size: 11px; width: 100%;">Registrarme</button>`;
+
+            // Si ya existía, lo borramos para evitar duplicados
+            const existingWarning = document.getElementById("snake-register-warning-box");
+            if (existingWarning) existingWarning.remove();
+
+            container.prepend(warningDiv);
+
+            // Asignamos el evento al botón recién creado
+            document.getElementById("btn-force-register")?.addEventListener("click", () => {
+              // Cerramos el panel lateral
+              document.getElementById("snake-ranking-panel").classList.remove("active");
+              // Mostramos el modal de registro
+              document.getElementById("snake-register-modal").hidden = false;
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar el ranking:", error);
+        if (container)
+          container.innerHTML = `<div class="snake-ranking-loading">Error al conectar con el servidor.</div>`;
+      }
+    },
   };
 
   let selectedApp = null;
@@ -3644,40 +3965,102 @@
 
   renderDesktopApps();
 
+  // Variable para no spamear a Lua con el mismo estado
+  let isPointerOutside = false;
+
   function updatePhoneOpacity(event) {
-    // Si la configuración dice que NO se atenúe, nos aseguramos de que esté 100% opaco
     if (state.config.dimPhoneWhenMouseOut === false) {
-      phone.classList.remove("phone-dimmed"); // Eliminamos la clase por si acaso
-      phone.style.opacity = "1"; // Forzamos la opacidad visualmente
+      phone.classList.remove("phone-dimmed");
+      phone.style.opacity = "1";
       return;
     }
 
-    // Si está activado, volvemos a limpiar el estilo en línea para que el CSS tome el control
     phone.style.opacity = "";
 
     const mouseX = event ? event.clientX : window.lastMouseX;
     const mouseY = event ? event.clientY : window.lastMouseY;
-    if (mouseX === undefined || mouseY === undefined) return;
 
-    const phoneBounds = phone.querySelector(".phone-case").getBoundingClientRect();
+    if (mouseX === undefined || mouseY === undefined || isNaN(mouseX) || isNaN(mouseY)) return;
+
+    const caseEl = phone.querySelector(".phone-case");
+    if (!caseEl) return;
+
+    const bounds = caseEl.getBoundingClientRect();
+
     const pointerInsideCase =
-      mouseX >= phoneBounds.left &&
-      mouseX <= phoneBounds.right &&
-      mouseY >= phoneBounds.top &&
-      mouseY <= phoneBounds.bottom;
+      mouseX >= bounds.left &&
+      mouseX <= bounds.right &&
+      mouseY >= bounds.top &&
+      mouseY <= bounds.bottom;
+
     const pointerOverControl =
       event && event.target instanceof Element && event.target.closest(".hardware-button");
 
-    phone.classList.toggle("phone-dimmed", !pointerInsideCase && !pointerOverControl);
+    const isOutsideNow = !pointerInsideCase && !pointerOverControl;
+
+    phone.classList.toggle("phone-dimmed", isOutsideNow);
+
+    // Avisar a Lua si el ratón ha salido o entrado de la tablet
+    if (isOutsideNow !== isPointerOutside) {
+      isPointerOutside = isOutsideNow;
+
+      // Usamos la función interna nui() que ya procesa bien las URLs de FiveM
+      if (!devMode && state.hasBooted) {
+        nui("cursorState", { isOutside: isPointerOutside }).catch(() => {});
+      }
+    }
   }
 
   document.addEventListener("pointermove", (e) => {
+    // Mientras se arrastra para girar la cámara, el cursor está oculto: no atenuamos la tablet
+    if (document.body.classList.contains("camera-dragging")) return;
     window.lastMouseX = e.clientX;
     window.lastMouseY = e.clientY;
     updatePhoneOpacity(e);
   });
 
   document.addEventListener("pointerleave", () => phone.classList.add("phone-dimmed"));
+
+  // ---- MOVIMIENTO LIBRE ----
+  // Con el móvil/tablet abierto SIEMPRE puedes moverte con WASD. Solo se bloquea mientras hay un
+  // campo de texto con el foco (para poder escribir) o mientras juegas a la Víbora (usa WASD).
+  const TYPING_SELECTOR =
+    "textarea, select, [contenteditable=''], [contenteditable='true'], " +
+    "input:not([type='button']):not([type='checkbox']):not([type='radio']):not([type='range'])" +
+    ":not([type='submit']):not([type='reset']):not([type='color']):not([type='file'])";
+  let typingReported = null;
+
+  function isSnakeRunning() {
+    const app = document.getElementById("snake-app");
+    const game = document.getElementById("snake-game-screen");
+    return !!app && !app.hidden && !!game && !game.hidden;
+  }
+
+  function reportTypingFocus(force = false) {
+    const el = document.activeElement;
+    const typing =
+      (el instanceof Element && el.matches(TYPING_SELECTOR) && !el.disabled && !el.readOnly) ||
+      isSnakeRunning();
+    if (!force && typing === typingReported) return;
+    typingReported = typing;
+    if (!devMode) nui("inputFocus", { focused: typing }).catch(() => {});
+  }
+
+  document.addEventListener("focusin", () => setTimeout(reportTypingFocus, 0));
+  document.addEventListener("focusout", () => setTimeout(reportTypingFocus, 0));
+  if (window.MutationObserver) {
+    const snakeObserver = new MutationObserver(() => reportTypingFocus());
+    ["snake-app", "snake-game-screen"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) snakeObserver.observe(el, { attributes: true, attributeFilter: ["hidden"] });
+    });
+  }
+  // Al abrir, Lua empieza en "puede moverse"; le confirmamos el estado real
+  window.addEventListener("message", (event) => {
+    if (event.data && event.data.action === "openPhone") {
+      setTimeout(() => reportTypingFocus(true), 50);
+    }
+  });
 
   document.addEventListener("keydown", (event) => {
     if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "a") return;
@@ -3701,14 +4084,32 @@
   }
 
   async function closePhone() {
+    // Si ya está cerrado o en proceso de cierre, no hacemos nada
+    if (phone.hidden || phone.classList.contains("phone-hidden-state") || isClosingPhone)
+      return;
+
     await saveUiState();
     hideOverlayApps();
+
+    isClosingPhone = true;
+
+    // Disparamos la animación de bajada inmediatamente
+    phone.classList.add("phone-hidden-state");
+
+    // Timeout seguro para ocultarlo realmente
+    closePhoneTimeout = setTimeout(() => {
+      if (isClosingPhone) {
+        phone.hidden = true;
+        isClosingPhone = false;
+      }
+      closePhoneTimeout = null;
+    }, 850);
+
     if (devMode) {
-      if (state.booting) cancelBoot();
-      state.appOpen = false;
-      phone.hidden = true;
       return;
     }
+
+    // Avisamos a LUA para que quite el cursor de la pantalla al instante
     await nui("exit");
   }
 
@@ -4047,6 +4448,7 @@
       hideOverlayApps();
       if (state.booting) cancelBoot();
       state.hasBooted = false;
+      bootedImeis.clear(); // todos los móviles volverán a arrancar la próxima vez que se abran
       state.appOpen = false;
       state.screen = "desktop";
       application.hidden = true;
@@ -4077,28 +4479,20 @@
       // --- FORZAR LIMPIEZA DE DATOS ANTERIORES ---
       window.PhoneData = null;
 
-      // AÑADE ESTO: Leer el skipBoot para saber si ya arrancó o no
-      state.hasBooted = data.data.skipBoot === true;
+      // ¿Este móvil ya arrancó en esta sesión? Si es así, NO se repite la pantalla de arranque.
+      // Si en la DB no está configurado, vuelve a arrancar y a mostrar el asistente.
+      const openedPhone = data.data?.phoneData;
+      state.hasBooted = Boolean(
+        openedPhone?.imei &&
+        bootedImeis.has(openedPhone.imei) &&
+        openedPhone.hardware?.is_configured === true,
+      );
 
       state.screen = ["weather", "settings", "store", "licenses"].includes(
         data.data?.lastScreen,
       )
         ? data.data.lastScreen
         : "desktop";
-
-      // --- RESETEAR UI ---
-      hideOverlayApps();
-      document.getElementById("setup-screen").hidden = true; // Ocultamos el setup por si el otro móvil lo dejó abierto
-      setupCurrentPhase = 0; // Reseteamos la fase del setup
-      setupPinInput = "";
-
-      // Limpiar los inputs del setup si existen
-      const passInput = document.getElementById("setup-password-input");
-      if (passInput) passInput.value = "";
-      const cloudUser = document.getElementById("cloud-user");
-      const cloudPass = document.getElementById("cloud-pass");
-      if (cloudUser) cloudUser.value = "";
-      if (cloudPass) cloudPass.value = "";
 
       if (data.data && data.data.phoneData) {
         window.PhoneData = data.data.phoneData;
@@ -4236,30 +4630,75 @@
 
     if (data.action === "setVisible") {
       if (data.data?.visible) {
+        // 1. CANCELAR EL CIERRE SI SE ABRE RÁPIDO DE NUEVO
+        if (closePhoneTimeout) {
+          clearTimeout(closePhoneTimeout);
+          closePhoneTimeout = null;
+        }
+        isClosingPhone = false;
+
         if (state.hasBooted) {
           bootScreen.hidden = true;
           phone.hidden = false;
-          restoreSavedScreen();
+          if (!lockPhoneIfNeeded()) restoreSavedScreen();
         } else {
           showPhone();
         }
-        setTimeout(() => updatePhoneOpacity(), 50);
+
+        // Animamos hacia arriba quitando el estado oculto
+        phone.classList.remove("phone-hidden-state");
+        phone.classList.remove("phone-dimmed"); // Lo quitamos INMEDIATAMENTE
+
+        // Reseteamos las coordenadas del ratón
+        window.lastMouseX = window.innerWidth / 2;
+        window.lastMouseY = window.innerHeight / 2;
+
+        // Esperamos 850ms (fin de la animación) para volver a revisar el ratón
+        setTimeout(() => updatePhoneOpacity(), 850);
       } else {
+        // En lugar de cerrarlo de golpe, lo animamos hacia abajo
         hideOverlayApps();
         if (state.booting) cancelBoot();
         state.appOpen = false;
-        application.hidden = true;
-        desktopStatusbar.hidden = true;
-        desktopScreen.hidden = true;
-        homeButton.hidden = true;
-        phone.hidden = true;
+
+        // 2. INDICAR QUE ESTÁ EN PROCESO DE CIERRE
+        isClosingPhone = true;
+
+        // Desencadena la animación CSS (hacia abajo y fadeout suave)
+        phone.classList.add("phone-hidden-state");
+
+        // 3. ASIGNAR EL TIMEOUT A LA VARIABLE GLOBAL (para poder cancelarlo si lo abren)
+        if (closePhoneTimeout) clearTimeout(closePhoneTimeout);
+
+        closePhoneTimeout = setTimeout(() => {
+          if (isClosingPhone) {
+            application.hidden = true;
+            desktopStatusbar.hidden = true;
+            desktopScreen.hidden = true;
+            homeButton.hidden = true;
+            phone.hidden = true;
+            isClosingPhone = false;
+          }
+        }, 800);
       }
     }
   });
 
-  window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !devMode) closePhone();
-  });
+  window.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault(); // Detiene el comportamiento predeterminado
+        event.stopPropagation(); // Evita que se propague hacia FiveM
+
+        if (!devMode) {
+          // Si estamos cerrando con el ratón fuera (dimmed), cerramos normal
+          closePhone();
+        }
+      }
+    },
+    true,
+  ); // El 'true' usa la fase de captura, garantizando que este script intercepte primero
 
   if (devMode) {
     document.querySelector("#dev-badge").hidden = false;
@@ -4580,13 +5019,6 @@
     const pinPanel = document.getElementById("setup-panel-pin");
     const cloudPanel = document.getElementById("setup-panel-cloud");
 
-    // Resetear variables vitales
-    setupCurrentPhase = 0;
-    setupPinInput = "";
-
-    const passInput = document.getElementById("setup-password-input");
-    if (passInput) passInput.value = "";
-
     // --- FORZAR QUE EL PANEL DE IDIOMA SEA EL ACTIVO AL INICIAR ---
     panels.forEach((p) => {
       p.classList.remove("active");
@@ -4613,7 +5045,6 @@
     const numpad = document.getElementById("setup-numpad");
     const pinTypeBtns = setupScreen.querySelectorAll(".setup-pin-type-btn");
 
-    // Función para actualizar los círculos del PIN
     const updatePinDotsUI = () => {
       pinDotsContainer.innerHTML = "";
       for (let i = 0; i < currentMaxPinLength; i++) {
@@ -4628,7 +5059,6 @@
       window.updateSetupPinDots();
     };
 
-    // Función para rellenar los círculos
     window.updateSetupPinDots = () => {
       const dots = pinDotsContainer.querySelectorAll("span");
       dots.forEach((dot, index) => {
@@ -4636,67 +5066,50 @@
       });
     };
 
-    // Función para cambiar el modo (UI)
     const setPinMode = (mode) => {
       currentPinMode = mode;
-      setupPinInput = ""; // Limpiamos al cambiar
-
-      // Referencias a los contenedores
+      setupPinInput = "";
       const passwordWrapper = document.getElementById("password-input-wrapper");
       const pinPanelDescription = document.querySelector("#setup-panel-pin p");
 
       if (mode === "pass") {
-        // Modo Contraseña
         pinDotsContainer.hidden = true;
         if (passwordWrapper) passwordWrapper.hidden = false;
         passwordInput.value = "";
         passwordInput.focus();
-        numpad.classList.add("disabled"); // Bloquea el teclado numérico
-
-        // Cambiar el texto descriptivo
-        if (pinPanelDescription) {
+        numpad.classList.add("disabled");
+        if (pinPanelDescription)
           pinPanelDescription.textContent =
             "Una contraseña se usa para proteger tu dispositivo y es necesario para desbloquearlo.";
-        }
       } else {
-        // Modo PIN (4 u 8)
         pinDotsContainer.hidden = false;
         if (passwordWrapper) passwordWrapper.hidden = true;
         passwordInput.value = "";
         numpad.classList.remove("disabled");
         currentMaxPinLength = mode === "8" ? 8 : 4;
         updatePinDotsUI();
-
-        // Restaurar el texto descriptivo original
-        if (pinPanelDescription) {
+        if (pinPanelDescription)
           pinPanelDescription.textContent =
             "Un código PIN se usa para proteger tu dispositivo y es necesario para desbloquearlo.";
-        }
       }
     };
 
-    // Evento de clic en los botones de tipo
     pinTypeBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
         if (btn.classList.contains("active")) return;
-
         pinTypeBtns.forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
-
         setPinMode(btn.dataset.type);
       });
     });
 
-    // Inicializar (por defecto PIN de 4)
     setPinMode("4");
 
-    // --- FUNCIÓN PARA CAMBIAR DE PANEL Y BLOQUEAR/DESBLOQUEAR ---
     function setActivePanel(targetPanel) {
       panels.forEach((p) => {
         p.classList.remove("active");
         p.classList.add("locked");
       });
-
       targetPanel.classList.remove("locked");
       targetPanel.classList.add("active");
 
@@ -4704,6 +5117,56 @@
       if (targetPanel.id === "setup-panel-pin") setupCurrentPhase = 1;
       if (targetPanel.id === "setup-panel-cloud") setupCurrentPhase = 2;
       moveSetupMobile(setupCurrentPhase);
+    }
+
+    // --- NUEVA LÓGICA: TOGGLE CLOUD (REGISTRO / LOGIN) ---
+    let isCloudLoginMode = false; // Por defecto empezamos en "Crear Cuenta"
+    const cloudTitle = document.querySelector("#setup-panel-cloud h3");
+    const cloudMainBtn = document.getElementById("cloud-login-btn");
+    const cloudToggleBtn = document.getElementById("cloud-goto-login");
+    const cloudPassRepeatInput = document.getElementById("cloud-pass-repeat");
+    const cloudPassRepeatGroup = cloudPassRepeatInput
+      ? cloudPassRepeatInput.parentElement
+      : null;
+
+    function updateCloudModeText(lang) {
+      if (lang === "es") {
+        if (isCloudLoginMode) {
+          if (cloudTitle) cloudTitle.textContent = "Iniciar Sesión";
+          if (cloudMainBtn) cloudMainBtn.textContent = "Acceder";
+          if (cloudToggleBtn) cloudToggleBtn.textContent = "Crear cuenta";
+          if (cloudPassRepeatGroup) cloudPassRepeatGroup.hidden = true;
+        } else {
+          if (cloudTitle) cloudTitle.textContent = "Crear Cuenta";
+          if (cloudMainBtn) cloudMainBtn.textContent = "Registrarse";
+          if (cloudToggleBtn) cloudToggleBtn.textContent = "Iniciar sesión";
+          if (cloudPassRepeatGroup) cloudPassRepeatGroup.hidden = false;
+        }
+      } else {
+        if (isCloudLoginMode) {
+          if (cloudTitle) cloudTitle.textContent = "Log In";
+          if (cloudMainBtn) cloudMainBtn.textContent = "Log In";
+          if (cloudToggleBtn) cloudToggleBtn.textContent = "Create account";
+          if (cloudPassRepeatGroup) cloudPassRepeatGroup.hidden = true;
+        } else {
+          if (cloudTitle) cloudTitle.textContent = "Create Account";
+          if (cloudMainBtn) cloudMainBtn.textContent = "Sign Up";
+          if (cloudToggleBtn) cloudToggleBtn.textContent = "Log in";
+          if (cloudPassRepeatGroup) cloudPassRepeatGroup.hidden = false;
+        }
+      }
+    }
+
+    if (cloudToggleBtn) {
+      cloudToggleBtn.addEventListener("click", () => {
+        isCloudLoginMode = !isCloudLoginMode;
+        const currentLang = localStorage.getItem("dpPhone.setupLanguage") || "es";
+        updateCloudModeText(currentLang);
+
+        // Limpiamos la contraseña al cambiar de modo por seguridad
+        document.getElementById("cloud-pass").value = "";
+        if (cloudPassRepeatInput) cloudPassRepeatInput.value = "";
+      });
     }
 
     // 1. SELECCIÓN DE IDIOMA
@@ -4720,17 +5183,18 @@
         document.getElementById("setup-pin-skip").textContent = "Omitir PIN";
         document.querySelector("#setup-panel-pin .setup-back-btn").textContent =
           "Volver atrás";
-        document.querySelector("#setup-panel-cloud h2").textContent = "DP-Cloud";
+
+        document.querySelector("#setup-panel-cloud h2").textContent = "iFruit-Cloud";
         document.querySelector("#setup-panel-cloud p").textContent =
           "Sincroniza tu vida en Los Santos";
-        document.querySelector("#setup-panel-cloud h3").textContent = "Iniciar Sesión";
         document.getElementById("cloud-user").placeholder = "Usuario";
         document.getElementById("cloud-pass").placeholder = "Contraseña";
-        document.getElementById("cloud-login-btn").textContent = "Acceder";
-        document.getElementById("setup-cloud-skip").textContent =
-          "Omitir y guardar en el dispositivo";
+        if (cloudPassRepeatInput) cloudPassRepeatInput.placeholder = "Repetir contraseña";
+        document.getElementById("setup-cloud-skip").textContent = "Omitir y continuar";
         document.querySelector("#setup-panel-cloud .setup-back-btn").textContent =
           "Volver atrás";
+
+        updateCloudModeText("es");
       } else if (lang === "en") {
         document.getElementById("setup-greeting").textContent = "Hello";
         document.getElementById("setup-select-language-text").textContent =
@@ -4740,15 +5204,17 @@
           "A pin code is used to secure your device and is required to unlock it.";
         document.getElementById("setup-pin-skip").textContent = "Skip PIN";
         document.querySelector("#setup-panel-pin .setup-back-btn").textContent = "Go back";
-        document.querySelector("#setup-panel-cloud h2").textContent = "DP-Cloud";
+
+        document.querySelector("#setup-panel-cloud h2").textContent = "iFruit-Cloud";
         document.querySelector("#setup-panel-cloud p").textContent =
           "Sync your life in Los Santos";
-        document.querySelector("#setup-panel-cloud h3").textContent = "Log In";
         document.getElementById("cloud-user").placeholder = "Username";
         document.getElementById("cloud-pass").placeholder = "Password";
-        document.getElementById("cloud-login-btn").textContent = "Log In";
-        document.getElementById("setup-cloud-skip").textContent = "Skip and save on device";
+        if (cloudPassRepeatInput) cloudPassRepeatInput.placeholder = "Repeat password";
+        document.getElementById("setup-cloud-skip").textContent = "Skip and continue";
         document.querySelector("#setup-panel-cloud .setup-back-btn").textContent = "Go back";
+
+        updateCloudModeText("en");
       }
     };
 
@@ -4764,15 +5230,11 @@
 
     const savedLang = localStorage.getItem("dpPhone.setupLanguage") || "es";
     applyLanguage(savedLang);
-
-    // Inicializar los puntos del PIN (4 por defecto)
     updatePinDotsUI();
 
     // 2. CONFIGURACIÓN DE PIN
     numpad.addEventListener("click", (e) => {
-      // Si estamos en modo contraseña, ignoramos los clics del teclado numérico
       if (currentPinMode === "pass") return;
-
       const btn = e.target.closest("button");
       if (!btn) return;
 
@@ -4784,9 +5246,7 @@
           if (setupPinInput.length === currentMaxPinLength) {
             securitySettings.pin = setupPinInput;
             saveSecuritySettings();
-            setTimeout(() => {
-              setActivePanel(cloudPanel);
-            }, 300);
+            setTimeout(() => setActivePanel(cloudPanel), 300);
           }
         }
       } else if (btn.dataset.action === "clear") {
@@ -4798,19 +5258,15 @@
       }
     });
 
-    // --- LÓGICA DEL INPUT DE CONTRASEÑA ---
     passwordInput.addEventListener("input", (e) => {
       const val = e.target.value;
-
       if (val.length > 25) {
         passwordInput.value = val.slice(0, 25);
         return;
       }
-
       setupPinInput = passwordInput.value;
     });
 
-    // Función para confirmar la contraseña (reutilizable)
     const confirmPassword = () => {
       const val = passwordInput.value.trim();
       if (val.length >= 5) {
@@ -4827,47 +5283,25 @@
       }
     };
 
-    // Evento para el botón físico de Check
     document
       .getElementById("btn-confirm-password")
       ?.addEventListener("click", confirmPassword);
-
-    // Evento para la tecla Enter
     passwordInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        confirmPassword();
-      }
+      if (e.key === "Enter") confirmPassword();
     });
 
-    passwordInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        const val = passwordInput.value.trim();
-        if (val.length >= 5) {
-          securitySettings.pin = val;
-          saveSecuritySettings();
-          setActivePanel(cloudPanel);
-        } else {
-          showNotification({
-            appName: "Seguridad",
-            icon: "alert-triangle",
-            title: "Contraseña muy corta",
-            message: "La contraseña debe tener al menos 5 caracteres.",
-          });
-        }
-      }
-    });
-
-    // Saltar PIN
     document.getElementById("setup-pin-skip").addEventListener("click", () => {
       securitySettings.pin = null;
       saveSecuritySettings();
       setActivePanel(cloudPanel);
     });
 
-    // 3. CONFIGURACIÓN DE CLOUD
+    // 3. CONFIGURACIÓN DE CLOUD (ACTUALIZADO)
     document.getElementById("cloud-login-btn").addEventListener("click", () => {
       const user = document.getElementById("cloud-user").value.trim();
       const pass = document.getElementById("cloud-pass").value.trim();
+      const passRepeat = cloudPassRepeatInput ? cloudPassRepeatInput.value.trim() : "";
+
       if (!user || !pass) {
         showNotification({
           appName: "DP-Cloud",
@@ -4877,6 +5311,18 @@
         });
         return;
       }
+
+      // Solo validamos la repetición si estamos en modo "Crear cuenta"
+      if (!isCloudLoginMode && pass !== passRepeat) {
+        showNotification({
+          appName: "DP-Cloud",
+          icon: "alert-triangle",
+          title: "Error",
+          message: "Las contraseñas no coinciden.",
+        });
+        return;
+      }
+
       localStorage.setItem("dpPhone.cloudUser", user);
       finishSetup();
     });
@@ -4886,7 +5332,6 @@
       finishSetup();
     });
 
-    // --- BOTONES DE ATRÁS ---
     document.querySelectorAll(".setup-back-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const target = btn.dataset.target;
@@ -4931,13 +5376,17 @@
     if (window.PhoneData && window.PhoneData.imei) {
       const finalPin = securitySettings.pin || null;
       const cloudUser = localStorage.getItem("dpPhone.cloudUser") || null;
+      securitySettings.pin = null; // el PIN solo viaja al servidor; no se queda en la interfaz
 
-      console.log(
-        "[DEBUG DP-PHONE] Enviando setup a DB para IMEI:",
-        window.PhoneData.imei,
-        "PIN:",
-        finalPin,
-      );
+      // Estado local del móvil recién configurado (al reabrirlo, el servidor manda el real)
+      const hw = window.PhoneData.hardware || (window.PhoneData.hardware = {});
+      hw.is_configured = true;
+      hw.unlocked = true;
+      if (finalPin) {
+        hw.has_pin = true;
+        hw.pin_type = /^\d{4}$/.test(finalPin) ? "pin" : "password";
+        if (hw.is_owner !== false) hw.is_owner = true;
+      }
 
       // Llamada a Lua (fetch a NUI)
       fetch(`https://${GetParentResourceName()}/saveSetupData`, {
@@ -4955,6 +5404,7 @@
     document.getElementById("setup-screen").hidden = true;
 
     state.hasBooted = true;
+    if (window.PhoneData?.imei) bootedImeis.add(window.PhoneData.imei);
     state.screen = "desktop";
     desktopStatusbar.hidden = false;
     application.hidden = true;
@@ -4972,4 +5422,2550 @@
       message: "Bienvenido a iFruit OS. Tu dispositivo está listo.",
     });
   }
+
+  // ==========================================
+  // LÓGICA DEL JUEGO VÍBORA (SNAKE)
+  // ==========================================
+  const snakeApp = document.getElementById("snake-app");
+  const snakeLogoScreen = document.getElementById("snake-logo-screen");
+  const snakeGameScreen = document.getElementById("snake-game-screen");
+  const snakeCanvas = document.getElementById("snake-canvas");
+  const snakeCtx = snakeCanvas.getContext("2d");
+  const snakeScoreVal = document.getElementById("snake-score-val");
+  const snakeHighscoreVal = document.getElementById("snake-highscore-val");
+  const snakeGameover = document.getElementById("snake-gameover");
+  const snakeFinalScore = document.getElementById("snake-final-score");
+
+  let snakeInterval = null;
+  let GRID_SIZE = 15;
+  let TILE_COUNT_X = 20;
+  let TILE_COUNT_Y = 20;
+  let snakeSpeed = 120;
+  let snakeSize = 20;
+  let snakeUser = null;
+
+  let snake = [];
+  let food = { x: 0, y: 0 };
+  let dx = 0,
+    dy = 0;
+  let score = 0;
+  let highscore = parseInt(localStorage.getItem("snakeHighscore") || "0");
+  let gameLoopSpeed = 120;
+
+  snakeHighscoreVal.textContent = highscore;
+
+  function resizeSnakeCanvas() {
+    const wrapper = snakeCanvas.parentElement;
+    if (!wrapper) return;
+
+    const width = wrapper.clientWidth || 300;
+    const height = wrapper.clientHeight || 300;
+
+    snakeCanvas.width = width;
+    snakeCanvas.height = height;
+
+    // --- LÓGICA DE TAMAÑOS ---
+    // A más celdas, más pequeños son los cuadrados.
+    // 15 -> Grande (pocas celdas, celdas grandes)
+    // 20 -> Normal
+    // 25 -> Pequeño (muchas celdas, celdas pequeñas)
+    // 30 -> Colosal (muchísimas celdas, celdas diminutas)
+
+    let targetCells = 20; // Por defecto Normal
+    if (snakeSize === 15)
+      targetCells = 12; // Grande
+    else if (snakeSize === 25)
+      targetCells = 25; // Pequeño
+    else if (snakeSize === 30) targetCells = 40; // Colosal (¡Muchos cuadrados!)
+
+    GRID_SIZE = Math.floor(Math.min(width, height) / targetCells);
+    TILE_COUNT_X = Math.floor(width / GRID_SIZE);
+    TILE_COUNT_Y = Math.floor(height / GRID_SIZE);
+
+    if (snake.length > 0) {
+      drawSnake();
+    }
+  }
+
+  // Llamar a resize al cambiar el tamaño de la ventana
+  window.addEventListener("resize", () => {
+    if (!snakeGameScreen.hidden) {
+      resizeSnakeCanvas();
+    }
+  });
+
+  function initSnakeGame() {
+    // Recargar configuración por si cambió en opciones
+    snakeSpeed = parseInt(localStorage.getItem("snakeSpeed") || "120");
+    snakeSize = parseInt(localStorage.getItem("snakeSize") || "20");
+    gameLoopSpeed = snakeSpeed;
+
+    snakeFoodColor = localStorage.getItem("snakeFoodColor") || "#ff5a52";
+    snakeBodyColor = localStorage.getItem("snakeBodyColor") || "#8be36a";
+    snakeGameMode = localStorage.getItem("snakeGameMode") || "wrap";
+
+    // Redimensionar lienzo para que ocupe todo el hueco
+    resizeSnakeCanvas();
+
+    // Centrar serpiente
+    const startX = Math.floor(TILE_COUNT_X / 2);
+    const startY = Math.floor(TILE_COUNT_Y / 2);
+
+    snake = [
+      { x: startX, y: startY },
+      { x: startX - 1, y: startY },
+      { x: startX - 2, y: startY },
+    ];
+    dx = 1;
+    dy = 0;
+    score = 0;
+    snakeScoreVal.textContent = score;
+    snakeGameover.hidden = true;
+    nui("snakeStart").catch(() => {}); // el servidor cronometra la partida (anti-trampas)
+
+    generateFood();
+
+    if (window.snakeInterval) clearInterval(window.snakeInterval);
+    window.snakeInterval = setInterval(gameTick, gameLoopSpeed);
+  }
+
+  function generateFood() {
+    food = {
+      x: Math.floor(Math.random() * TILE_COUNT_X),
+      y: Math.floor(Math.random() * TILE_COUNT_Y),
+    };
+    for (let segment of snake) {
+      if (segment.x === food.x && segment.y === food.y) {
+        return generateFood();
+      }
+    }
+  }
+
+  function gameTick() {
+    const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+    if (snakeGameMode === "walls") {
+      // Si el modo es con paredes, morimos al chocar
+      if (head.x < 0 || head.x >= TILE_COUNT_X || head.y < 0 || head.y >= TILE_COUNT_Y) {
+        return gameOver();
+      }
+    } else {
+      // Modo Infinito (wrap): Si sale por un lado, entra por el otro
+      if (head.x >= TILE_COUNT_X) head.x = 0;
+      if (head.x < 0) head.x = TILE_COUNT_X - 1;
+      if (head.y >= TILE_COUNT_Y) head.y = 0;
+      if (head.y < 0) head.y = TILE_COUNT_Y - 1;
+    }
+
+    // Colisión con sí misma
+    for (let i = 0; i < snake.length; i++) {
+      if (head.x === snake[i].x && head.y === snake[i].y) {
+        return gameOver();
+      }
+    }
+
+    snake.unshift(head);
+
+    // ¿Comió?
+    if (head.x === food.x && head.y === food.y) {
+      score += 10;
+      snakeScoreVal.textContent = score;
+      generateFood();
+
+      // Acelerar un poco el juego cada 50 puntos
+      if (score % 50 === 0 && gameLoopSpeed > 60) {
+        gameLoopSpeed -= 5;
+        clearInterval(window.snakeInterval);
+        window.snakeInterval = setInterval(gameTick, gameLoopSpeed);
+      }
+    } else {
+      snake.pop();
+    }
+
+    drawSnake();
+  }
+
+  function drawSnake() {
+    if (snakeCanvas.width === 0 || snakeCanvas.height === 0) return;
+
+    snakeCtx.fillStyle = "#101810";
+    snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+
+    // Cuadrícula sutil
+    snakeCtx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+    snakeCtx.lineWidth = 1;
+    for (let i = 0; i <= TILE_COUNT_X; i++) {
+      snakeCtx.beginPath();
+      snakeCtx.moveTo(i * GRID_SIZE, 0);
+      snakeCtx.lineTo(i * GRID_SIZE, snakeCanvas.height);
+      snakeCtx.stroke();
+    }
+    for (let i = 0; i <= TILE_COUNT_Y; i++) {
+      snakeCtx.beginPath();
+      snakeCtx.moveTo(0, i * GRID_SIZE);
+      snakeCtx.lineTo(snakeCanvas.width, i * GRID_SIZE);
+      snakeCtx.stroke();
+    }
+
+    // Comida
+    snakeCtx.fillStyle = snakeFoodColor;
+    snakeCtx.beginPath();
+    snakeCtx.arc(
+      food.x * GRID_SIZE + GRID_SIZE / 2,
+      food.y * GRID_SIZE + GRID_SIZE / 2,
+      GRID_SIZE / 2 - 1,
+      0,
+      Math.PI * 2,
+    );
+    snakeCtx.fill();
+
+    // Serpiente
+    snake.forEach((segment, index) => {
+      snakeCtx.fillStyle = index === 0 ? "#a5f78b" : snakeBodyColor;
+
+      const x = segment.x * GRID_SIZE;
+      const y = segment.y * GRID_SIZE;
+
+      // Ajustamos el radio del borde según el tamaño del cuadrado
+      const r = GRID_SIZE > 10 ? 4 : 1; // Si es muy pequeño, borde casi cuadrado
+
+      snakeCtx.beginPath();
+      snakeCtx.roundRect(x + 1, y + 1, GRID_SIZE - 2, GRID_SIZE - 2, r);
+      snakeCtx.fill();
+
+      // Ojos
+      if (index === 0) {
+        snakeCtx.fillStyle = "#101010";
+        let eyeX1, eyeY1, eyeX2, eyeY2;
+        const eyeOffset = GRID_SIZE / 3;
+        // Hacemos los ojos más pequeños si el cuadrado es pequeño
+        const eyeSize = Math.max(1, GRID_SIZE / 8);
+
+        if (dx === 1) {
+          eyeX1 = x + GRID_SIZE - eyeOffset;
+          eyeY1 = y + eyeOffset;
+          eyeX2 = x + GRID_SIZE - eyeOffset;
+          eyeY2 = y + GRID_SIZE - eyeOffset;
+        } else if (dx === -1) {
+          eyeX1 = x + eyeOffset;
+          eyeY1 = y + eyeOffset;
+          eyeX2 = x + eyeOffset;
+          eyeY2 = y + GRID_SIZE - eyeOffset;
+        } else if (dy === -1) {
+          eyeX1 = x + eyeOffset;
+          eyeY1 = y + eyeOffset;
+          eyeX2 = x + GRID_SIZE - eyeOffset;
+          eyeY2 = y + eyeOffset;
+        } else {
+          eyeX1 = x + eyeOffset;
+          eyeY1 = y + GRID_SIZE - eyeOffset;
+          eyeX2 = x + GRID_SIZE - eyeOffset;
+          eyeY2 = y + GRID_SIZE - eyeOffset;
+        }
+
+        snakeCtx.beginPath();
+        snakeCtx.arc(eyeX1, eyeY1, eyeSize, 0, Math.PI * 2);
+        snakeCtx.arc(eyeX2, eyeY2, eyeSize, 0, Math.PI * 2);
+        snakeCtx.fill();
+      }
+    });
+  }
+
+  function gameOver() {
+    clearInterval(window.snakeInterval);
+    snakeFinalScore.textContent = score;
+    snakeGameover.hidden = false;
+
+    if (score > highscore) {
+      highscore = score;
+      localStorage.setItem("snakeHighscore", highscore);
+      snakeHighscoreVal.textContent = highscore;
+    }
+
+    // --- LÓGICA PARA GUARDAR EN EL RANKING ---
+    // Solo se guarda si el usuario está registrado y tiene los ajustes correctos
+    if (snakeUser) {
+      // 1. Comprobamos la velocidad (80 es Difícil)
+      const isHard = localStorage.getItem("snakeSpeed") === "80";
+
+      // 2. Comprobamos el tamaño (30 es Colosal)
+      const isColossal = localStorage.getItem("snakeSize") === "30";
+
+      // 3. Comprobamos el modo de juego (walls es Con paredes)
+      const isWalls = localStorage.getItem("snakeGameMode") === "walls";
+
+      if (isHard && isColossal && isWalls) {
+        // Enviamos la puntuación al servidor
+        nui("saveSnakeScore", { score: score });
+      } else {
+        // Opcional: Notificar al usuario que no se guardó por los ajustes
+        showNotification({
+          appName: "Víbora",
+          icon: "info-circle",
+          title: "Récord no guardado",
+          message:
+            "Para guardar tu récord en el ranking, debes jugar en Difícil, Colosal y Con Paredes.",
+        });
+      }
+    }
+  }
+
+  // Controles
+  window.addEventListener("keydown", (e) => {
+    if (!snakeApp || snakeApp.hidden || !snakeGameScreen || snakeGameScreen.hidden) return;
+
+    if ((e.key === "ArrowUp" || e.key === "w" || e.key === "W") && dy === 0) {
+      dx = 0;
+      dy = -1;
+    } else if ((e.key === "ArrowDown" || e.key === "s" || e.key === "S") && dy === 0) {
+      dx = 0;
+      dy = 1;
+    } else if ((e.key === "ArrowLeft" || e.key === "a" || e.key === "A") && dx === 0) {
+      dx = -1;
+      dy = 0;
+    } else if ((e.key === "ArrowRight" || e.key === "d" || e.key === "D") && dx === 0) {
+      dx = 1;
+      dy = 0;
+    }
+
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      e.preventDefault();
+    }
+  });
+
+  // Botones UI
+  document.getElementById("snake-btn-play")?.addEventListener("click", () => {
+    snakeLogoScreen.hidden = true;
+    snakeGameScreen.hidden = false;
+    initSnakeGame();
+  });
+
+  document.getElementById("snake-btn-restart")?.addEventListener("click", () => {
+    snakeGameover.hidden = true;
+    initSnakeGame();
+  });
+
+  // Registro en APP_HANDLERS
+  if (window.APP_HANDLERS) {
+    window.APP_HANDLERS["snake"] = function () {
+      if (!state.hasBooted || state.booting || phone.hidden) return;
+
+      hideOverlayApps();
+      state.screen = "snake";
+      state.appOpen = true;
+
+      snakeApp.hidden = false;
+      snakeLogoScreen.hidden = false;
+      snakeGameScreen.hidden = true;
+      if (window.snakeInterval) clearInterval(window.snakeInterval);
+
+      desktopStatusbar.hidden = true;
+      homeButton.hidden = false;
+    };
+  }
+
+  // Botón para salir de la partida y volver al menú del juego
+  document.getElementById("snake-btn-exit")?.addEventListener("click", () => {
+    // 1. Paramos el bucle del juego para que no siga consumiendo recursos
+    if (window.snakeInterval) {
+      clearInterval(window.snakeInterval);
+      window.snakeInterval = null;
+    }
+
+    // 2. Ocultamos la pantalla de juego
+    document.getElementById("snake-game-screen").hidden = true;
+
+    // 3. Ocultamos el Game Over (por si acaso estabas muerto)
+    document.getElementById("snake-gameover").hidden = true;
+
+    // 4. Mostramos la pantalla del logo/menú principal
+    document.getElementById("snake-logo-screen").hidden = false;
+
+    // 5. Opcional: Guardar el récord actual si es mayor (ya lo hace al morir, pero por si acaso)
+    if (score > highscore) {
+      highscore = score;
+      localStorage.setItem("snakeHighscore", highscore);
+      snakeHighscoreVal.textContent = highscore;
+    }
+  });
+
+  // --- Lógica de Opciones ---
+  const snakeOptionsScreen = document.getElementById("snake-options-screen");
+
+  document.getElementById("snake-btn-options")?.addEventListener("click", () => {
+    document.getElementById("snake-logo-screen").hidden = true;
+    snakeOptionsScreen.hidden = false;
+  });
+
+  document.getElementById("snake-btn-back-options")?.addEventListener("click", () => {
+    snakeOptionsScreen.hidden = true;
+    document.getElementById("snake-logo-screen").hidden = false;
+  });
+
+  document.getElementById("snake-btn-go-options")?.addEventListener("click", () => {
+    if (window.snakeInterval) clearInterval(window.snakeInterval);
+    document.getElementById("snake-game-screen").hidden = true;
+    snakeOptionsScreen.hidden = false;
+  });
+
+  // Configurar botones de radio
+  const speedGroup = document.getElementById("snake-speed-group");
+  if (speedGroup) {
+    speedGroup.querySelectorAll(".snake-radio-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        speedGroup
+          .querySelectorAll(".snake-radio-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        localStorage.setItem("snakeSpeed", btn.dataset.speed);
+      });
+    });
+  }
+
+  const sizeGroup = document.getElementById("snake-size-group");
+  if (sizeGroup) {
+    sizeGroup.querySelectorAll(".snake-radio-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        sizeGroup
+          .querySelectorAll(".snake-radio-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        localStorage.setItem("snakeSize", btn.dataset.size);
+      });
+    });
+  }
+
+  const modeGroup = document.getElementById("snake-mode-group");
+  if (modeGroup) {
+    modeGroup.querySelectorAll(".snake-radio-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        modeGroup
+          .querySelectorAll(".snake-radio-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        localStorage.setItem("snakeGameMode", btn.dataset.mode);
+      });
+    });
+  }
+
+  const foodColorGroup = document.getElementById("snake-food-color-group");
+  if (foodColorGroup) {
+    foodColorGroup.querySelectorAll(".snake-color-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        foodColorGroup
+          .querySelectorAll(".snake-color-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        localStorage.setItem("snakeFoodColor", btn.dataset.color);
+      });
+    });
+  }
+
+  const snakeColorGroup = document.getElementById("snake-snake-color-group");
+  if (snakeColorGroup) {
+    snakeColorGroup.querySelectorAll(".snake-color-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        snakeColorGroup
+          .querySelectorAll(".snake-color-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        localStorage.setItem("snakeBodyColor", btn.dataset.color);
+      });
+    });
+  }
+
+  document.querySelectorAll(".snake-tooltip-trigger").forEach((trigger) => {
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation(); // Evita que el clic se propague y cierre otros
+
+      // Encontramos el tooltip dentro de este trigger
+      const tooltip = trigger.querySelector(".snake-tooltip");
+      if (!tooltip) return;
+
+      // Comprobamos si ya está abierto
+      const isShowing = tooltip.classList.contains("show");
+
+      // Cerramos todos los tooltips abiertos
+      document.querySelectorAll(".snake-tooltip.show").forEach((t) => {
+        t.classList.remove("show");
+      });
+
+      // Si no estaba abierto, lo abrimos
+      if (!isShowing) {
+        tooltip.classList.add("show");
+      }
+    });
+  });
+
+  // Cerrar tooltips al hacer clic fuera de ellos
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".snake-tooltip-trigger")) {
+      document.querySelectorAll(".snake-tooltip.show").forEach((t) => {
+        t.classList.remove("show");
+      });
+    }
+  });
+
+  // --- Lógica del Ranking ---
+  const snakeRankingScreen = document.getElementById("snake-ranking-screen");
+  const snakeRegisterModal = document.getElementById("snake-register-modal");
+
+  // Botón para abrir el ranking
+  document.getElementById("snake-btn-ranking")?.addEventListener("click", async () => {
+    document.getElementById("snake-logo-screen").hidden = true;
+    snakeRankingScreen.hidden = false;
+
+    // Pedir al servidor que cargue el ranking y los datos del usuario
+    const data = await nui("getSnakeRanking", {});
+
+    if (data && data.ranking) {
+      snakeUser = data.user; // Guardamos si el usuario ya tiene cuenta
+
+      // Si el usuario no tiene cuenta, le pedimos que se registre obligatoriamente para ver el ranking
+      if (!snakeUser) {
+        snakeRegisterModal.hidden = false;
+        snakeRankingScreen.hidden = true; // Ocultamos el ranking hasta que se registre
+      } else {
+        renderSnakeRanking(data.ranking);
+      }
+    }
+  });
+
+  // Volver del ranking al logo
+  document.getElementById("snake-btn-back-ranking")?.addEventListener("click", () => {
+    snakeRankingScreen.hidden = true;
+    document.getElementById("snake-logo-screen").hidden = false;
+  });
+
+  // --- Lógica del Modal de Registro (Cierre) ---
+  document.getElementById("snake-btn-cancel-register")?.addEventListener("click", () => {
+    snakeRegisterModal.hidden = true;
+  });
+
+  document
+    .getElementById("snake-btn-confirm-register")
+    ?.addEventListener("click", async () => {
+      const input = document.getElementById("snake-register-input");
+      const errorEl = document.getElementById("snake-register-error");
+      const username = input.value.trim();
+
+      // Validaciones básicas en cliente
+      if (username.length < 3 || username.length > 15) {
+        errorEl.textContent = "El nombre debe tener entre 3 y 15 caracteres.";
+        errorEl.hidden = false;
+        return;
+      }
+      if (username.includes(" ")) {
+        errorEl.textContent = "No se permiten espacios.";
+        errorEl.hidden = false;
+        return;
+      }
+
+      errorEl.hidden = true;
+
+      // Enviar al servidor
+      const success = await nui("registerSnakeUser", { username: username });
+
+      if (success) {
+        snakeUser = { username: username, max_score: 0 };
+        snakeRegisterModal.hidden = true;
+
+        // Volvemos a abrir el panel de ranking para que vea que ya está registrado
+        document.getElementById("snake-ranking-panel").classList.add("active");
+
+        const container = document.getElementById("snake-ranking-content");
+        if (container)
+          container.innerHTML = `<div class="snake-ranking-loading">Cargando ranking...</div>`;
+
+        const data = await nui("getSnakeRanking", {});
+        if (data && data.ranking) {
+          renderSnakeRanking(data.ranking);
+        }
+      } else {
+        errorEl.textContent = "Ese nombre de usuario ya está en uso. Prueba otro.";
+        errorEl.hidden = false;
+      }
+    });
+
+  // Función para pintar el ranking
+  function renderSnakeRanking(ranking) {
+    const container = document.getElementById("snake-ranking-content");
+    if (!container) return;
+
+    if (ranking.length === 0) {
+      container.innerHTML = `<div class="snake-ranking-loading">Aún no hay récords. ¡Sé el primero!</div>`;
+      return;
+    }
+
+    let html = "";
+    ranking.forEach((player, index) => {
+      const pos = index + 1;
+      let medal = `<span class="snake-rank-position">${pos}</span>`;
+      let itemClass = "";
+
+      // Usamos window.iconifySvg en lugar de emojis
+      if (pos === 1) {
+        medal = `<span class="snake-rank-medal">${window.iconifySvg("at-icons:medal-1st", "ui-icon")}</span>`;
+        itemClass = "is-top-1";
+      } else if (pos === 2) {
+        medal = `<span class="snake-rank-medal">${window.iconifySvg("at-icons:medal-2nd", "ui-icon")}</span>`;
+        itemClass = "is-top-2";
+      } else if (pos === 3) {
+        medal = `<span class="snake-rank-medal">${window.iconifySvg("at-icons:medal-3rd", "ui-icon")}</span>`;
+        itemClass = "is-top-3";
+      }
+
+      // Formatear tiempo si lo tuvieras
+      const timePlayed = player.time_played ? `${player.time_played} min` : "--";
+
+      html += `
+        <div class="snake-rank-item ${itemClass}">
+          <div class="snake-rank-left">
+            ${medal}
+            <span class="snake-rank-name">${player.username}</span>
+          </div>
+          <div class="snake-rank-right">
+            <span class="snake-rank-score">${player.max_score} pts</span>
+            <span class="snake-rank-time">${timePlayed}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  const togglePanelBtn = document.getElementById("snake-toggle-panel-btn");
+  if (togglePanelBtn) {
+    // Reemplazamos el nodo para borrar listeners previos y evitar dobles clics
+    const newToggleBtn = togglePanelBtn.cloneNode(true);
+    togglePanelBtn.parentNode.replaceChild(newToggleBtn, togglePanelBtn);
+
+    newToggleBtn.addEventListener("click", () => {
+      const panel = document.getElementById("snake-ranking-panel");
+      // Si tiene la clase active se la quita, si no la tiene se la pone
+      panel.classList.toggle("active");
+    });
+  }
+
+  // ================= LÓGICA DE LA APP NOTAS (VERSIÓN FINAL CORREGIDA) =================
+  let notesData = [];
+  let currentNote = null;
+
+  // Referencias al DOM
+  const notesApp = document.getElementById("notes-app");
+  const notesListView = document.getElementById("notes-list-view");
+  const notesEditorView = document.getElementById("notes-editor-view");
+  const notesGrid = document.getElementById("notes-grid");
+  const noteInputTitle = document.getElementById("note-input-title");
+  const noteInputContent = document.getElementById("note-input-content");
+  const notesSearchInput = document.getElementById("notes-search-input");
+
+  // --- FUNCIÓN PARA ACTUALIZAR LOS BOTONES DE LA BARRA ---
+  function updateToolbarState() {
+    if (!noteInputContent) return;
+
+    document.querySelectorAll(".notes-toolbar button").forEach((btn) => {
+      const cmd = btn.dataset.command;
+      if (!cmd) return;
+
+      if (
+        [
+          "bold",
+          "italic",
+          "underline",
+          "strikeThrough",
+          "insertUnorderedList",
+          "insertOrderedList",
+        ].includes(cmd)
+      ) {
+        try {
+          if (document.queryCommandState(cmd)) {
+            btn.classList.add("active");
+          } else {
+            btn.classList.remove("active");
+          }
+        } catch (e) {
+          // Ignorar errores de comandos no soportados
+        }
+      }
+    });
+  }
+
+  // 1. Renderizar notas
+  function renderNotes(filterText = "") {
+    if (!notesGrid) return;
+    notesGrid.innerHTML = "";
+
+    const filteredNotes = notesData.filter((n) => {
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = n.content || "";
+      const plainText = tempDiv.textContent || tempDiv.innerText || "";
+
+      return (
+        n.title.toLowerCase().includes(filterText.toLowerCase()) ||
+        plainText.toLowerCase().includes(filterText.toLowerCase())
+      );
+    });
+
+    if (filteredNotes.length === 0) {
+      notesGrid.innerHTML = `
+            <div class="notes-empty" id="notes-empty-state">
+                <span class="ui-icon" data-iconify="notes"></span>
+                <p>No tienes notas aún.<br>¡Crea una nueva!</p>
+            </div>
+        `;
+      if (window.iconifySvg) {
+        notesGrid.querySelectorAll("[data-iconify]").forEach((el) => {
+          el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+        });
+      }
+      return;
+    }
+
+    filteredNotes.forEach((note) => {
+      const card = document.createElement("div");
+      card.className = "note-card";
+      card.style.backgroundColor = note.color || "#ffffff";
+
+      if (note.is_pinned) {
+        card.style.border = "2px solid var(--palette-monochrome-accent)";
+      }
+
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = note.content || "";
+      const previewText = tempDiv.textContent || tempDiv.innerText || "";
+
+      card.innerHTML = `
+            ${note.is_pinned ? `<span class="ui-icon note-card-pin" data-iconify="pin"></span>` : ""}
+            <h3>${note.title || "Sin título"}</h3>
+            <p>${previewText}</p>
+        `;
+
+      card.addEventListener("click", () => openNoteEditor(note));
+      notesGrid.appendChild(card);
+    });
+
+    if (window.iconifySvg) {
+      notesGrid.querySelectorAll("[data-iconify]").forEach((el) => {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      });
+    }
+  }
+
+  // 2. Abrir editor
+  function openNoteEditor(note = null) {
+    currentNote = note;
+    notesListView.hidden = true;
+    notesEditorView.hidden = false;
+
+    document
+      .querySelectorAll(".notes-color-palette button")
+      .forEach((btn) => btn.classList.remove("active"));
+
+    if (note) {
+      noteInputTitle.value = note.title || "";
+      noteInputContent.innerHTML = note.content || "";
+
+      const colorBtn = document.querySelector(
+        `.notes-color-palette button[data-color="${note.color}"]`,
+      );
+      if (colorBtn) colorBtn.classList.add("active");
+
+      const pinBtn = document.getElementById("notes-btn-pin");
+      if (note.is_pinned) pinBtn.classList.add("active");
+      else pinBtn.classList.remove("active");
+
+      document.getElementById("notes-btn-delete").style.display = "grid";
+    } else {
+      noteInputTitle.value = "";
+      noteInputContent.innerHTML = "";
+      document.querySelector(".notes-color-palette button").classList.add("active");
+      document.getElementById("notes-btn-pin").classList.remove("active");
+      document.getElementById("notes-btn-delete").style.display = "none";
+    }
+
+    setTimeout(() => noteInputTitle.focus(), 100);
+  }
+
+  // 3. Cerrar editor
+  function closeNoteEditor() {
+    notesListView.hidden = false;
+    notesEditorView.hidden = true;
+    currentNote = null;
+  }
+
+  // 4. Guardar nota (usa el modal personalizado, sin confirm ni prompt)
+  async function saveNote() {
+    const title = noteInputTitle.value.trim();
+    const content = noteInputContent.innerHTML.trim();
+    const color =
+      document.querySelector(".notes-color-palette button.active")?.dataset.color || "#ffffff";
+    const isPinned = document.getElementById("notes-btn-pin").classList.contains("active");
+
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = content;
+    if (!title && !tempDiv.textContent.trim()) {
+      showNotification({
+        appName: "Notas",
+        icon: "alert-triangle",
+        title: "Nota vacía",
+        message: "Escribe algo antes de guardar.",
+      });
+      return;
+    }
+
+    const noteData = {
+      id: currentNote ? currentNote.id : null,
+      title: title,
+      content: content,
+      color: color,
+      is_pinned: isPinned ? 1 : 0,
+    };
+
+    try {
+      const result = await nui("saveNote", noteData);
+
+      if (result) {
+        if (currentNote) {
+          const index = notesData.findIndex((n) => n.id === currentNote.id);
+          if (index !== -1) notesData[index] = { ...result, ...noteData };
+        } else {
+          notesData.unshift(result);
+        }
+
+        notesData.sort((a, b) => {
+          if (a.is_pinned !== b.is_pinned) return b.is_pinned - a.is_pinned;
+          return new Date(b.updated_at || Date.now()) - new Date(a.updated_at || Date.now());
+        });
+
+        showNotification({
+          appName: "Notas",
+          icon: "check",
+          title: "Guardado",
+          message: "Nota guardada correctamente.",
+        });
+        closeNoteEditor();
+        renderNotes(notesSearchInput.value);
+      }
+    } catch (e) {
+      console.error(e);
+      showNotification({
+        appName: "Notas",
+        icon: "alert-triangle",
+        title: "Error",
+        message: "No se pudo guardar la nota.",
+      });
+    }
+  }
+
+  // 5. Borrar nota (usa el modal personalizado en vez de confirm)
+  async function deleteNote() {
+    if (!currentNote) return;
+
+    // En lugar de confirm() bloqueado, usamos una notificación con acciones
+    showNotification({
+      appName: "Notas",
+      icon: "alert-triangle",
+      title: "¿Borrar nota?",
+      message: "Esta acción no se puede deshacer.",
+      duration: 10000,
+      actions: [
+        {
+          label: "Borrar",
+          type: "danger",
+          action: async () => {
+            try {
+              const success = await nui("deleteNote", currentNote.id);
+              if (success) {
+                notesData = notesData.filter((n) => n.id !== currentNote.id);
+                showNotification({
+                  appName: "Notas",
+                  icon: "trash",
+                  title: "Eliminada",
+                  message: "La nota ha sido borrada.",
+                });
+                closeNoteEditor();
+                renderNotes(notesSearchInput.value);
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          },
+        },
+        { label: "Cancelar", type: "secondary" },
+      ],
+    });
+  }
+
+  // 6. Abrir App
+  async function openNotesApp() {
+    if (!state.hasBooted || state.booting || phone.hidden) return;
+
+    state.screen = "notes";
+    state.appOpen = true;
+    hideOverlayApps();
+    desktopScreen.hidden = true;
+    homeButton.hidden = false;
+
+    notesApp.hidden = false;
+    notesListView.hidden = false;
+    notesEditorView.hidden = true;
+
+    if (window.iconifySvg) {
+      notesApp.querySelectorAll("[data-iconify]").forEach((el) => {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      });
+    }
+
+    notesGrid.innerHTML = `<div class="notes-empty"><p>Cargando notas...</p></div>`;
+    try {
+      notesData = (await nui("getNotes")) || [];
+      renderNotes();
+    } catch (e) {
+      console.error(e);
+      notesGrid.innerHTML = `<div class="notes-empty"><p>Error al cargar notas.</p></div>`;
+    }
+  }
+
+  // --- EVENT LISTENERS ---
+  // Esperamos un poco a que el DOM esté listo
+  setTimeout(() => {
+    document
+      .getElementById("notes-btn-new")
+      ?.addEventListener("click", () => openNoteEditor());
+    document.getElementById("notes-btn-back")?.addEventListener("click", closeNoteEditor);
+    document.getElementById("notes-btn-save")?.addEventListener("click", saveNote);
+    document.getElementById("notes-btn-delete")?.addEventListener("click", deleteNote);
+
+    document.getElementById("notes-btn-pin")?.addEventListener("click", (e) => {
+      e.currentTarget.classList.toggle("active");
+    });
+
+    document.querySelectorAll(".notes-color-palette button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document
+          .querySelectorAll(".notes-color-palette button")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+
+    notesSearchInput?.addEventListener("input", (e) => renderNotes(e.target.value));
+
+    // Barra de herramientas
+    document.querySelectorAll(".notes-toolbar button").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const command = btn.dataset.command;
+        const value = btn.dataset.value || null;
+
+        noteInputContent.focus();
+
+        if (command === "createLink") {
+          // Usamos un modal personalizado en vez de prompt
+          const linkModal = document.getElementById("notes-link-modal");
+          if (linkModal) {
+            linkModal.style.display = "grid";
+            const input = document.getElementById("notes-link-input");
+            if (input) {
+              input.value = "";
+              input.focus();
+            }
+          }
+        } else {
+          document.execCommand(command, false, value);
+          updateToolbarState();
+        }
+      });
+    });
+
+    // Detectar cambios en el editor para actualizar los botones
+    noteInputContent?.addEventListener("keyup", updateToolbarState);
+    noteInputContent?.addEventListener("mouseup", updateToolbarState);
+    noteInputContent?.addEventListener("focus", updateToolbarState);
+
+    // Limpiar HTML al pegar
+    noteInputContent?.addEventListener("paste", (e) => {
+      e.preventDefault();
+      const text = (e.originalEvent || e).clipboardData.getData("text/plain");
+      document.execCommand("insertText", false, text);
+    });
+
+    // Lógica del modal de enlace
+    document.getElementById("notes-link-cancel")?.addEventListener("click", () => {
+      document.getElementById("notes-link-modal").style.display = "none";
+    });
+
+    document.getElementById("notes-link-confirm")?.addEventListener("click", () => {
+      const input = document.getElementById("notes-link-input");
+      const url = input ? input.value.trim() : "";
+      if (url) {
+        noteInputContent.focus();
+        document.execCommand("createLink", false, url);
+      }
+      document.getElementById("notes-link-modal").style.display = "none";
+    });
+  }, 1000);
+
+  // ================= COMUNICACIÓN: CONTACTOS, MENSAJES Y LLAMAR =================
+  // Todo lo que llega de otros jugadores (nombres, mensajes...) se pinta SIEMPRE con esc().
+
+  const comms = {
+    loaded: false,
+    locked: false,
+    number: null, // mi número (SIM del móvil abierto)
+    contacts: [],
+    selectedContactId: null,
+    editingContact: null, // { id?, name, number } mientras se edita / crea
+    deleteArmedId: null, // para confirmar el borrado con un segundo clic (nada de confirm(), bloquea FiveM)
+    contactSearch: "",
+    conversations: [],
+    convSearch: "",
+    openChat: null, // número de la conversación abierta
+    newChat: false,
+    newChatTo: "",
+    chatMessages: [],
+    sending: false,
+    dialerTab: "keypad",
+    dialValue: "",
+    recents: [],
+    call: null, // { id, number, name, state: 'calling' | 'incoming' | 'active' | 'ended', since, reason }
+    callMinimized: false,
+  };
+
+  const contactsApp = document.getElementById("contacts-app");
+  const messagesApp = document.getElementById("messages-app");
+  const dialerApp = document.getElementById("dialer-app");
+  const callScreen = document.getElementById("call-screen");
+  const callPill = document.getElementById("call-pill");
+
+  const CALL_REASONS = {
+    nosim: "Necesitas una SIM para llamar.",
+    incall: "Ya estás en una llamada.",
+    spam: "Espera un momento antes de volver a llamar.",
+    blackout: "Sin cobertura.",
+    invalid: "Número no válido (tiene que tener 10 cifras).",
+    self: "No puedes llamarte a ti mismo.",
+    notexist: "El número marcado no existe.",
+    offline: "Apagado o fuera de cobertura.",
+    busy: "Comunica. Inténtalo más tarde.",
+    noanswer: "No contesta.",
+    rejected: "Llamada rechazada.",
+    cancelled: "Llamada cancelada.",
+    ended: "Llamada finalizada.",
+  };
+
+  // ---------- utilidades ----------
+  const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "").slice(0, 10);
+
+  function formatNumber(value) {
+    const d = digitsOnly(value);
+    if (d.length <= 3) return d;
+    if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`;
+    return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`;
+  }
+
+  const isFullNumber = (value) => digitsOnly(value).length === 10;
+  const contactByNumber = (number) => comms.contacts.find((c) => c.number === number);
+  const displayName = (number, fallback) => contactByNumber(number)?.name || fallback || number;
+
+  function initials(name) {
+    const text = String(name || "").trim();
+    if (!text || /^[\d-]+$/.test(text)) return "#";
+    const parts = text.split(/\s+/);
+    return ((parts[0][0] || "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+  }
+
+  function avatarHue(seed) {
+    let h = 0;
+    for (const ch of String(seed || "")) h = (h * 31 + ch.charCodeAt(0)) % 360;
+    return h;
+  }
+
+  const avatarHtml = (name, number, size = "") =>
+    `<span class="comms-avatar ${size}" style="--hue:${avatarHue(number || name)}">${esc(initials(name))}</span>`;
+
+  function parseTime(value) {
+    if (value === null || value === undefined) return null;
+    const d = typeof value === "number" ? new Date(value) : new Date(String(value).replace(" ", "T"));
+    return isNaN(d) ? null : d;
+  }
+
+  function timeLabel(value) {
+    const d = parseTime(value);
+    if (!d) return "";
+    const now = new Date();
+    const hm = d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    if (d.toDateString() === now.toDateString()) return hm;
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return "Ayer";
+    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" });
+  }
+
+  const formatDuration = (seconds) => {
+    const s = Math.max(0, Math.floor(seconds || 0));
+    return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  };
+
+  function renderIcons(root) {
+    if (!window.iconifySvg || !root) return;
+    root.querySelectorAll("[data-iconify]").forEach((el) => {
+      el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+    });
+  }
+
+  function commsToast(title, message, icon = "alert-triangle", appName = "Teléfono") {
+    showNotification({ appName, icon, title: esc(title), message: esc(message) });
+  }
+
+  // ---------- datos de prueba para el modo desarrollo (navegador) ----------
+  const devData = {
+    number: "555-1234-567",
+    contacts: [
+      { id: 1, name: "Ane Etxeberria", number: "611-2233-445" },
+      { id: 2, name: "Mikel", number: "622-3344-556" },
+      { id: 3, name: "Taller Benny's", number: "633-4455-667" },
+    ],
+    messages: [
+      { id: 1, from: "611-2233-445", to: "555-1234-567", mine: false, text: "¿Vienes esta noche al Vanilla?", time: Date.now() - 3600e3, read: false },
+      { id: 2, from: "555-1234-567", to: "622-3344-556", mine: true, text: "Te debo 200$, mañana te los paso", time: Date.now() - 86400e3, read: true },
+    ],
+    calls: [
+      { id: 1, number: "611-2233-445", outgoing: false, status: "missed", duration: 0, time: Date.now() - 7200e3 },
+      { id: 2, number: "622-3344-556", outgoing: true, status: "answered", duration: 95, time: Date.now() - 90000e3 },
+    ],
+    nextId: 100,
+  };
+
+  function devCommsCall(name, data = {}) {
+    const other = (m) => (m.mine ? m.to : m.from);
+    switch (name) {
+      case "getCommsData":
+        return { number: devData.number, contacts: devData.contacts.slice() };
+      case "saveContact": {
+        if (!data.name || !isFullNumber(data.number)) return { ok: false, message: "Revisa el nombre y el número." };
+        const contact = { id: data.id || ++devData.nextId, name: data.name, number: formatNumber(data.number) };
+        devData.contacts = devData.contacts.filter((c) => c.id !== contact.id).concat(contact);
+        return { ok: true, contact };
+      }
+      case "deleteContact":
+        devData.contacts = devData.contacts.filter((c) => c.id !== data.id);
+        return true;
+      case "getConversations": {
+        const map = new Map();
+        devData.messages.forEach((m) => map.set(other(m), m));
+        return [...map.entries()].map(([number, last]) => ({
+          number,
+          name: devData.contacts.find((c) => c.number === number)?.name,
+          unread: devData.messages.filter((m) => other(m) === number && !m.mine && !m.read).length,
+          last,
+        }));
+      }
+      case "getMessages":
+        devData.messages.forEach((m) => {
+          if (other(m) === data.number) m.read = true;
+        });
+        return devData.messages.filter((m) => other(m) === data.number);
+      case "sendMessage": {
+        const msg = {
+          id: ++devData.nextId,
+          from: devData.number,
+          to: formatNumber(data.number),
+          mine: true,
+          text: data.text || null,
+          image: data.image || null,
+          location: data.shareLocation ? "215.40,-810.10" : null,
+          time: Date.now(),
+          read: true,
+        };
+        devData.messages.push(msg);
+        return { ok: true, message: msg };
+      }
+      case "getRecentCalls":
+        return devData.calls;
+      case "startCall":
+        setTimeout(() => handleCallUpdate({ id: 9001, state: "active", channel: 9001 }), 1500);
+        return { ok: true, id: 9001 };
+      case "answerCall":
+        setTimeout(() => handleCallUpdate({ id: comms.call?.id, state: "active", channel: 1 }), 200);
+        return true;
+      case "endCall":
+        setTimeout(() => handleCallUpdate({ id: comms.call?.id, state: "ended", reason: "ended", endedByMe: true }), 100);
+        return true;
+      case "insertSimActive":
+        return { ok: true, number: devData.number, message: "SIM insertada." };
+      case "getGalleryPhotos":
+        return [];
+      default:
+        return true;
+    }
+  }
+
+  async function commsCall(name, data) {
+    if (devMode) return devCommsCall(name, data);
+    try {
+      return await nui(name, data);
+    } catch (e) {
+      console.error(`[DP-Phone] ${name}:`, e);
+      return null;
+    }
+  }
+
+  async function loadCommsData() {
+    const data = await commsCall("getCommsData");
+    if (data && typeof data === "object") {
+      comms.locked = data.locked === true;
+      comms.number = data.number || null;
+      comms.contacts = Array.isArray(data.contacts) ? data.contacts : [];
+      comms.contacts.sort((a, b) => a.name.localeCompare(b.name, "es"));
+      comms.loaded = true;
+    }
+  }
+
+  function openCommsSection(section, screenName) {
+    if (!state.hasBooted || state.booting || phone.hidden) return false;
+    state.screen = screenName;
+    state.appOpen = true;
+    hideOverlayApps();
+    desktopScreen.hidden = true;
+    homeButton.hidden = false;
+    section.hidden = false;
+    section.innerHTML = `<div class="comms-loading">Cargando…</div>`;
+    return true;
+  }
+
+  // Tablet = dos columnas. Móvil estrecho = una columna (lista o detalle)
+  function applyNarrow(section) {
+    section.classList.toggle("is-narrow", section.clientWidth > 0 && section.clientWidth < 620);
+  }
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver((entries) => entries.forEach((e) => applyNarrow(e.target)));
+    [contactsApp, messagesApp, dialerApp].forEach((el) => el && ro.observe(el));
+  }
+
+  function noSimHtml() {
+    return `
+      <div class="comms-empty comms-nosim">
+        <span class="ui-icon" data-iconify="bi:sim-slash-fill"></span>
+        <h3>Sin tarjeta SIM</h3>
+        <p>Inserta una SIM para llamar, enviar mensajes y guardar contactos.</p>
+        <button class="comms-btn primary" data-act="insert-sim">Insertar SIM</button>
+      </div>`;
+  }
+
+  async function insertSimFromApp(rerender) {
+    const res = await commsCall("insertSimActive");
+    if (res && res.ok) {
+      comms.number = res.number || comms.number;
+      if (window.PhoneData) window.PhoneData.sim_number = comms.number;
+      commsToast("SIM insertada", res.message || "Ya puedes usar tu número.", "check");
+      await loadCommsData();
+      rerender();
+    } else {
+      commsToast("No se pudo insertar la SIM", res?.message || "Lleva una tarjeta SIM encima.");
+    }
+  }
+
+  // ============================================================
+  //  CONTACTOS
+  // ============================================================
+  async function openContactsApp(selectNumber) {
+    if (!openCommsSection(contactsApp, "contacts")) return;
+    comms.editingContact = null;
+    comms.deleteArmedId = null;
+    await loadCommsData();
+    if (selectNumber) {
+      const c = contactByNumber(selectNumber);
+      if (c) comms.selectedContactId = c.id;
+      else comms.editingContact = { name: "", number: selectNumber };
+    }
+    renderContactsApp();
+  }
+
+  function renderContactsApp() {
+    if (contactsApp.hidden) return;
+    if (!comms.number) {
+      contactsApp.innerHTML = noSimHtml();
+      renderIcons(contactsApp);
+      return;
+    }
+    const showDetail = comms.editingContact || comms.selectedContactId;
+    contactsApp.innerHTML = `
+      <div class="comms-split ${showDetail ? "show-detail" : ""}">
+        <aside class="comms-list-pane">
+          <header class="comms-header">
+            <div class="comms-title-row">
+              <h2>Contactos</h2>
+              <button class="comms-icon-btn" data-act="new-contact" title="Nuevo contacto"><span class="ui-icon" data-iconify="plus"></span></button>
+            </div>
+            <p class="comms-mynumber">Mi número: <strong>${esc(comms.number)}</strong></p>
+            <label class="comms-search">
+              <span class="ui-icon" data-iconify="search"></span>
+              <input type="text" id="contacts-search" placeholder="Buscar contacto…" autocomplete="off" value="${esc(comms.contactSearch)}" />
+            </label>
+          </header>
+          <div class="comms-list" id="contacts-list"></div>
+        </aside>
+        <section class="comms-detail-pane" id="contacts-detail"></section>
+      </div>`;
+    renderContactsList();
+    renderContactDetail();
+    applyNarrow(contactsApp);
+    renderIcons(contactsApp);
+  }
+
+  function renderContactsList() {
+    const list = contactsApp.querySelector("#contacts-list");
+    if (!list) return;
+    const q = comms.contactSearch.trim().toLowerCase();
+    const items = comms.contacts.filter(
+      (c) => !q || c.name.toLowerCase().includes(q) || c.number.includes(q),
+    );
+    if (!items.length) {
+      list.innerHTML = `<div class="comms-list-empty">${q ? "Sin resultados." : "Aún no tienes contactos."}</div>`;
+      return;
+    }
+    let lastLetter = "";
+    list.innerHTML = items
+      .map((c) => {
+        const letter = (c.name[0] || "#").toUpperCase();
+        const header = letter !== lastLetter ? `<div class="comms-letter">${esc(letter)}</div>` : "";
+        lastLetter = letter;
+        return `${header}
+          <button class="comms-row ${c.id === comms.selectedContactId ? "selected" : ""}" data-act="select-contact" data-id="${c.id}">
+            ${avatarHtml(c.name, c.number)}
+            <span class="comms-row-text"><strong>${esc(c.name)}</strong><small>${esc(c.number)}</small></span>
+          </button>`;
+      })
+      .join("");
+  }
+
+  function renderContactDetail() {
+    const pane = contactsApp.querySelector("#contacts-detail");
+    if (!pane) return;
+    const back = `<button class="comms-back" data-act="contacts-back"><span class="ui-icon" data-iconify="chevron-left"></span> Contactos</button>`;
+
+    if (comms.editingContact) {
+      const c = comms.editingContact;
+      pane.innerHTML = `
+        ${back}
+        <form class="comms-form" id="contact-form" autocomplete="off">
+          ${avatarHtml(c.name || "?", c.number, "xl")}
+          <h3>${c.id ? "Editar contacto" : "Nuevo contacto"}</h3>
+          <label>Nombre<input type="text" name="name" maxlength="40" value="${esc(c.name)}" placeholder="Nombre" /></label>
+          <label>Número<input type="text" name="number" inputmode="numeric" maxlength="12" value="${esc(formatNumber(c.number))}" placeholder="XXX-XXXX-XXX" /></label>
+          <div class="comms-form-actions">
+            <button type="button" class="comms-btn" data-act="cancel-contact">Cancelar</button>
+            <button type="submit" class="comms-btn primary">Guardar</button>
+          </div>
+        </form>`;
+      return;
+    }
+
+    const c = comms.contacts.find((x) => x.id === comms.selectedContactId);
+    if (!c) {
+      pane.innerHTML = `<div class="comms-empty"><span class="ui-icon" data-iconify="address-book"></span><p>Selecciona un contacto o crea uno nuevo.</p></div>`;
+      return;
+    }
+    const armed = comms.deleteArmedId === c.id;
+    pane.innerHTML = `
+      ${back}
+      <div class="comms-contact-card">
+        ${avatarHtml(c.name, c.number, "xl")}
+        <h3>${esc(c.name)}</h3>
+        <p>${esc(c.number)}</p>
+        <div class="comms-actions">
+          <button class="comms-action" data-act="call" data-number="${esc(c.number)}"><span class="ui-icon" data-iconify="phone"></span>Llamar</button>
+          <button class="comms-action" data-act="message" data-number="${esc(c.number)}"><span class="ui-icon" data-iconify="message-circle"></span>Mensaje</button>
+          <button class="comms-action" data-act="edit-contact"><span class="ui-icon" data-iconify="edit"></span>Editar</button>
+          <button class="comms-action danger ${armed ? "armed" : ""}" data-act="delete-contact"><span class="ui-icon" data-iconify="trash"></span>${armed ? "¿Seguro?" : "Borrar"}</button>
+        </div>
+      </div>`;
+  }
+
+  contactsApp?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    const act = btn.dataset.act;
+
+    if (act === "insert-sim") return insertSimFromApp(renderContactsApp);
+    if (act === "new-contact") {
+      comms.editingContact = { name: "", number: "" };
+      comms.selectedContactId = null;
+      return renderContactsApp();
+    }
+    if (act === "select-contact") {
+      comms.selectedContactId = Number(btn.dataset.id);
+      comms.editingContact = null;
+      comms.deleteArmedId = null;
+      return renderContactsApp();
+    }
+    if (act === "contacts-back" || act === "cancel-contact") {
+      if (act === "cancel-contact" && comms.editingContact?.id) {
+        comms.editingContact = null;
+      } else {
+        comms.editingContact = null;
+        comms.selectedContactId = null;
+      }
+      return renderContactsApp();
+    }
+    if (act === "edit-contact") {
+      const c = comms.contacts.find((x) => x.id === comms.selectedContactId);
+      if (c) comms.editingContact = { ...c };
+      return renderContactsApp();
+    }
+    if (act === "delete-contact") {
+      const id = comms.selectedContactId;
+      if (comms.deleteArmedId !== id) {
+        comms.deleteArmedId = id;
+        renderContactDetail();
+        renderIcons(contactsApp);
+        setTimeout(() => {
+          if (comms.deleteArmedId === id) {
+            comms.deleteArmedId = null;
+            if (!contactsApp.hidden) {
+              renderContactDetail();
+              renderIcons(contactsApp);
+            }
+          }
+        }, 3000);
+        return;
+      }
+      comms.deleteArmedId = null;
+      const ok = await commsCall("deleteContact", { id });
+      if (ok) {
+        comms.contacts = comms.contacts.filter((c) => c.id !== id);
+        comms.selectedContactId = null;
+        commsToast("Contacto borrado", "Se ha eliminado de tu agenda.", "trash", "Contactos");
+      }
+      return renderContactsApp();
+    }
+    if (act === "call") return startCall(btn.dataset.number);
+    if (act === "message") return openMessagesApp(btn.dataset.number);
+  });
+
+  contactsApp?.addEventListener("input", (e) => {
+    if (e.target.id === "contacts-search") {
+      comms.contactSearch = e.target.value;
+      renderContactsList();
+    } else if (e.target.name === "number") {
+      const pos = e.target.value.length;
+      e.target.value = formatNumber(e.target.value);
+      if (pos >= e.target.value.length) e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+    }
+  });
+
+  contactsApp?.addEventListener("submit", async (e) => {
+    if (e.target.id !== "contact-form") return;
+    e.preventDefault();
+    const form = e.target;
+    const payload = {
+      id: comms.editingContact?.id,
+      name: form.elements.name.value.trim(),
+      number: formatNumber(form.elements.number.value),
+    };
+    if (!payload.name) return commsToast("Falta el nombre", "Escribe un nombre para el contacto.", "alert-triangle", "Contactos");
+    if (!isFullNumber(payload.number))
+      return commsToast("Número incompleto", "El número tiene que tener 10 cifras.", "alert-triangle", "Contactos");
+
+    const res = await commsCall("saveContact", payload);
+    if (!res || !res.ok) return commsToast("No se pudo guardar", res?.message || "Inténtalo de nuevo.", "alert-triangle", "Contactos");
+
+    comms.contacts = comms.contacts.filter((c) => c.id !== res.contact.id).concat(res.contact);
+    comms.contacts.sort((a, b) => a.name.localeCompare(b.name, "es"));
+    comms.selectedContactId = res.contact.id;
+    comms.editingContact = null;
+    renderContactsApp();
+    commsToast("Contacto guardado", res.contact.name, "check", "Contactos");
+  });
+
+  // ============================================================
+  //  MENSAJES
+  // ============================================================
+  async function loadConversations() {
+    const list = await commsCall("getConversations");
+    comms.conversations = Array.isArray(list) ? list : [];
+  }
+
+  async function openMessagesApp(number) {
+    if (!openCommsSection(messagesApp, "messages")) return;
+    await loadCommsData();
+    comms.newChat = false;
+    comms.openChat = null;
+    comms.chatMessages = [];
+    if (comms.number) await loadConversations();
+    renderMessagesApp();
+    if (number && comms.number) await openChat(formatNumber(number));
+  }
+
+  function renderMessagesApp() {
+    if (messagesApp.hidden) return;
+    if (!comms.number) {
+      messagesApp.innerHTML = noSimHtml();
+      renderIcons(messagesApp);
+      return;
+    }
+    const showDetail = comms.openChat || comms.newChat;
+    messagesApp.innerHTML = `
+      <div class="comms-split ${showDetail ? "show-detail" : ""}">
+        <aside class="comms-list-pane">
+          <header class="comms-header">
+            <div class="comms-title-row">
+              <h2>Mensajes</h2>
+              <button class="comms-icon-btn" data-act="new-chat" title="Nuevo mensaje"><span class="ui-icon" data-iconify="edit"></span></button>
+            </div>
+            <label class="comms-search">
+              <span class="ui-icon" data-iconify="search"></span>
+              <input type="text" id="conv-search" placeholder="Buscar…" autocomplete="off" value="${esc(comms.convSearch)}" />
+            </label>
+          </header>
+          <div class="comms-list" id="conv-list"></div>
+        </aside>
+        <section class="comms-detail-pane chat-pane" id="chat-pane"></section>
+      </div>
+      <div class="comms-modal" id="photo-picker" hidden></div>`;
+    renderConversationList();
+    renderChatPane();
+    applyNarrow(messagesApp);
+    renderIcons(messagesApp);
+  }
+
+  function messagePreview(msg) {
+    if (!msg) return "";
+    if (msg.text) return msg.text;
+    if (msg.image) return "📷 Foto";
+    if (msg.location) return "📍 Ubicación";
+    return "";
+  }
+
+  function renderConversationList() {
+    const list = messagesApp.querySelector("#conv-list");
+    if (!list) return;
+    const q = comms.convSearch.trim().toLowerCase();
+    const items = comms.conversations.filter((c) => {
+      const name = displayName(c.number, c.name).toLowerCase();
+      return !q || name.includes(q) || c.number.includes(q);
+    });
+    if (!items.length) {
+      list.innerHTML = `<div class="comms-list-empty">${q ? "Sin resultados." : "No tienes conversaciones."}</div>`;
+      return;
+    }
+    list.innerHTML = items
+      .map((c) => {
+        const name = displayName(c.number, c.name);
+        return `
+          <button class="comms-row ${c.number === comms.openChat ? "selected" : ""} ${c.unread ? "unread" : ""}" data-act="open-chat" data-number="${esc(c.number)}">
+            ${avatarHtml(name, c.number)}
+            <span class="comms-row-text">
+              <strong>${esc(name)}</strong>
+              <small>${c.last?.mine ? "Tú: " : ""}${esc(messagePreview(c.last))}</small>
+            </span>
+            <span class="comms-row-meta">
+              <small>${esc(timeLabel(c.last?.time))}</small>
+              ${c.unread ? `<span class="comms-badge">${c.unread > 99 ? "99+" : c.unread}</span>` : ""}
+            </span>
+          </button>`;
+      })
+      .join("");
+  }
+
+  function bubbleHtml(m) {
+    let body = "";
+    if (m.image) body += `<img class="chat-image" src="${esc(m.image)}" alt="Foto" loading="lazy" />`;
+    if (m.location) {
+      const [x, y] = String(m.location).split(",");
+      body += `
+        <div class="chat-location">
+          <span class="ui-icon" data-iconify="map-pin"></span>
+          <span>Ubicación compartida</span>
+          <button class="comms-btn small" data-act="gps" data-x="${esc(x)}" data-y="${esc(y)}">Marcar en GPS</button>
+        </div>`;
+    }
+    if (m.text) body += `<p>${esc(m.text).replace(/\n/g, "<br>")}</p>`;
+    return `
+      <div class="chat-bubble ${m.mine ? "mine" : "theirs"}">
+        ${body}
+        <time>${esc(timeLabel(m.time))}</time>
+      </div>`;
+  }
+
+  function renderChatPane() {
+    const pane = messagesApp.querySelector("#chat-pane");
+    if (!pane) return;
+    const back = `<button class="comms-back" data-act="chat-back"><span class="ui-icon" data-iconify="chevron-left"></span></button>`;
+
+    if (!comms.openChat && !comms.newChat) {
+      pane.innerHTML = `<div class="comms-empty"><span class="ui-icon" data-iconify="message-circle"></span><p>Elige una conversación o empieza una nueva.</p></div>`;
+      return;
+    }
+
+    let header;
+    if (comms.newChat) {
+      const options = comms.contacts
+        .map((c) => `<option value="${esc(c.number)}">${esc(c.name)}</option>`)
+        .join("");
+      header = `
+        <header class="chat-header">
+          ${back}
+          <label class="chat-to">Para:
+            <input type="text" id="chat-to-input" list="chat-contacts" placeholder="Número o contacto" autocomplete="off" value="${esc(comms.newChatTo)}" />
+            <datalist id="chat-contacts">${options}</datalist>
+          </label>
+        </header>`;
+    } else {
+      const name = displayName(comms.openChat);
+      header = `
+        <header class="chat-header">
+          ${back}
+          ${avatarHtml(name, comms.openChat)}
+          <div class="chat-title"><strong>${esc(name)}</strong><small>${esc(comms.openChat)}</small></div>
+          ${contactByNumber(comms.openChat) ? "" : `<button class="comms-icon-btn" data-act="add-contact-from-chat" title="Guardar contacto"><span class="ui-icon" data-iconify="plus"></span></button>`}
+          <button class="comms-icon-btn" data-act="call" data-number="${esc(comms.openChat)}" title="Llamar"><span class="ui-icon" data-iconify="phone"></span></button>
+        </header>`;
+    }
+
+    pane.innerHTML = `
+      ${header}
+      <div class="chat-messages" id="chat-messages">
+        ${comms.chatMessages.length ? comms.chatMessages.map(bubbleHtml).join("") : `<div class="comms-list-empty">Escribe el primer mensaje.</div>`}
+      </div>
+      <form class="chat-composer" id="chat-composer" autocomplete="off">
+        <button type="button" class="comms-icon-btn" data-act="pick-photo" title="Enviar foto de la galería"><span class="ui-icon" data-iconify="photo"></span></button>
+        <button type="button" class="comms-icon-btn" data-act="share-location" title="Compartir mi ubicación"><span class="ui-icon" data-iconify="map-pin"></span></button>
+        <textarea id="chat-input" rows="1" maxlength="500" placeholder="Escribe un mensaje…"></textarea>
+        <button type="submit" class="comms-icon-btn send" title="Enviar"><span class="ui-icon" data-iconify="chevron-right"></span></button>
+      </form>`;
+
+    const box = pane.querySelector("#chat-messages");
+    if (box) box.scrollTop = box.scrollHeight;
+  }
+
+  async function openChat(number) {
+    comms.openChat = number;
+    comms.newChat = false;
+    comms.chatMessages = [];
+    renderMessagesApp();
+    const list = await commsCall("getMessages", { number });
+    if (comms.openChat !== number) return;
+    comms.chatMessages = Array.isArray(list) ? list : [];
+    const conv = comms.conversations.find((c) => c.number === number);
+    if (conv) conv.unread = 0;
+    renderConversationList();
+    renderChatPane();
+    renderIcons(messagesApp);
+  }
+
+  async function sendChatMessage(payload) {
+    const to = comms.newChat ? formatNumber(comms.newChatTo) : comms.openChat;
+    if (!isFullNumber(to)) {
+      commsToast("¿A quién?", "Escribe un número de 10 cifras o elige un contacto.", "alert-triangle", "Mensajes");
+      return false;
+    }
+    if (comms.sending) return false;
+    comms.sending = true;
+    const res = await commsCall("sendMessage", { number: to, ...payload });
+    comms.sending = false;
+    if (!res || !res.ok) {
+      commsToast("No se ha enviado", res?.message || "Inténtalo de nuevo.", "alert-triangle", "Mensajes");
+      return false;
+    }
+
+    if (comms.newChat) {
+      comms.newChat = false;
+      comms.newChatTo = "";
+      comms.openChat = to;
+      comms.chatMessages = [];
+    }
+    comms.chatMessages.push(res.message);
+    const conv = comms.conversations.find((c) => c.number === to);
+    if (conv) conv.last = res.message;
+    else comms.conversations.unshift({ number: to, unread: 0, last: res.message });
+    comms.conversations.sort((a, b) => (b.last?.id || 0) - (a.last?.id || 0));
+    renderMessagesApp();
+    messagesApp.querySelector("#chat-input")?.focus();
+    return true;
+  }
+
+  async function openPhotoPicker() {
+    const modal = messagesApp.querySelector("#photo-picker");
+    if (!modal) return;
+    modal.hidden = false;
+    modal.innerHTML = `<div class="comms-modal-card"><p class="comms-loading">Cargando fotos…</p></div>`;
+    const photos = await commsCall("getGalleryPhotos");
+    const list = Array.isArray(photos) ? photos : [];
+    modal.innerHTML = `
+      <div class="comms-modal-card">
+        <header><strong>Elige una foto</strong><button class="comms-icon-btn" data-act="close-picker"><span class="ui-icon" data-iconify="x"></span></button></header>
+        <div class="comms-photo-grid">
+          ${
+            list.length
+              ? list.map((p) => `<button data-act="send-photo" data-url="${esc(p.image_url)}"><img src="${esc(p.image_url)}" alt="" loading="lazy" /></button>`).join("")
+              : `<p class="comms-list-empty">No tienes fotos. Haz alguna con la Cámara.</p>`
+          }
+        </div>
+      </div>`;
+    renderIcons(modal);
+  }
+
+  messagesApp?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn) return;
+    const act = btn.dataset.act;
+
+    if (act === "insert-sim") return insertSimFromApp(renderMessagesApp);
+    if (act === "new-chat") {
+      comms.newChat = true;
+      comms.openChat = null;
+      comms.chatMessages = [];
+      renderMessagesApp();
+      return messagesApp.querySelector("#chat-to-input")?.focus();
+    }
+    if (act === "open-chat") return openChat(btn.dataset.number);
+    if (act === "chat-back") {
+      comms.openChat = null;
+      comms.newChat = false;
+      document.activeElement?.blur?.();
+      return renderMessagesApp();
+    }
+    if (act === "call") return startCall(btn.dataset.number);
+    if (act === "add-contact-from-chat") return openContactsApp(comms.openChat);
+    if (act === "gps") {
+      if (!devMode) nui("setGps", { x: Number(btn.dataset.x), y: Number(btn.dataset.y) }).catch(() => {});
+      return commsToast("GPS", "Ubicación marcada en el mapa.", "map-pin", "Mensajes");
+    }
+    if (act === "share-location") return sendChatMessage({ shareLocation: true });
+    if (act === "pick-photo") return openPhotoPicker();
+    if (act === "close-picker") {
+      messagesApp.querySelector("#photo-picker").hidden = true;
+      return;
+    }
+    if (act === "send-photo") {
+      messagesApp.querySelector("#photo-picker").hidden = true;
+      return sendChatMessage({ image: btn.dataset.url });
+    }
+  });
+
+  messagesApp?.addEventListener("input", (e) => {
+    if (e.target.id === "conv-search") {
+      comms.convSearch = e.target.value;
+      renderConversationList();
+    } else if (e.target.id === "chat-to-input") {
+      comms.newChatTo = e.target.value;
+    } else if (e.target.id === "chat-input") {
+      e.target.style.height = "auto";
+      e.target.style.height = `${Math.min(110, e.target.scrollHeight)}px`;
+    }
+  });
+
+  messagesApp?.addEventListener("keydown", (e) => {
+    // Enter envía, Shift+Enter hace salto de línea
+    if (e.target.id === "chat-input" && e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      messagesApp.querySelector("#chat-composer")?.requestSubmit();
+    }
+  });
+
+  messagesApp?.addEventListener("submit", async (e) => {
+    if (e.target.id !== "chat-composer") return;
+    e.preventDefault();
+    const input = messagesApp.querySelector("#chat-input");
+    const text = input ? input.value.trim() : "";
+    if (!text) return;
+    const ok = await sendChatMessage({ text });
+    if (ok && input && document.body.contains(input)) input.value = "";
+  });
+
+  // Mensaje recibido en directo
+  function handleNewMessage(msg) {
+    if (!msg || msg.to !== comms.number) {
+      // Puede ser para otro móvil que llevas encima: solo avisamos
+      if (msg) commsToast(displayName(msg.from, msg.from_name), messagePreview(msg), "message-circle", "Mensajes");
+      return;
+    }
+    const viewing = !messagesApp.hidden && comms.openChat === msg.from && !phone.hidden;
+    const conv = comms.conversations.find((c) => c.number === msg.from);
+    if (conv) {
+      conv.last = msg;
+      if (!viewing) conv.unread = (conv.unread || 0) + 1;
+    } else {
+      comms.conversations.unshift({ number: msg.from, name: msg.from_name, unread: viewing ? 0 : 1, last: msg });
+    }
+    comms.conversations.sort((a, b) => (b.last?.id || 0) - (a.last?.id || 0));
+
+    if (viewing) {
+      comms.chatMessages.push(msg);
+      commsCall("getMessages", { number: msg.from }); // la marca como leída en el servidor
+      const box = messagesApp.querySelector("#chat-messages");
+      if (box) {
+        box.querySelector(".comms-list-empty")?.remove();
+        box.insertAdjacentHTML("beforeend", bubbleHtml(msg));
+        renderIcons(box);
+        box.scrollTop = box.scrollHeight;
+      }
+      renderConversationList();
+      renderIcons(messagesApp.querySelector("#conv-list"));
+      return;
+    }
+
+    if (!messagesApp.hidden) {
+      renderConversationList();
+      renderIcons(messagesApp.querySelector("#conv-list"));
+    }
+    showNotification({
+      appName: "Mensajes",
+      icon: "message-circle",
+      title: esc(displayName(msg.from, msg.from_name)),
+      message: esc(messagePreview(msg)),
+      actions: [{ label: "Abrir", type: "accept", action: () => openMessagesApp(msg.from) }],
+    });
+  }
+
+  // ============================================================
+  //  LLAMAR (teclado, recientes, contactos)
+  // ============================================================
+  async function openDialerApp(tab) {
+    if (!openCommsSection(dialerApp, "phone")) return;
+    if (tab) comms.dialerTab = tab;
+    await loadCommsData();
+    renderDialerApp();
+    if (comms.dialerTab === "recents") loadRecents();
+  }
+
+  async function loadRecents() {
+    const list = await commsCall("getRecentCalls");
+    comms.recents = Array.isArray(list) ? list : [];
+    if (!dialerApp.hidden && comms.dialerTab === "recents") renderDialerApp();
+  }
+
+  function renderDialerApp() {
+    if (dialerApp.hidden) return;
+    if (!comms.number) {
+      dialerApp.innerHTML = noSimHtml();
+      renderIcons(dialerApp);
+      return;
+    }
+    const tabs = [
+      ["keypad", "Teclado"],
+      ["recents", "Recientes"],
+      ["contacts", "Contactos"],
+    ];
+    let body = "";
+    if (comms.dialerTab === "keypad") {
+      const keys = [
+        ["1", ""], ["2", "ABC"], ["3", "DEF"],
+        ["4", "GHI"], ["5", "JKL"], ["6", "MNO"],
+        ["7", "PQRS"], ["8", "TUV"], ["9", "WXYZ"],
+        ["*", ""], ["0", "+"], ["#", ""],
+      ];
+      const match = contactByNumber(formatNumber(comms.dialValue));
+      body = `
+        <div class="dialer-keypad">
+          <div class="dialer-display">
+            <span class="dialer-number">${esc(formatNumber(comms.dialValue)) || "&nbsp;"}</span>
+            <small>${match ? esc(match.name) : "&nbsp;"}</small>
+          </div>
+          <div class="dialer-keys">
+            ${keys.map(([k, sub]) => `<button class="dialer-key" data-act="key" data-key="${k}"><strong>${k}</strong><small>${sub || "&nbsp;"}</small></button>`).join("")}
+          </div>
+          <div class="dialer-bottom">
+            <button class="dialer-side" data-act="save-dialed" title="Guardar contacto" ${isFullNumber(comms.dialValue) && !match ? "" : "disabled"}><span class="ui-icon" data-iconify="plus"></span></button>
+            <button class="dialer-call" data-act="dial" title="Llamar"><span class="ui-icon" data-iconify="phone"></span></button>
+            <button class="dialer-side" data-act="backspace" title="Borrar"><span class="ui-icon" data-iconify="backspace"></span></button>
+          </div>
+        </div>`;
+    } else if (comms.dialerTab === "recents") {
+      body = comms.recents.length
+        ? `<div class="comms-list">${comms.recents
+            .map((r) => {
+              const name = displayName(r.number, r.name);
+              const missed = !r.outgoing && r.status !== "answered";
+              const label = r.outgoing
+                ? r.status === "answered"
+                  ? `Saliente · ${formatDuration(r.duration)}`
+                  : "Saliente · sin respuesta"
+                : r.status === "answered"
+                  ? `Entrante · ${formatDuration(r.duration)}`
+                  : r.status === "rejected"
+                    ? "Rechazada"
+                    : "Perdida";
+              return `
+                <button class="comms-row ${missed ? "missed" : ""}" data-act="call" data-number="${esc(r.number)}">
+                  ${avatarHtml(name, r.number)}
+                  <span class="comms-row-text"><strong>${esc(name)}</strong><small><span class="call-dir">${r.outgoing ? "↗" : "↙"}</span> ${label}</small></span>
+                  <span class="comms-row-meta"><small>${esc(timeLabel(r.time))}</small></span>
+                </button>`;
+            })
+            .join("")}</div>`
+        : `<div class="comms-empty"><span class="ui-icon" data-iconify="clock"></span><p>No hay llamadas recientes.</p></div>`;
+    } else {
+      body = comms.contacts.length
+        ? `<div class="comms-list">${comms.contacts
+            .map(
+              (c) => `
+                <button class="comms-row" data-act="call" data-number="${esc(c.number)}">
+                  ${avatarHtml(c.name, c.number)}
+                  <span class="comms-row-text"><strong>${esc(c.name)}</strong><small>${esc(c.number)}</small></span>
+                  <span class="comms-row-call"><span class="ui-icon" data-iconify="phone"></span></span>
+                </button>`,
+            )
+            .join("")}</div>`
+        : `<div class="comms-empty"><span class="ui-icon" data-iconify="address-book"></span><p>Aún no tienes contactos.</p></div>`;
+    }
+
+    dialerApp.innerHTML = `
+      <header class="comms-header dialer-header">
+        <div class="comms-title-row">
+          <h2>Teléfono</h2>
+          <p class="comms-mynumber">Mi número: <strong>${esc(comms.number)}</strong></p>
+        </div>
+        <nav class="dialer-tabs">
+          ${tabs.map(([id, label]) => `<button class="${comms.dialerTab === id ? "active" : ""}" data-act="tab" data-tab="${id}">${label}</button>`).join("")}
+        </nav>
+      </header>
+      <div class="dialer-body">${body}</div>`;
+    applyNarrow(dialerApp);
+    renderIcons(dialerApp);
+  }
+
+  function dialerPress(key) {
+    if (/^\d$/.test(key) && comms.dialValue.length < 10) comms.dialValue += key;
+    renderDialerApp();
+  }
+
+  dialerApp?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (!btn || btn.disabled) return;
+    const act = btn.dataset.act;
+    if (act === "insert-sim") return insertSimFromApp(renderDialerApp);
+    if (act === "tab") {
+      comms.dialerTab = btn.dataset.tab;
+      renderDialerApp();
+      if (comms.dialerTab === "recents") loadRecents();
+      return;
+    }
+    if (act === "key") return dialerPress(btn.dataset.key);
+    if (act === "backspace") {
+      comms.dialValue = comms.dialValue.slice(0, -1);
+      return renderDialerApp();
+    }
+    if (act === "dial") return startCall(comms.dialValue);
+    if (act === "save-dialed") return openContactsApp(formatNumber(comms.dialValue));
+    if (act === "call") return startCall(btn.dataset.number);
+  });
+
+  // Teclado físico en el marcador: números, borrar e Intro para llamar
+  document.addEventListener("keydown", (e) => {
+    if (dialerApp.hidden || phone.hidden || comms.dialerTab !== "keypad" || comms.call) return;
+    if (e.target instanceof Element && e.target.closest("input, textarea, [contenteditable='true']")) return;
+    if (/^\d$/.test(e.key)) dialerPress(e.key);
+    else if (e.key === "Backspace") {
+      comms.dialValue = comms.dialValue.slice(0, -1);
+      renderDialerApp();
+    } else if (e.key === "Enter") startCall(comms.dialValue);
+  });
+
+  // ============================================================
+  //  PANTALLA DE LLAMADA
+  // ============================================================
+  let callTimer = null;
+  let callHideTimer = null;
+
+  function callStatusText(call) {
+    if (call.state === "incoming") return "Llamada entrante…";
+    if (call.state === "calling") return "Llamando…";
+    if (call.state === "active") return formatDuration((Date.now() - call.since) / 1000);
+    if (call.state === "ended") return CALL_REASONS[call.reason] || CALL_REASONS.ended;
+    return "";
+  }
+
+  function renderCallScreen() {
+    const call = comms.call;
+    if (!call) {
+      callScreen.hidden = true;
+      callPill.hidden = true;
+      return;
+    }
+    const name = displayName(call.number, call.name);
+    const minimized = comms.callMinimized && call.state !== "incoming" && call.state !== "ended";
+
+    callPill.hidden = !minimized;
+    callPill.innerHTML = `<span class="call-pill-dot"></span><span>${esc(name)}</span><strong>${esc(callStatusText(call))}</strong>`;
+    callScreen.hidden = minimized;
+    if (minimized) return;
+
+    let buttons;
+    if (call.state === "incoming") {
+      buttons = `
+        <button class="call-btn reject" data-act="hangup"><span class="ui-icon" data-iconify="phone"></span><small>Rechazar</small></button>
+        <button class="call-btn accept" data-act="answer"><span class="ui-icon" data-iconify="phone"></span><small>Contestar</small></button>`;
+    } else if (call.state === "ended") {
+      buttons = "";
+    } else {
+      buttons = `
+        <button class="call-btn minimize" data-act="minimize"><span class="ui-icon" data-iconify="chevron-down"></span><small>Ocultar</small></button>
+        <button class="call-btn reject" data-act="hangup"><span class="ui-icon" data-iconify="phone"></span><small>Colgar</small></button>`;
+    }
+
+    callScreen.className = `call-screen state-${call.state}`;
+    callScreen.innerHTML = `
+      <div class="call-info">
+        ${avatarHtml(name, call.number, "xxl")}
+        <h2>${esc(name)}</h2>
+        ${name !== call.number ? `<p>${esc(call.number)}</p>` : ""}
+        <span class="call-status" id="call-status">${esc(callStatusText(call))}</span>
+      </div>
+      <div class="call-buttons">${buttons}</div>`;
+    renderIcons(callScreen);
+  }
+
+  function tickCall() {
+    const call = comms.call;
+    if (!call || call.state !== "active") return;
+    const text = callStatusText(call);
+    const status = callScreen.querySelector("#call-status");
+    if (status) status.textContent = text;
+    const pillTime = callPill.querySelector("strong");
+    if (pillTime) pillTime.textContent = text;
+  }
+
+  function showCallEnded(reason) {
+    if (!comms.call) return;
+    clearInterval(callTimer);
+    callTimer = null;
+    comms.call.state = "ended";
+    comms.call.reason = reason || "ended";
+    comms.callMinimized = false;
+    renderCallScreen();
+    clearTimeout(callHideTimer);
+    callHideTimer = setTimeout(() => {
+      comms.call = null;
+      renderCallScreen();
+      if (!dialerApp.hidden && comms.dialerTab === "recents") loadRecents();
+    }, 1800);
+  }
+
+  async function startCall(number) {
+    const target = formatNumber(number);
+    if (!isFullNumber(target)) {
+      commsToast("Número no válido", CALL_REASONS.invalid);
+      return;
+    }
+    if (comms.call && comms.call.state !== "ended") {
+      commsToast("Ya estás en una llamada", "Cuelga antes de llamar a otra persona.");
+      return;
+    }
+    clearTimeout(callHideTimer);
+    comms.call = { id: null, number: target, name: contactByNumber(target)?.name, state: "calling" };
+    comms.callMinimized = false;
+    renderCallScreen();
+
+    const res = await commsCall("startCall", { number: target });
+    if (!comms.call || comms.call.number !== target) return;
+    if (!res || !res.ok) return showCallEnded(res?.reason || "offline");
+    comms.call.id = res.id;
+    if (res.name) comms.call.name = res.name;
+    renderCallScreen();
+  }
+
+  function handleIncomingCall(data) {
+    if (!data) return;
+    clearTimeout(callHideTimer);
+    comms.call = {
+      id: data.id,
+      number: data.number,
+      name: data.name || contactByNumber(data.number)?.name,
+      state: "incoming",
+    };
+    comms.callMinimized = false;
+    renderCallScreen();
+  }
+
+  function handleCallUpdate(data) {
+    if (!data || !comms.call) return;
+    if (comms.call.id !== null && data.id !== undefined && comms.call.id !== data.id) return;
+    if (comms.call.id === null && data.id !== undefined) comms.call.id = data.id;
+
+    if (data.state === "active") {
+      comms.call.state = "active";
+      comms.call.since = Date.now();
+      renderCallScreen();
+      clearInterval(callTimer);
+      callTimer = setInterval(tickCall, 1000);
+    } else if (data.state === "ended") {
+      showCallEnded(data.reason);
+    }
+  }
+
+  async function onCallButton(act) {
+    const call = comms.call;
+    if (!call) return;
+    if (act === "answer") {
+      const ok = await commsCall("answerCall", { id: call.id });
+      if (!ok) showCallEnded("ended");
+    } else if (act === "hangup") {
+      if (!call.id) return showCallEnded("cancelled");
+      const ok = await commsCall("endCall", { id: call.id });
+      if (!ok) showCallEnded("ended");
+    } else if (act === "minimize") {
+      comms.callMinimized = true;
+      renderCallScreen();
+    }
+  }
+
+  callScreen?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-act]");
+    if (btn) onCallButton(btn.dataset.act);
+  });
+
+  callPill?.addEventListener("click", () => {
+    comms.callMinimized = false;
+    renderCallScreen();
+  });
+
+  // ---------- mensajes de Lua ----------
+  window.addEventListener("message", (event) => {
+    const { action, data } = event.data || {};
+    if (action === "incomingCall") handleIncomingCall(data);
+    else if (action === "callUpdate") handleCallUpdate(data);
+    else if (action === "newMessage") handleNewMessage(data);
+    else if (action === "simChanged") {
+      comms.number = data?.sim_number || null;
+      comms.conversations = [];
+      comms.openChat = null;
+      if (!contactsApp.hidden) openContactsApp();
+      else if (!messagesApp.hidden) openMessagesApp();
+      else if (!dialerApp.hidden) openDialerApp();
+    } else if (action === "resetBoot") {
+      clearInterval(callTimer);
+      comms.call = null;
+      renderCallScreen();
+    }
+  });
+
+  // ================= LÓGICA DE LA APP CÁMARA Y DE LA APP GALERÍA =================
+
+  let cameraPhotos = [];
+  // true = la galería se abrió desde el icono "Galería" (sin cámara). false = desde el botón de la cámara.
+  let galleryStandalone = false;
+
+  const cameraApp = document.getElementById("camera-app");
+  const cameraView = document.getElementById("camera-view");
+  const cameraGalleryView = document.getElementById("camera-gallery-view");
+  const cameraGalleryGrid = document.getElementById("camera-gallery-grid");
+
+  function renderCameraIcons() {
+    if (!window.iconifySvg) return;
+    cameraApp.querySelectorAll("[data-iconify]").forEach((el) => {
+      el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+    });
+  }
+
+  // 1. Abrir la cámara (app "Cámara")
+  async function openCameraApp() {
+    if (!state.hasBooted || state.booting || phone.hidden) return;
+
+    state.screen = "camera";
+    state.appOpen = true;
+    hideOverlayApps();
+    desktopScreen.hidden = true;
+    homeButton.hidden = false;
+
+    galleryStandalone = false;
+    cameraApp.hidden = false;
+    cameraView.hidden = false;
+    cameraGalleryView.hidden = true;
+
+    // Pantalla transparente + agujero en la funda para ver el juego a través del visor
+    enterCameraMode();
+    resetZoom(); // cada vez que abres la cámara empieza en 1x
+
+    renderCameraIcons();
+  }
+
+  // 1b. Abrir la galería (app "Galería"): solo las fotos, sin cámara
+  function openGalleryApp() {
+    if (!state.hasBooted || state.booting || phone.hidden) return;
+
+    state.screen = "gallery";
+    state.appOpen = true;
+    hideOverlayApps(); // si venías de la cámara, la apaga
+    desktopScreen.hidden = true;
+    homeButton.hidden = false;
+
+    galleryStandalone = true;
+    cameraApp.hidden = false;
+    cameraView.hidden = true;
+    cameraGalleryView.hidden = false;
+
+    renderCameraIcons();
+    loadGallery();
+  }
+
+  // 2. Tomar la foto
+  // En FiveM Legacy, screenshot-basic captura SOLO el juego (la interfaz NUI no sale en la foto).
+  // Si en tu build la foto sale con el móvil encima, pon esto a true: se oculta el móvil durante la captura.
+  const SCREENSHOT_INCLUDES_UI = false;
+  const PHOTO_TIMEOUT_MS = 20000; // si el cliente no responde, no dejamos el móvil bloqueado
+  let takingPhoto = false;
+
+  function cameraFlash() {
+    const flash = document.createElement("div");
+    flash.style.cssText =
+      "position:fixed;inset:0;background:#fff;z-index:999999;opacity:1;transition:opacity .3s;pointer-events:none";
+    document.body.appendChild(flash);
+    setTimeout(() => {
+      flash.style.opacity = "0";
+      setTimeout(() => flash.remove(), 300);
+    }, 50);
+  }
+
+  async function takePhoto() {
+    if (takingPhoto) return; // evita dobles clics
+    takingPhoto = true;
+
+    if (SCREENSHOT_INCLUDES_UI) {
+      phone.style.visibility = "hidden";
+      await new Promise((resolve) => setTimeout(resolve, 80)); // dejamos que el motor repinte sin la interfaz
+    } else {
+      cameraFlash();
+    }
+
+    try {
+      // Pedimos al cliente Lua que haga la captura y la suba (sale con el zoom que tengas puesto)
+      const result = await Promise.race([
+        nui("takePhoto"),
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ success: false }), PHOTO_TIMEOUT_MS),
+        ),
+      ]);
+
+      if (SCREENSHOT_INCLUDES_UI) {
+        phone.style.visibility = "";
+        cameraFlash();
+      }
+
+      if (result && result.success) {
+        showNotification({
+          appName: "Cámara",
+          icon: "check",
+          title: "Foto guardada",
+          message: "La foto se ha guardado en tu galería.",
+        });
+
+        if (!cameraGalleryView.hidden) {
+          loadGallery();
+        }
+      } else {
+        showNotification({
+          appName: "Cámara",
+          icon: "alert-triangle",
+          title: "Error",
+          message: "No se pudo tomar la foto.",
+        });
+      }
+    } catch (e) {
+      console.error("Error al tomar foto:", e);
+    } finally {
+      phone.style.visibility = ""; // pase lo que pase, el móvil vuelve a verse
+      takingPhoto = false;
+    }
+  }
+
+  // 3. Cargar la galería
+  async function loadGallery() {
+    try {
+      const photos = (await nui("getGalleryPhotos")) || [];
+      cameraPhotos = Array.isArray(photos) ? photos : [];
+      renderGallery();
+    } catch (e) {
+      console.error("Error al cargar galería:", e);
+    }
+  }
+
+  // 4. Renderizar galería (creando los elementos a mano: una URL rara no puede inyectar HTML)
+  function renderGallery() {
+    if (!cameraGalleryGrid) return;
+    if (cameraPhotos.length === 0) {
+      cameraGalleryGrid.innerHTML = `<div class="camera-gallery-empty"><p>No hay fotos aún.</p></div>`;
+      return;
+    }
+    cameraGalleryGrid.replaceChildren(
+      ...cameraPhotos.map((photo) => {
+        const item = document.createElement("div");
+        item.className = "camera-gallery-item";
+        const img = document.createElement("img");
+        img.alt = "Foto";
+        img.loading = "lazy";
+        img.src = String(photo.image_url || "");
+        img.addEventListener("error", () => item.classList.add("is-broken"));
+        item.appendChild(img);
+        return item;
+      }),
+    );
+  }
+
+  // 5. Botón de galería DENTRO de la cámara
+  function toggleCameraGallery() {
+    if (cameraGalleryView.hidden) {
+      galleryStandalone = false;
+      cameraGalleryView.hidden = false;
+      loadGallery();
+    } else {
+      cameraGalleryView.hidden = true;
+    }
+  }
+
+  // 6. Flecha atrás de la galería: si la abriste desde el escritorio vuelve al escritorio;
+  //    si la abriste desde la cámara, vuelve a la cámara.
+  function backFromGallery() {
+    if (galleryStandalone) {
+      closeCameraApp();
+      return;
+    }
+    cameraGalleryView.hidden = true;
+    cameraView.hidden = false;
+  }
+
+  // 7. Salir de la cámara / galería
+  function closeCameraApp() {
+    galleryStandalone = false;
+    cameraApp.hidden = true;
+    exitCameraMode(); // Restauramos el fondo normal y la funda
+    returnToDesktop();
+  }
+
+  // ================= ZOOM (rueda del ratón + botones tipo Android) =================
+  // Botones: 0.5 · 1 · 2 · 4 · 8 · 10 · 15 · 20  (clic = salto directo, con transición suave)
+  // Rueda:   de 0.5 a 1 en pasos de 0.1 y de 1 a 20 en pasos de 1 (2, 3, 4, 5, 6...)
+  // El botón "activo" muestra el zoom real en el que estás (p. ej. 3x aparece en el botón del 2).
+  const ZOOM_PRESETS = [0.5, 1, 2, 4, 8, 10, 15, 20];
+  const ZOOM_STEPS = (() => {
+    const steps = [];
+    for (let v = 0.5; v < 1 - 1e-9; v += 0.1) steps.push(Math.round(v * 10) / 10);
+    for (let v = 1; v <= 20; v += 1) steps.push(v);
+    return steps;
+  })();
+  const ZOOM_MIN = ZOOM_STEPS[0];
+  const ZOOM_MAX = ZOOM_STEPS[ZOOM_STEPS.length - 1];
+  const ZOOM_TICK_GAP = 12; // px entre rayitas de la regla
+  const ZOOM_DIAL_HIDE_MS = 1300;
+
+  const zoomChipsEl = document.getElementById("camera-zoom-chips");
+  const zoomDialEl = document.getElementById("camera-zoom-dial");
+  const zoomDialValueEl = document.getElementById("camera-zoom-dial-value");
+  const zoomDialTicksEl = document.getElementById("camera-zoom-dial-ticks");
+  let zoomChipEls = [];
+
+  let zoomTarget = 1;
+  let zoomShown = 1;
+  let zoomRaf = null;
+  let zoomDialTimer = null;
+  let zoomSendTimer = null;
+  let zoomLastSent = null;
+
+  const roundZoom = (v) => Math.round(v * 10) / 10;
+  const formatZoom = (v) => {
+    const r = roundZoom(v);
+    return `${Number.isInteger(r) ? r : r.toFixed(1)}x`;
+  };
+  const presetLabel = (v) => (v < 1 ? String(v).replace(/^0/, "") : String(v));
+
+  function zoomIndexOf(value) {
+    let best = 0;
+    ZOOM_STEPS.forEach((v, i) => {
+      if (Math.abs(v - value) < Math.abs(ZOOM_STEPS[best] - value)) best = i;
+    });
+    return best;
+  }
+
+  // Posición "decimal" en la regla (para que se deslice suave entre dos rayitas)
+  function zoomFractionalIndex(value) {
+    if (value <= ZOOM_MIN) return 0;
+    for (let i = 0; i < ZOOM_STEPS.length - 1; i++) {
+      const a = ZOOM_STEPS[i];
+      const b = ZOOM_STEPS[i + 1];
+      if (value <= b) return i + (value - a) / (b - a);
+    }
+    return ZOOM_STEPS.length - 1;
+  }
+
+  function buildZoomUi() {
+    if (zoomChipsEl) {
+      zoomChipsEl.innerHTML = "";
+      zoomChipEls = ZOOM_PRESETS.map((preset) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "camera-zoom-chip";
+        chip.dataset.zoom = String(preset);
+        chip.textContent = presetLabel(preset);
+        chip.addEventListener("click", () => setZoom(preset));
+        zoomChipsEl.appendChild(chip);
+        return chip;
+      });
+    }
+
+    if (zoomDialTicksEl) {
+      zoomDialTicksEl.innerHTML = "";
+      ZOOM_STEPS.forEach((value, i) => {
+        const tick = document.createElement("span");
+        const major = ZOOM_PRESETS.includes(value);
+        tick.className = `camera-zoom-tick${major ? " major" : ""}`;
+        tick.style.left = `${i * ZOOM_TICK_GAP}px`;
+        if (major) {
+          const label = document.createElement("span");
+          label.className = "camera-zoom-tick-label";
+          label.textContent = presetLabel(value);
+          tick.appendChild(label);
+        }
+        zoomDialTicksEl.appendChild(tick);
+      });
+    }
+  }
+
+  function renderZoom() {
+    // Botón activo = el preset más alto que no supera el zoom actual
+    let activeIndex = 0;
+    ZOOM_PRESETS.forEach((preset, i) => {
+      if (zoomShown + 0.001 >= preset) activeIndex = i;
+    });
+    zoomChipEls.forEach((chip, i) => {
+      const active = i === activeIndex;
+      chip.classList.toggle("active", active);
+      chip.textContent = active ? formatZoom(zoomShown) : presetLabel(ZOOM_PRESETS[i]);
+    });
+
+    if (zoomDialValueEl) zoomDialValueEl.textContent = formatZoom(zoomShown);
+    if (zoomDialTicksEl) {
+      zoomDialTicksEl.style.transform = `translateX(${-zoomFractionalIndex(zoomShown) * ZOOM_TICK_GAP}px)`;
+    }
+  }
+
+  // Animación suave del número/regla (en escala logarítmica, igual que en Lua)
+  function animateZoom() {
+    const ls = Math.log(zoomShown);
+    const lt = Math.log(zoomTarget);
+    const next = ls + (lt - ls) * 0.2;
+    zoomShown = Math.abs(lt - next) < 0.002 ? zoomTarget : Math.exp(next);
+    renderZoom();
+    zoomRaf = zoomShown === zoomTarget ? null : requestAnimationFrame(animateZoom);
+  }
+
+  // Manda el zoom a Lua como mucho cada 40 ms (siempre llega el último valor)
+  function sendZoom() {
+    if (zoomSendTimer) return;
+    zoomSendTimer = setTimeout(() => {
+      zoomSendTimer = null;
+      if (zoomTarget === zoomLastSent) return;
+      zoomLastSent = zoomTarget;
+      nui("cameraZoom", { zoom: zoomTarget }).catch(() => {});
+    }, 40);
+  }
+
+  function showZoomDial() {
+    if (!zoomDialEl) return;
+    zoomDialEl.classList.add("visible");
+    clearTimeout(zoomDialTimer);
+    zoomDialTimer = setTimeout(() => zoomDialEl.classList.remove("visible"), ZOOM_DIAL_HIDE_MS);
+  }
+
+  function setZoom(value) {
+    const clamped = roundZoom(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(value) || 1)));
+    if (clamped === zoomTarget) return;
+    zoomTarget = clamped;
+    sendZoom();
+    showZoomDial();
+    if (!zoomRaf) zoomRaf = requestAnimationFrame(animateZoom);
+  }
+
+  function resetZoom() {
+    if (zoomRaf) cancelAnimationFrame(zoomRaf);
+    zoomRaf = null;
+    zoomTarget = 1;
+    zoomShown = 1;
+    zoomLastSent = 1; // Lua también empieza en 1x al abrir la cámara
+    clearTimeout(zoomDialTimer);
+    zoomDialEl?.classList.remove("visible");
+    renderZoom();
+  }
+
+  // Rueda del ratón con el cursor DENTRO del visor: arriba = acercar, abajo = alejar (paso a paso)
+  cameraView?.addEventListener(
+    "wheel",
+    (e) => {
+      if (cameraView.hidden || !cameraModeActive) return;
+      e.preventDefault();
+      const dir = e.deltaY < 0 ? 1 : e.deltaY > 0 ? -1 : 0;
+      if (!dir) return;
+      const index = Math.min(ZOOM_STEPS.length - 1, Math.max(0, zoomIndexOf(zoomTarget) + dir));
+      setZoom(ZOOM_STEPS[index]);
+    },
+    { passive: false },
+  );
+
+  // ================= GIRAR LA CÁMARA ARRASTRANDO =================
+  // Mantén clic izquierdo dentro del visor y arrastra: la cámara gira y el cursor se oculta.
+  // Al soltar vuelve el cursor (al sitio donde hiciste clic) y el ratón deja de girar la cámara.
+  let cameraDrag = null;
+
+  function startCameraDrag(e) {
+    if (e.button !== 0 || !cameraModeActive || cameraView.hidden || takingPhoto) return;
+    if (e.target instanceof Element && e.target.closest("button, .camera-zoom, .camera-controls")) return;
+    e.preventDefault();
+
+    cameraDrag = { pointerId: e.pointerId };
+    try {
+      cameraView.setPointerCapture(e.pointerId);
+    } catch (err) {}
+    document.body.classList.add("camera-dragging");
+    nui("cameraDrag", {
+      active: true,
+      x: e.clientX / window.innerWidth,
+      y: e.clientY / window.innerHeight,
+    }).catch(() => {});
+  }
+
+  function endCameraDrag() {
+    if (!cameraDrag) return;
+    const { pointerId } = cameraDrag;
+    cameraDrag = null;
+    try {
+      if (cameraView.hasPointerCapture(pointerId)) cameraView.releasePointerCapture(pointerId);
+    } catch (err) {}
+    document.body.classList.remove("camera-dragging");
+    nui("cameraDrag", { active: false }).catch(() => {});
+  }
+
+  cameraView?.addEventListener("pointerdown", startCameraDrag);
+  cameraView?.addEventListener("pointerup", endCameraDrag);
+  cameraView?.addEventListener("pointercancel", endCameraDrag);
+  cameraView?.addEventListener("lostpointercapture", endCameraDrag);
+  window.addEventListener("blur", endCameraDrag);
+  window.dpCameraReset = endCameraDrag; // exitCameraMode() lo llama al cerrar la cámara
+
+  buildZoomUi();
+  renderZoom();
+
+  // --- EVENT LISTENERS ---
+  setTimeout(() => {
+    document.getElementById("camera-btn-shutter")?.addEventListener("click", takePhoto);
+    document
+      .getElementById("camera-btn-gallery")
+      ?.addEventListener("click", toggleCameraGallery);
+    document
+      .getElementById("camera-btn-back-gallery")
+      ?.addEventListener("click", backFromGallery);
+    document.getElementById("camera-btn-close")?.addEventListener("click", closeCameraApp);
+
+    document.getElementById("camera-btn-flash")?.addEventListener("click", (e) => {
+      e.currentTarget.classList.toggle("active");
+      showNotification({
+        appName: "Cámara",
+        icon: "flash",
+        title: "Flash",
+        message: "Flash activado (simulado)",
+      });
+    });
+  }, 1000);
 })();

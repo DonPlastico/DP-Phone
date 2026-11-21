@@ -5,8 +5,8 @@ Config = {
     -- Tiempo en segundos que tarda en encenderse el teléfono al iniciarlo
     bootDurationSeconds = 2,
 
-    -- API Key de Fivemanage para subir y guardar las fotos hechas con la cámara del móvil
-    fivemanageAPIKey = 'IVfZfVdaVeu0wmHoveB7wcoAFpFnqLtP',
+    -- ⚠️ La API key de Fivemanage ya NO va aquí (este archivo lo reciben todos los jugadores).
+    --    Ahora está en server/sv_config.lua, que solo lee el servidor.
 
     -- Tiempo en milisegundos que debes mantener pulsada una app para entrar en el modo edición (mover/borrar apps)
     desktopLongPressTime = 600,
@@ -32,6 +32,12 @@ Config = {
     devCommands = {
         testNotification = 'testnotif'
     },
+
+    -- ==========================================
+    -- LLAMADAS
+    -- ==========================================
+    -- Sistema de voz para las llamadas: 'pma-voice' o 'saltychat'
+    voice = 'pma-voice',
 
     -- ==========================================
     -- ITEMS
@@ -131,6 +137,20 @@ Config = {
     -- CÁMARA
     -- ==========================================
     camera = {
+        -- true = al abrir la app de cámara se ve el mundo desde la cabeza del personaje (con zoom y giro arrastrando)
+        -- false = la app de cámara no toca la vista del juego (sin zoom ni giro)
+        firstPerson = true,
+
+        -- ZOOM DE LA APP DE CÁMARA (rueda del ratón y botones 0.5x ... 20x)
+        zoomMin = 0.5,
+        zoomMax = 20.0,
+        baseFov = 50.0, -- campo de visión a 1x (0.5x ≈ 86º, 20x ≈ 2.7º)
+        zoomSmoothness = 12.0, -- más alto = el zoom llega antes al valor elegido
+        dragSensitivity = 8.0, -- velocidad al girar la cámara arrastrando con el ratón
+        forwardOffset = 0.22, -- metros por delante de la cabeza (si ves pelo/cabeza en la foto, súbelo)
+
+        -- (Lo de abajo es de la cámara antigua de 'takePicture')
+
         fovMax = 80.0,
         fovMin = 5.0,
         zoomSpeed = 10.0,

@@ -8,7 +8,7 @@
 
 [![Framework](https://img.shields.io/badge/Framework-QBCore-blue.svg)](https://github.com/qbcore-framework/qb-core)
 [![Lua](https://img.shields.io/badge/Code-Lua-2C2D72.svg?logo=lua)](https://www.lua.org/)
-[![Version](https://img.shields.io/badge/Versión-1.0.0-success.svg)]()
+[![Version](https://img.shields.io/badge/Versión-0.2.3-success.svg)]()
 [![License](https://img.shields.io/badge/Licencia-Privada-red.svg)]()
 
 **DP-Phone** es un recurso avanzado y totalmente personalizable para servidores basados en **QBCore**. Diseñado para ofrecer una experiencia realista y fluida, incluye una NUI moderna, sistema de aplicaciones, gestión física de SIM y hardware, cámara funcional y mucho más.

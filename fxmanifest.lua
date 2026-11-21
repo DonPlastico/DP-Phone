@@ -21,6 +21,7 @@ client_script 'client/cl_main.lua'
 -- Scripts que solo lee la máquina (servidor) y base de datos
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
+    'server/sv_config.lua', -- claves privadas (solo servidor)
     'server/sv_main.lua'
 }
 
