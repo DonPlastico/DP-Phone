@@ -6,7 +6,6 @@
   // LIBRERÍA DE ICONOS SVG (Unificada)
   // ==========================================
   Object.assign(window.DPPhoneIconify, {
-    // --- BATERÍA Y SEÑAL (AKAR & CUSTOM) ---
     "akar-icons:battery-full": {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="18" height="12" x="2" y="6" rx="2"/><path d="M7 10v4m4-4v4m4-4v4m5-4h1.5a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5H20z"/></g>',
       width: 24,
@@ -27,8 +26,6 @@
     "no-signal": {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2.4"><g opacity=".4"><path d="M5 19v-2"/><path d="M10 19v-5"/><path d="M15 19v-8"/><path d="M20 19V7"/></g><path d="M3.5 3.5l17 17"/></g>',
     },
-
-    // --- MARCAS (BRANDS) ---
     "brand-whatsapp": {
       body: '<path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967c-.273-.099-.471-.148-.67.15c-.197.297-.767.966-.94 1.164c-.173.199-.347.223-.644.075c-.297-.15-1.255-.463-2.39-1.475c-.883-.788-1.48-1.761-1.653-2.059c-.173-.297-.018-.458.13-.606c.134-.133.298-.347.446-.52c.149-.174.198-.298.298-.497c.099-.198.05-.371-.025-.52c-.075-.149-.669-1.612-.916-2.207c-.242-.579-.487-.5-.669-.51c-.173-.008-.371-.01-.57-.01c-.198 0-.52.074-.792.372c-.272.297-1.04 1.016-1.04 2.479c0 1.462 1.065 2.875 1.213 3.074c.149.198 2.096 3.2 5.077 4.487c.709.306 1.262.489 1.694.625c.712.227 1.36.195 1.871.118c.571-.085 1.758-.719 2.006-1.413c.248-.694.248-1.289.173-1.413c-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214l-3.741.982l.998-3.648l-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884c2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413"/>',
     },
@@ -47,8 +44,6 @@
     "brand-youtube": {
       body: '<path fill="currentColor" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>',
     },
-
-    // --- UTILIDADES, DISPOSITIVOS Y APPS (TABLER) ---
     "message-circle": {
       body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 20l1.3-3.9C1.976 12.663 2.874 8.228 6.4 5.726c3.526-2.501 8.59-2.296 11.845.48c3.255 2.777 3.695 7.266 1.029 10.501S11.659 20.922 7.7 19z"/>',
     },
@@ -435,6 +430,9 @@
     flash: {
       body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3v7h6l-8 11v-7H5l8-11z"/>',
     },
+    sparkles: {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 3v4m-2-2h4"/><path d="M5 17v3m-1.5-1.5h3"/></g>',
+    },
   });
 
   const icons = window.DPPhoneIconify;
@@ -455,7 +453,7 @@
       const safeClass = className.replace(/[^a-z\d _-]/gi, "");
 
       // Devolvemos una imagen que se tiñe de blanco puro para parecerse a los SVG
-      return `<img src="${url}" class="${safeClass} external-icon" data-icon="${name}" style="width: 60%; height: 60%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.9;" />`;
+      return `<img src="${url}" class="${safeClass} external-icon" data-icon="${name}" style="display: block; margin: auto; width: 78%; height: 78%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.95;" />`;
     }
 
     if (!icon) {

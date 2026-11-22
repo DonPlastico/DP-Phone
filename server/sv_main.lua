@@ -152,8 +152,7 @@ local function generateSimNumber()
     local number
     local exists = true
     while exists do
-        number = string.format('%03d-%04d-%03d', math.random(100, 999), math.random(1000, 9999),
-            math.random(100, 999))
+        number = string.format('%03d-%04d-%03d', math.random(100, 999), math.random(1000, 9999), math.random(100, 999))
         exists = MySQL.scalar.await('SELECT 1 FROM dp_phone_sim WHERE sim_number = ?', {number}) ~= nil
     end
     return number
@@ -171,7 +170,6 @@ end
 -- ==========================================================
 CreateThread(function()
     Wait(500)
-    print('^3[DP-Phone] ^7Iniciando verificación de tablas...^0')
 
     -- Hardware del teléfono
     MySQL.query.await([[
@@ -233,12 +231,21 @@ CreateThread(function()
         CREATE TABLE IF NOT EXISTS `dp_phone_gallery` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `imei` varchar(50) NOT NULL,
-            `image_url` varchar(255) NOT NULL,
+            `image_url` TEXT NOT NULL,
             `date` timestamp NULL DEFAULT current_timestamp(),
             PRIMARY KEY (`id`),
             KEY `idx_gallery_imei` (`imei`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
+
+    local galleryUrlType = MySQL.scalar.await([[
+        SELECT DATA_TYPE FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dp_phone_gallery' AND COLUMN_NAME = 'image_url'
+    ]])
+    if galleryUrlType and tostring(galleryUrlType):lower() ~= 'text' then
+        MySQL.query.await('ALTER TABLE `dp_phone_gallery` MODIFY `image_url` TEXT NOT NULL')
+        print("^2[DP-Phone] ^7Columna 'dp_phone_gallery.image_url' actualizada a TEXT.^0")
+    end
 
     -- Contactos
     MySQL.query.await([[
@@ -331,8 +338,6 @@ CreateThread(function()
     if not srvCfg('fivemanageAPIKey') or ServerConfig.fivemanageAPIKey == 'PON_AQUI_TU_NUEVA_API_KEY' then
         print('^1[DP-Phone] Falta la API key de Fivemanage en server/sv_config.lua: la cámara no podrá subir fotos.^0')
     end
-
-    print('^2[DP-Phone] ^7Tablas verificadas.^0')
 end)
 
 -- ==========================================================
@@ -367,11 +372,10 @@ local function OpenPhoneData(source, item)
 
     local pin = hardwareData.pin
     local hasPin = pin ~= nil and pin ~= ''
-    local isOwner = hardwareData.owner_citizenid ~= nil and hardwareData.owner_citizenid ==
-                        Player.PlayerData.citizenid
+    local isOwner = hardwareData.owner_citizenid ~= nil and hardwareData.owner_citizenid == Player.PlayerData.citizenid
 
-    debugPrint(('OpenPhoneData %s: configurado=%s, PIN=%s, dueño=%s'):format(imei,
-        tostring(dbBool(hardwareData.is_configured)), tostring(hasPin), tostring(isOwner)))
+    debugPrint(('OpenPhoneData %s: configurado=%s, PIN=%s, dueño=%s'):format(imei, tostring(
+        dbBool(hardwareData.is_configured)), tostring(hasPin), tostring(isOwner)))
 
     local okSettings, settingsDecoded = pcall(json.decode, hardwareData.settings or '{}')
     local okApps, appsDecoded = pcall(json.decode, hardwareData.installed_apps or '[]')
@@ -453,6 +457,91 @@ RegisterNetEvent('dp-phone:server:requestOpen', function(slot)
         return
     end
     OpenPhoneData(src, item)
+end)
+
+local function ensurePhoneItemImei(src, Player, item)
+    if not item or item.name ~= Config.itemName then
+        return nil
+    end
+
+    -- Si hay más de 1 apilado, separamos 1 unidad con su propio IMEI único
+    if (item.amount or 1) > 1 then
+        local newImei = generateImei()
+        if not newImei then
+            return nil
+        end
+        Player.Functions.RemoveItem(item.name, 1, item.slot)
+        local newInfo = {}
+        for k, v in pairs(item.info or {}) do
+            newInfo[k] = v
+        end
+        newInfo.imei = newImei
+        Player.Functions.AddItem(item.name, 1, false, newInfo)
+        local createdItem = findPhoneItem(src, newImei)
+        return createdItem or {
+            name = item.name,
+            slot = item.slot,
+            amount = 1,
+            info = newInfo
+        }
+    end
+
+    if not item.info then
+        item.info = {}
+    end
+    if not item.info.imei then
+        item.info.imei = generateImei()
+        if not item.info.imei then
+            return nil
+        end
+        if item.slot and Player.PlayerData.items[item.slot] then
+            Player.PlayerData.items[item.slot].info = item.info
+            Player.Functions.SetInventory(Player.PlayerData.items)
+        end
+    end
+
+    return item
+end
+
+RegisterNetEvent('dp-phone:server:openPhoneByItem', function(clientItem)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then
+        return
+    end
+
+    local targetSlot = type(clientItem) == 'table' and tonumber(clientItem.slot) or nil
+    local targetImei = type(clientItem) == 'table' and clientItem.info and clientItem.info.imei or nil
+
+    local item = nil
+    if targetSlot and Player.PlayerData.items[targetSlot] and Player.PlayerData.items[targetSlot].name ==
+        Config.itemName then
+        item = Player.PlayerData.items[targetSlot]
+    elseif targetImei then
+        item = findPhoneItem(src, targetImei)
+    end
+
+    if not item then
+        return TriggerClientEvent('QBCore:Notify', src, 'No llevas ese móvil en tu inventario.', 'error')
+    end
+
+    item = ensurePhoneItemImei(src, Player, item)
+    if not item or not item.info or not item.info.imei then
+        return TriggerClientEvent('QBCore:Notify', src, 'No se pudo preparar el teléfono.', 'error')
+    end
+
+    OpenPhoneData(src, item)
+end)
+
+RegisterNetEvent('dp-phone:server:preloadPhone', function(imei)
+    local src = source
+    if not isValidString(imei, 1, 50) then
+        return
+    end
+    local item = findPhoneItem(src, imei)
+    if item then
+        OpenPhoneData(src, item)
+    end
 end)
 
 -- ==========================================================
@@ -651,7 +740,8 @@ RegisterNetEvent('dp-phone:server:saveHardware', function(imei, settings, instal
     local src = source
     if not canUsePhone(src, imei) then
         -- Normal si el móvil está bloqueado (la interfaz guarda ajustes al abrir); solo lo avisamos en debug
-        return debugPrint(('Ajustes de %s ignorados: el jugador %s no puede usar ese móvil.'):format(tostring(imei), src))
+        return debugPrint(('Ajustes de %s ignorados: el jugador %s no puede usar ese móvil.'):format(tostring(imei),
+            src))
     end
     if rateLimited(src, 'saveHardware', 250) then
         return
@@ -688,8 +778,7 @@ RegisterNetEvent('dp-phone:server:saveSetup', function(imei, pin, cloudUser)
 
     -- Un móvil ya configurado solo se puede volver a configurar si está desbloqueado
     -- (si no, un ladrón podría repetir el asistente y poner su propio PIN).
-    local configured = MySQL.scalar.await('SELECT is_configured FROM dp_phone_hardware WHERE imei = ? LIMIT 1',
-        {imei})
+    local configured = MySQL.scalar.await('SELECT is_configured FROM dp_phone_hardware WHERE imei = ? LIMIT 1', {imei})
     if dbBool(configured) and not canUsePhone(src, imei) then
         return warnPrint(src, ('intentó reconfigurar el móvil bloqueado %s.'):format(imei))
     end
@@ -968,8 +1057,8 @@ lib.callback.register('dp-phone:server:saveSnakeScore', function(source, imei, s
 
     -- Tiempo jugado REAL en minutos (antes la interfaz mandaba siempre 1)
     local minutes = math.ceil(elapsed / 60)
-    MySQL.update.await('UPDATE dp_phone_game_users SET max_score = ?, total_time_played = ? WHERE imei = ?',
-        {math.max(currentData.max_score or 0, score), (currentData.total_time_played or 0) + minutes, imei})
+    MySQL.update.await('UPDATE dp_phone_game_users SET max_score = ?, total_time_played = ? WHERE imei = ?', {math.max(
+        currentData.max_score or 0, score), (currentData.total_time_played or 0) + minutes, imei})
     return true
 end)
 
@@ -1097,12 +1186,208 @@ lib.callback.register('dp-phone:server:savePhoto', function(source, imageUrl)
     return true
 end)
 
-lib.callback.register('dp-phone:server:getGalleryPhotos', function(source)
+lib.callback.register('dp-phone:server:getGalleryPhotos', function(source, clientImei)
     local imei = getUsableActiveImei(source)
+    if not imei and isValidString(clientImei, 1, 50) and canUsePhone(source, clientImei) then
+        ActivePhone[source] = clientImei
+        imei = clientImei
+    end
     if not imei then
         return {}
     end
     return MySQL.query.await('SELECT * FROM dp_phone_gallery WHERE imei = ? ORDER BY date DESC LIMIT 50', {imei}) or {}
+end)
+
+lib.callback.register('dp-phone:server:captureAndUploadPhoto', function(source)
+    local imei = getUsableActiveImei(source)
+    if not imei then
+        return {
+            success = false
+        }
+    end
+    if rateLimited(source, 'photo', 1500) then
+        return {
+            success = false
+        }
+    end
+
+    local apiKey = srvCfg('fivemanageAPIKey')
+    if not apiKey or apiKey == '' or apiKey == 'PON_AQUI_TU_NUEVA_API_KEY' then
+        print('^1[DP-Phone] Falta fivemanageAPIKey en server/sv_config.lua.^0')
+        return {
+            success = false
+        }
+    end
+
+    local p = promise.new()
+    exports.screencapture:remoteUpload(source, 'https://api.fivemanage.com/api/v3/file', {
+        encoding = 'webp',
+        maxWidth = 1280,
+        maxHeight = 720,
+        filename = ('phone_%s_%d'):format(imei, os.time()),
+        headers = {
+            ['Authorization'] = apiKey
+        }
+    }, function(response)
+
+        local data = response
+        if type(response) == 'string' then
+            local ok, decoded = pcall(json.decode, response)
+            data = ok and decoded or nil
+        end
+
+        local imageUrl = type(data) == 'table' and ((data.data and data.data.url) or data.url) or nil
+        if not imageUrl or not isAllowedImageUrl(imageUrl) then
+            print('^1[DP-Phone] Respuesta inválida de remoteUpload: ' .. tostring(json.encode(response or {})) .. '^0')
+            return p:resolve({
+                success = false
+            })
+        end
+
+        MySQL.insert.await('INSERT INTO dp_phone_gallery (imei, image_url) VALUES (?, ?)', {imei, imageUrl})
+        p:resolve({
+            success = true,
+            url = imageUrl
+        })
+    end, 'blob')
+
+    return Citizen.Await(p)
+end)
+
+-- ==========================================================
+-- PRUEBA DE GRABACIÓN DE VÍDEO (screencapture en servidor)
+-- ==========================================================
+local ActiveVideoCaptures = {} -- [source] = captureId
+
+local function extractUploadedUrl(payload)
+    local data = payload
+    if type(payload) == 'string' then
+        local ok, decoded = pcall(json.decode, payload)
+        data = ok and decoded or nil
+    end
+    if type(data) ~= 'table' then
+        return nil
+    end
+    if type(data.data) == 'table' and type(data.data.url) == 'string' then
+        return data.data.url
+    end
+    if type(data.url) == 'string' then
+        return data.url
+    end
+    if type(data.response) == 'table' then
+        if type(data.response.data) == 'table' and type(data.response.data.url) == 'string' then
+            return data.response.data.url
+        end
+        if type(data.response.url) == 'string' then
+            return data.response.url
+        end
+    end
+    return nil
+end
+
+lib.callback.register('dp-phone:server:startVideoCapture', function(source)
+    local imei = getUsableActiveImei(source)
+    if not imei then
+        return {
+            ok = false,
+            reason = 'locked'
+        }
+    end
+    if ActiveVideoCaptures[source] then
+        return {
+            ok = false,
+            reason = 'already_recording'
+        }
+    end
+
+    local apiKey = srvCfg('fivemanageAPIKey')
+    if not apiKey or apiKey == '' or apiKey == 'PON_AQUI_TU_NUEVA_API_KEY' then
+        print('^1[DP-Phone] Falta fivemanageAPIKey en server/sv_config.lua.^0')
+        return {
+            ok = false,
+            reason = 'no_api_key'
+        }
+    end
+
+    local ok, captureId = pcall(function()
+        return exports.screencapture:startVideoCaptureUpload(source, 'https://api.fivemanage.com/api/v3/file', {
+            duration = 30,
+            maxWidth = 1920,
+            maxHeight = 1080,
+            filename = ('video_%s_%d'):format(imei, os.time()),
+            headers = {
+                ['Authorization'] = apiKey
+            }
+        }, function(result)
+            ActiveVideoCaptures[source] = nil
+            if type(result) ~= 'table' or result.status ~= 'success' then
+                print(('^1[DP-Phone] Error en captura de vídeo: %s^0'):format(
+                    tostring(type(result) == 'table' and result.error or result)))
+                return
+            end
+
+            local videoUrl = extractUploadedUrl(result.response or result)
+            print(('^2[DP-Phone] Vídeo subido (%s): %s^0'):format(tostring(result.captureId), tostring(videoUrl)))
+
+            if videoUrl and isAllowedImageUrl(videoUrl) then
+                MySQL.insert.await('INSERT INTO dp_phone_gallery (imei, image_url) VALUES (?, ?)', {imei, videoUrl})
+            else
+                print('^3[DP-Phone] Revisa allowedImagePrefixes o la URL devuelta para el vídeo: ' ..
+                          tostring(videoUrl) .. '^0')
+            end
+        end)
+    end)
+
+    if not ok or not captureId then
+        print('^1[DP-Phone] No se pudo iniciar startVideoCaptureUpload: ' .. tostring(captureId) .. '^0')
+        return {
+            ok = false
+        }
+    end
+
+    ActiveVideoCaptures[source] = captureId
+    print(('^3[DP-Phone] Vídeo iniciado con captureId=%s^0'):format(tostring(captureId)))
+    return {
+        ok = true,
+        captureId = captureId
+    }
+end)
+
+lib.callback.register('dp-phone:server:stopVideoCapture', function(source)
+    local captureId = ActiveVideoCaptures[source]
+    if not captureId then
+        return {
+            ok = false
+        }
+    end
+
+    local ok, err = pcall(function()
+        if exports.screencapture:isVideoCaptureActive(captureId) then
+            exports.screencapture:stopVideoCapture(captureId)
+        end
+    end)
+
+    if not ok then
+        print('^1[DP-Phone] Error al detener vídeo: ' .. tostring(err) .. '^0')
+        return {
+            ok = false
+        }
+    end
+
+    return {
+        ok = true
+    }
+end)
+
+AddEventHandler('playerDropped', function()
+    local src = source
+    local captureId = ActiveVideoCaptures[src]
+    ActiveVideoCaptures[src] = nil
+    if captureId then
+        pcall(function()
+            exports.screencapture:stopVideoCapture(captureId)
+        end)
+    end
 end)
 
 -- ==========================================================
@@ -1317,8 +1602,8 @@ lib.callback.register('dp-phone:server:getConversations', function(src)
     ]], {myNumber, myNumber, myNumber, myNumber}) or {}
 
     local names = {}
-    for _, row in ipairs(MySQL.query.await('SELECT name, number FROM dp_phone_contacts WHERE sim_number = ?',
-        {myNumber}) or {}) do
+    for _, row in ipairs(MySQL.query
+                             .await('SELECT name, number FROM dp_phone_contacts WHERE sim_number = ?', {myNumber}) or {}) do
         names[row.number] = row.name
     end
 
@@ -1701,8 +1986,8 @@ lib.callback.register('dp-phone:server:getRecentCalls', function(src)
     ]], {myNumber, myNumber}) or {}
 
     local names = {}
-    for _, row in ipairs(MySQL.query.await('SELECT name, number FROM dp_phone_contacts WHERE sim_number = ?',
-        {myNumber}) or {}) do
+    for _, row in ipairs(MySQL.query
+                             .await('SELECT name, number FROM dp_phone_contacts WHERE sim_number = ?', {myNumber}) or {}) do
         names[row.number] = row.name
     end
 
@@ -1751,3 +2036,4 @@ end)
 exports('IsInCall', function(src)
     return PlayerCall[src] ~= nil
 end)
+

@@ -1552,69 +1552,141 @@
         <!-- APP CAMARA -->
         <section id="camera-app" class="camera-app" hidden>
           <div id="camera-view" class="camera-view">
-            <!-- Visor (las esquinas) -->
+            <!-- Visor (las esquinas + cuadrícula opcional) -->
             <div class="camera-viewfinder">
               <div class="viewfinder-corner top-left"></div>
               <div class="viewfinder-corner top-right"></div>
               <div class="viewfinder-corner bottom-left"></div>
               <div class="viewfinder-corner bottom-right"></div>
+              <div
+                class="camera-grid-overlay"
+                id="camera-grid-overlay"
+                hidden
+                aria-hidden="true"></div>
             </div>
 
-            <!-- Botón de cerrar -->
-            <button
-              id="camera-btn-close"
-              style="
-                position: absolute;
-                top: 56px;
-                left: 20px;
-                z-index: 10;
-                background: rgba(0, 0, 0, 0.5);
-                border: none;
-                color: white;
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                cursor: pointer;
-                display: grid;
-                place-items: center;
-              ">
-              <span class="ui-icon" data-iconify="x"></span>
-            </button>
+            <!-- Contenedor apilado inferior: se empujan hacia arriba entre sí con gap -->
+            <div class="camera-bottom-stack" id="camera-bottom-stack">
+              <!-- Zoom: regla (aparece al hacer scroll) + botones 0.5x ... 20x encima del disparador -->
+              <div class="camera-zoom" id="camera-zoom">
+                <div class="camera-zoom-dial" id="camera-zoom-dial" aria-hidden="true">
+                  <div class="camera-zoom-dial-value" id="camera-zoom-dial-value">1x</div>
+                  <div class="camera-zoom-dial-track">
+                    <div class="camera-zoom-dial-ticks" id="camera-zoom-dial-ticks"></div>
+                    <div class="camera-zoom-dial-needle"></div>
+                  </div>
+                </div>
+                <div class="camera-zoom-chips" id="camera-zoom-chips"></div>
+              </div>
 
-            <!-- Zoom: regla (aparece al hacer scroll) + botones 0.5x ... 20x encima del disparador -->
-            <div class="camera-zoom" id="camera-zoom">
-              <div class="camera-zoom-dial" id="camera-zoom-dial" aria-hidden="true">
-                <div class="camera-zoom-dial-value" id="camera-zoom-dial-value">1x</div>
-                <div class="camera-zoom-dial-track">
-                  <div class="camera-zoom-dial-ticks" id="camera-zoom-dial-ticks"></div>
-                  <div class="camera-zoom-dial-needle"></div>
+              <!-- Barra de progreso al guardar vídeo -->
+              <div class="camera-save-progress" id="camera-save-progress" hidden>
+                <span class="camera-save-label" id="camera-save-label"
+                  >Guardando vídeo...</span
+                >
+                <div class="camera-save-bar">
+                  <span class="camera-save-fill" id="camera-save-fill"></span>
                 </div>
               </div>
-              <div class="camera-zoom-chips" id="camera-zoom-chips"></div>
-            </div>
 
-            <!-- Controles de la Cámara -->
-            <div class="camera-controls">
-              <button class="camera-btn-flash" id="camera-btn-flash">
-                <span class="ui-icon" data-iconify="flash"></span>
-              </button>
+              <!-- Controles de la Cámara -->
+              <div class="camera-controls-wrapper">
+                <div class="camera-controls">
+                  <div
+                    class="camera-controls-group camera-tools-group"
+                    id="camera-tools-group">
+                    <button
+                      class="camera-btn-tool camera-tools-toggle"
+                      id="camera-btn-expand-tools"
+                      type="button"
+                      title="Más opciones">
+                      <span class="ui-icon" data-iconify="mdi:tune-variant"></span>
+                    </button>
 
-              <button class="camera-btn-shutter" id="camera-btn-shutter">
-                <div class="shutter-inner"></div>
-              </button>
+                    <div class="camera-tools-items" id="camera-tools-items">
+                      <button
+                        class="camera-btn-tool"
+                        id="camera-btn-flip"
+                        type="button"
+                        title="Girar cámara">
+                        <span class="ui-icon" data-iconify="mdi:camera-flip-outline"></span>
+                      </button>
 
-              <button class="camera-btn-gallery" id="camera-btn-gallery">
-                <span class="ui-icon" data-iconify="photo"></span>
-              </button>
+                      <button
+                        class="camera-btn-tool"
+                        id="camera-btn-grid"
+                        type="button"
+                        title="Cuadrícula">
+                        <span class="ui-icon" data-iconify="bi:grid-3x3"></span>
+                      </button>
+
+                      <button
+                        class="camera-btn-tool"
+                        id="camera-btn-filters"
+                        type="button"
+                        title="Efectos / Filtros">
+                        <span
+                          class="ui-icon"
+                          data-iconify="fluent:video-background-effect-20-regular"></span>
+                      </button>
+
+                      <button
+                        class="camera-btn-tool camera-tools-collapse"
+                        id="camera-btn-collapse-tools"
+                        type="button"
+                        title="Contraer opciones">
+                        <span class="ui-icon" data-iconify="mdi:chevron-left"></span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    class="camera-btn-shutter"
+                    id="camera-btn-shutter"
+                    type="button"
+                    title="Tomar foto">
+                    <div class="shutter-inner"></div>
+                  </button>
+
+                  <div class="camera-controls-group">
+                    <button
+                      class="camera-btn-gallery"
+                      id="camera-btn-gallery"
+                      type="button"
+                      title="Galería">
+                      <span class="ui-icon" data-iconify="clarity:image-gallery-solid"></span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Selector FOTO / VÍDEO debajo del botón de sacar foto -->
+                <div
+                  class="camera-mode-switch"
+                  id="camera-mode-switch"
+                  role="tablist"
+                  aria-label="Modo de cámara">
+                  <button
+                    class="camera-mode-btn active"
+                    id="camera-mode-photo"
+                    type="button"
+                    data-camera-mode="photo">
+                    FOTO
+                  </button>
+                  <button
+                    class="camera-mode-btn"
+                    id="camera-mode-video"
+                    type="button"
+                    data-camera-mode="video">
+                    VÍDEO
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Vista 2: Galería de Fotos -->
           <div id="camera-gallery-view" class="camera-gallery-view" hidden>
             <header class="camera-header">
-              <button class="camera-back-btn" id="camera-btn-back-gallery">
-                <span class="ui-icon" data-iconify="chevron-left"></span>
-              </button>
               <h2>Galería</h2>
             </header>
 

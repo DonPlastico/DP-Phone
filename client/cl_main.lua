@@ -63,6 +63,22 @@ local function normalizeAngle(a)
     return a
 end
 
+local phoneCamFacing = 'back' -- 'back' | 'front'
+
+local function getMinCamZoom()
+    if phoneCamFacing == 'front' then
+        return 1.0
+    end
+    return camCfg('zoomMin', 0.5)
+end
+
+local function getMaxCamZoom()
+    if phoneCamFacing == 'front' then
+        return 2.0
+    end
+    return camCfg('zoomMax', 20.0)
+end
+
 -- Zoom 1x = baseFov. Zoom real de lente: el campo de visión se reduce de forma proporcional.
 local function zoomToFov(zoom)
     local half = math.rad(camCfg('baseFov', 50.0)) * 0.5
@@ -74,11 +90,25 @@ local function rotToDir(pitch, yaw)
     return vec3(-math.sin(y) * math.cos(p), math.cos(y) * math.cos(p), math.sin(p))
 end
 
--- La cámara va pegada a la cabeza y un poco adelantada en la dirección en la que mira,
--- así no se ve el interior de la cabeza ni el propio móvil.
 local function getPhoneCamPos(ped)
-    local head = GetPedBoneCoords(ped, 31086, 0.0, 0.0, 0.0) -- SKEL_Head
-    return head + rotToDir(phoneCamPitch, phoneCamYaw) * camCfg('forwardOffset', 0.22) + vec3(0.0, 0.0, 0.03)
+    if phoneCamFacing == 'front' then
+        -- Un poco más cerca de la cara para verla con claridad y lo que hay junto al personaje
+        return GetOffsetFromEntityInWorldCoords(ped, 0.14, 0.56, 0.62)
+    end
+
+    local isTablet = ForceTabletMode
+    local cfg = isTablet and Config.tablet or Config.phone
+    local basePos = isTablet and (cfg.pos or vec3(0.010, -0.005, -0.040)) or (cfg.pos or vec3(0.006, 0.000, 0.000))
+    local lensAdvance = camCfg('lensAdvance', isTablet and 0.06 or 0.04)
+
+    if phone and DoesEntityExist(phone) then
+        -- Desplazamos ligeramente hacia delante en la dirección de la cámara para no cortar el cristal del prop
+        local worldPos = GetEntityCoords(phone)
+        return worldPos + rotToDir(phoneCamPitch, phoneCamYaw) * lensAdvance
+    end
+
+    local handPos = GetPedBoneCoords(ped, GetPedBoneIndex(ped, 28422), basePos.x, basePos.y, basePos.z)
+    return handPos + rotToDir(phoneCamPitch, phoneCamYaw) * lensAdvance
 end
 
 local function setPhonePropVisible(visible)
@@ -91,7 +121,18 @@ end
 local function applyPhoneCamTransform(ped)
     local pos = getPhoneCamPos(ped)
     SetCamCoord(phoneCam, pos.x, pos.y, pos.z)
-    SetCamRot(phoneCam, phoneCamPitch, 0.0, phoneCamYaw, 2)
+
+    if phoneCamFacing == 'front' then
+        local headPos = GetPedBoneCoords(ped, 31086, 0.0, 0.0, 0.04)
+        TaskLookAtCoord(ped, pos.x, pos.y, pos.z, 500, 2048, 3)
+        local dir = headPos - pos
+        local dist = math.sqrt(dir.x * dir.x + dir.y * dir.y)
+        local yaw = math.deg(math.atan(-dir.x, dir.y)) % 360.0
+        local pitch = clamp(math.deg(math.atan(dir.z, dist)), -80.0, 80.0)
+        SetCamRot(phoneCam, pitch, 0.0, yaw, 2)
+    else
+        SetCamRot(phoneCam, phoneCamPitch, 0.0, phoneCamYaw, 2)
+    end
 end
 
 -- PLAN B: si otro recurso no deja usar cámaras propias, pasamos a primera persona normal
@@ -134,6 +175,7 @@ local function stopPhoneCam()
     phoneCamActive = false
     phoneCamDragging = false
     phoneCamDragCursor = nil
+    phoneCamFacing = 'back'
 
     if phoneCam then
         RenderScriptCams(false, false, 0, true, false)
@@ -165,6 +207,7 @@ local function startPhoneCam()
     phoneCamYaw = rot.z % 360.0
     phoneCamZoom, phoneCamZoomTarget = 1.0, 1.0
     phoneCamDragging = false
+    phoneCamFacing = 'back'
 
     if not IsPedInAnyVehicle(ped, false) then
         SetEntityHeading(ped, phoneCamYaw)
@@ -177,8 +220,8 @@ local function startPhoneCam()
     RenderScriptCams(true, false, 0, true, false)
     phoneCamActive = true
 
-    -- El prop en la mano se vería delante del objetivo: lo ocultamos mientras dure
-    setPhonePropVisible(false)
+    -- Mantenemos el prop visible para que la cámara salga desde su posición real
+    setPhonePropVisible(true)
 
     if Config.debug then
         local p = GetCamCoord(phoneCam)
@@ -197,7 +240,8 @@ local function startPhoneCam()
             if not fallbackViewMode and GetRenderingCam() ~= phoneCam then
                 takeovers = takeovers + 1
                 if takeovers == 1 then
-                    print('^3[DP-Phone] ^7Otro recurso ha desactivado la cámara del móvil. Intentando recuperarla...^0')
+                    print(
+                        '^3[DP-Phone] ^7Otro recurso ha desactivado la cámara del móvil. Intentando recuperarla...^0')
                 end
                 if takeovers > 30 then
                     print('^1[DP-Phone] Otro recurso no deja usar cámaras propias (RenderScriptCams). ' ..
@@ -225,6 +269,11 @@ local function startPhoneCam()
                 -- El ratón nunca mueve la cámara del juego; solo la nuestra y solo mientras arrastras
                 DisableControlAction(0, 1, true)
                 DisableControlAction(0, 2, true)
+
+                -- Bloquear retroceder (S), izquierda (A) y derecha (D) con la cámara activa; W queda libre
+                DisableControlAction(0, 33, true) -- MoveDownOnly (S)
+                DisableControlAction(0, 34, true) -- MoveLeftOnly (A)
+                DisableControlAction(0, 35, true) -- MoveRightOnly (D)
 
                 if phoneCamDragging then
                     -- Con zoom, el giro es más lento (como en una cámara real)
@@ -260,13 +309,14 @@ end
 RegisterCommand('phonecam', function()
     local ped = cache.ped
     local head = GetPedBoneCoords(ped, 31086, 0.0, 0.0, 0.0)
-    print(('^3[DP-Phone] ^7activa=%s cam=%s existe=%s renderizando=%s camActual=%s planB=%s'):format(
-        tostring(phoneCamActive), tostring(phoneCam), tostring(phoneCam and DoesCamExist(phoneCam)),
-        tostring(phoneCam and IsCamRendering(phoneCam)), tostring(GetRenderingCam()), tostring(fallbackViewMode ~= nil)))
+    print(('^3[DP-Phone] ^7activa=%s cam=%s existe=%s renderizando=%s camActual=%s planB=%s'):format(tostring(
+        phoneCamActive), tostring(phoneCam), tostring(phoneCam and DoesCamExist(phoneCam)), tostring(
+        phoneCam and IsCamRendering(phoneCam)), tostring(GetRenderingCam()), tostring(fallbackViewMode ~= nil)))
     if phoneCam and DoesCamExist(phoneCam) then
         local c = GetCamCoord(phoneCam)
-        print(('^3[DP-Phone] ^7cámara en %.2f %.2f %.2f | cabeza en %.2f %.2f %.2f | yaw %.0f | rumbo ped %.0f^0'):format(c.x,
-            c.y, c.z, head.x, head.y, head.z, phoneCamYaw, GetEntityHeading(ped)))
+        print(
+            ('^3[DP-Phone] ^7cámara en %.2f %.2f %.2f | cabeza en %.2f %.2f %.2f | yaw %.0f | rumbo ped %.0f^0'):format(
+                c.x, c.y, c.z, head.x, head.y, head.z, phoneCamYaw, GetEntityHeading(ped)))
     end
 end, false)
 
@@ -361,6 +411,11 @@ local function closePhone(hideUi)
         SetTimeout(150, function()
             SetNuiFocus(false, false)
         end)
+        if GetResourceState('DP-PauseMenu') == 'started' then
+            pcall(function()
+                exports['DP-PauseMenu']:NotifyNuiClosed()
+            end)
+        end
     end
 
     -- Si se cierra con la cámara abierta, quitamos la cámara del móvil
@@ -399,13 +454,12 @@ end
 -- ==========================================
 local controlThreadActive = false
 
-local BLOCKED_CONTROLS = {
-    1, 2, -- mirar con el ratón
-    24, 25, 257, 263, 264, 140, 141, 142, 143, -- disparar, apuntar y cuerpo a cuerpo
-    14, 15, 16, 17, 37, 99, 100, 115, 116, 261, 262, -- rueda / scroll de armas
-    68, 69, 70, 91, 92, 114, 330, 331, -- disparar desde vehículos
-    157, 158, 159, 160, 161, 162, 163, 164, 165, -- cambiar de arma con 1-9 (para marcar números)
-    199, 200, 202 -- menú de pausa (ESC lo gestiona la interfaz y cierra el móvil)
+local BLOCKED_CONTROLS = {1, 2, -- mirar con el ratón
+24, 25, 257, 263, 264, 140, 141, 142, 143, -- disparar, apuntar y cuerpo a cuerpo
+14, 15, 16, 17, 37, 99, 100, 115, 116, 261, 262, -- rueda / scroll de armas
+68, 69, 70, 91, 92, 114, 330, 331, -- disparar desde vehículos
+157, 158, 159, 160, 161, 162, 163, 164, 165, -- cambiar de arma con 1-9 (para marcar números)
+199, 200, 202 -- menú de pausa (ESC lo gestiona la interfaz y cierra el móvil)
 }
 
 -- Aplica el modo de entrada: si no se está escribiendo, el juego recibe teclado y ratón a la vez que el móvil
@@ -514,10 +568,29 @@ end
 -- ==========================================
 -- RECIBIR DATOS DE LA BASE DE DATOS
 -- ==========================================
+local openWhenSettingsLoaded = false
+
+RegisterNetEvent('dp-phone:client:prepareOpenFromItem', function()
+    openWhenSettingsLoaded = true
+end)
+
 RegisterNetEvent('dp-phone:client:loadSettings', function(data)
     if data then
+        local imeiChanged = PhoneData and PhoneData.imei ~= data.imei
         PhoneData = data
-        openDevice(ForceTabletMode)
+        if openWhenSettingsLoaded or (imeiChanged and isPhoneOpen) then
+            openWhenSettingsLoaded = false
+            CreateThread(function()
+                local tries = 0
+                while IsNuiFocused() and tries < 15 do
+                    Wait(20)
+                    tries = tries + 1
+                end
+                if not isPhoneOpen then
+                    openDevice(ForceTabletMode)
+                end
+            end)
+        end
     end
 end)
 
@@ -526,6 +599,15 @@ end)
 -- ==========================================
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
     PlayerData = QBCore.Functions.GetPlayerData()
+    openWhenSettingsLoaded = false
+    if GetResourceState('DP-Inventory') == 'started' then
+        pcall(function()
+            local equipped = exports['DP-Inventory']:GetEquippedPhoneItem()
+            if equipped and equipped.info and equipped.info.imei then
+                TriggerServerEvent('dp-phone:server:preloadPhone', equipped.info.imei)
+            end
+        end)
+    end
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
@@ -546,14 +628,79 @@ end)
 -- EVENTOS DEL PHONE
 -- ==========================================
 RegisterNetEvent('dp-phone:client:OpenPhone', function(isTablet)
-    openDevice(ForceTabletMode)
+    openWhenSettingsLoaded = true
+    openDevice(type(isTablet) == 'boolean' and isTablet or ForceTabletMode)
 end)
+
 RegisterNetEvent('dp-phone:client:ClosePhone', function()
     closePhone(true)
 end)
+
 RegisterNetEvent('dp-phone:client:notify', function(text, type)
     QBCore.Functions.Notify(text, type)
 end)
+
+local function CanOpenPhoneFromKeybind()
+    if isPhoneOpen then
+        return false
+    end
+    if not PlayerData or not next(PlayerData) then
+        PlayerData = QBCore.Functions.GetPlayerData()
+    end
+    if not PlayerData or not PlayerData.citizenid then
+        return false
+    end
+    if IsPauseMenuActive() or GetCurrentFrontendMenuVersion() ~= -1 then
+        return false
+    end
+    if IsNuiFocused() then
+        return false
+    end
+    if IsEntityDead(cache.ped) or LocalPlayer.state.inv_busy then
+        return false
+    end
+    return true
+end
+
+local function OpenEquippedPhoneFromSlot()
+    if not CanOpenPhoneFromKeybind() then
+        return
+    end
+
+    if GetResourceState('DP-Inventory') ~= 'started' then
+        QBCore.Functions.Notify('El sistema de inventario (DP-Inventory) no está disponible en este momento.', 'error')
+        return
+    end
+
+    local ok, phoneItem = pcall(function()
+        return exports['DP-Inventory']:GetEquippedPhoneItem()
+    end)
+
+    if not ok or type(phoneItem) ~= 'table' or phoneItem.name ~= 'phone' then
+        return
+    end
+
+    local imei = phoneItem.info and phoneItem.info.imei
+    if not imei or tostring(imei) == '' then
+        QBCore.Functions.Notify('Este móvil no tiene un IMEI válido.', 'error')
+        return
+    end
+
+    -- Si ya tenemos cargado en memoria exactamente este IMEI, abrimos directo;
+    -- si cambiamos de móvil (otro IMEI), pedimos sus datos al servidor para que dispare 'dp-phone:client:loadSettings'
+    if PhoneData and tostring(PhoneData.imei or '') == tostring(imei) and next(PhoneData.settings or {}) ~= nil then
+        openDevice(ForceTabletMode)
+    else
+        openWhenSettingsLoaded = true
+        TriggerServerEvent('dp-phone:server:openPhoneByItem', phoneItem)
+    end
+end
+
+RegisterCommand('dp_phone_open_slot', function()
+    OpenEquippedPhoneFromSlot()
+end, false)
+
+RegisterKeyMapping('dp_phone_open_slot', 'Abrir móvil equipado (F1)', 'keyboard', 'F1')
 
 -- ==========================================
 -- CALLBACKS DE LA UI (NUI)
@@ -778,9 +925,11 @@ RegisterNUICallback('cameraDrag', function(data, cb)
             y = y
         } or nil
         phoneCamDragging = true
+        SetNuiFocus(true, false)
         applyInputMode()
     elseif phoneCamDragging then
         phoneCamDragging = false
+        SetNuiFocus(true, true)
         applyInputMode()
         if phoneCamDragCursor then
             SetCursorLocation(phoneCamDragCursor.x, phoneCamDragCursor.y)
@@ -794,7 +943,7 @@ RegisterNUICallback('cameraZoom', function(data, cb)
     cb(1)
     local zoom = tonumber(type(data) == 'table' and data.zoom or nil)
     if zoom then
-        phoneCamZoomTarget = clamp(zoom, camCfg('zoomMin', 0.5), camCfg('zoomMax', 20.0))
+        phoneCamZoomTarget = clamp(zoom, getMinCamZoom(), getMaxCamZoom())
     end
 end)
 
@@ -950,46 +1099,80 @@ RegisterNUICallback('takePhoto', function(_, cb)
         })
     end
     uploadingPhoto = true
-    -- Seguro por si screenshot-basic nunca responde: no dejamos la cámara bloqueada para siempre
     SetTimeout(25000, function()
         uploadingPhoto = false
     end)
 
-    local uploadUrl = lib.callback.await('dp-phone:server:getPhotoUploadUrl', false)
-    if not uploadUrl then
-        uploadingPhoto = false
-        print("^1[DP-Phone] El servidor no ha dado URL de subida (¿API key en server/sv_config.lua?).^0")
+    local ok, res = pcall(function()
+        return lib.callback.await('dp-phone:server:captureAndUploadPhoto', false)
+    end)
+    uploadingPhoto = false
+
+    if not ok or type(res) ~= 'table' then
         return cb({
             success = false
         })
     end
-
-    exports['screenshot-basic']:requestScreenshotUpload(uploadUrl, 'file', {
-        encoding = 'jpg',
-        quality = 0.85
-    }, function(response)
-        uploadingPhoto = false
-
-        local ok, resp = pcall(json.decode, response or '')
-        local imageUrl = ok and type(resp) == 'table' and ((resp.data and resp.data.url) or resp.url) or nil
-        if not imageUrl then
-            print("^1[DP-Phone] Error al subir la foto. Respuesta: " .. tostring(response) .. "^0")
-            return cb({
-                success = false
-            })
-        end
-
-        local saved = lib.callback.await('dp-phone:server:savePhoto', false, imageUrl)
-        cb({
-            success = saved == true,
-            url = imageUrl
-        })
-    end)
+    cb(res)
 end)
 
-RegisterNUICallback('getGalleryPhotos', function(_, cb)
-    local photos = lib.callback.await('dp-phone:server:getGalleryPhotos', false)
+local loadingGallery = false
+
+RegisterNUICallback('getGalleryPhotos', function(data, cb)
+    if loadingGallery then
+        return cb({})
+    end
+    loadingGallery = true
+    SetTimeout(1500, function()
+        loadingGallery = false
+    end)
+
+    local clientImei = type(data) == 'table' and data.imei or (PhoneData and PhoneData.imei) or nil
+    local ok, photos = pcall(function()
+        return lib.callback.await('dp-phone:server:getGalleryPhotos', false, clientImei)
+    end)
+    loadingGallery = false
+
+    if not ok then
+        cb({})
+        return
+    end
     cb(photos or {})
+end)
+
+-- ==========================================================
+-- GRABACIÓN DE VÍDEO (delegada a screencapture en servidor)
+-- ==========================================================
+RegisterNUICallback('cameraVideoStart', function(_, cb)
+    if GetResourceState('screencapture') ~= 'started' then
+        print('^1[DP-Phone] El recurso screencapture no está iniciado.^0')
+        return cb({
+            ok = false,
+            reason = 'not_started'
+        })
+    end
+
+    local ok, res = pcall(function()
+        return lib.callback.await('dp-phone:server:startVideoCapture', false)
+    end)
+    if not ok or type(res) ~= 'table' then
+        return cb({
+            ok = false
+        })
+    end
+    cb(res)
+end)
+
+RegisterNUICallback('cameraVideoStop', function(_, cb)
+    local ok, res = pcall(function()
+        return lib.callback.await('dp-phone:server:stopVideoCapture', false)
+    end)
+    if not ok or type(res) ~= 'table' then
+        return cb({
+            ok = false
+        })
+    end
+    cb(res)
 end)
 
 -- ==========================================================
@@ -1037,6 +1220,15 @@ RegisterNUICallback('setGps', function(data, cb)
     if x and y then
         SetNewWaypoint(x + 0.0, y + 0.0)
         QBCore.Functions.Notify('Ubicación marcada en el GPS.', 'success')
+    end
+end)
+
+RegisterNUICallback('cameraFacing', function(data, cb)
+    cb(1)
+    if type(data) == 'table' and (data.facing == 'front' or data.facing == 'back') then
+        phoneCamFacing = data.facing
+        local zoom = tonumber(data.zoom) or phoneCamZoomTarget
+        phoneCamZoomTarget = clamp(zoom, getMinCamZoom(), getMaxCamZoom())
     end
 end)
 
@@ -1110,8 +1302,10 @@ RegisterNetEvent('dp-phone:client:incomingCall', function(call)
     })
     startRinging()
     if not isPhoneOpen then
-        QBCore.Functions.Notify(('Llamada entrante de %s. Abre el móvil para contestar.'):format(
-            call.name or call.number or 'desconocido'), 'primary', 8000)
+        QBCore.Functions.Notify(('Llamada entrante de %s. Abre el móvil para contestar.'):format(call.name or
+                                                                                                      call.number or
+                                                                                                      'desconocido'),
+            'primary', 8000)
     end
 end)
 
@@ -1148,8 +1342,8 @@ RegisterNetEvent('dp-phone:client:newMessage', function(msg)
         if not isPhoneSilent() then
             PlaySoundFrontend(-1, 'Text_Arrive_Tone', 'Phone_SoundSet_Default', true)
         end
-        QBCore.Functions.Notify(('Nuevo mensaje de %s'):format(msg.from_name or msg.from or 'desconocido'),
-            'primary', 5000)
+        QBCore.Functions.Notify(('Nuevo mensaje de %s'):format(msg.from_name or msg.from or 'desconocido'), 'primary',
+            5000)
     end
 end)
 

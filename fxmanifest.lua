@@ -27,9 +27,8 @@ server_scripts {
 
 -- Recursos de los que depende este script para funcionar
 dependencies {
-    'qb-core', 
-    'DP-Inventory', 
-    'ox_lib', 
+    'qb-core',
+    'ox_lib',
     'oxmysql'
 }
 

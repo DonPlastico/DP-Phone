@@ -1144,6 +1144,7 @@
     desktopStatusbar.hidden = false;
     desktopScreen.hidden = false;
     homeButton.hidden = true;
+    desktopStatusbar.style.background = "";
 
     // Ocultar juego y detener bucle
     const snake = document.getElementById("snake-app");
@@ -1469,6 +1470,7 @@
     document.getElementById("notes-app").hidden = true;
     document.getElementById("camera-app").hidden = true;
     document.getElementById("weather-app").hidden = true;
+    desktopStatusbar.style.background = "";
     ["contacts-app", "messages-app", "dialer-app"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.hidden = true;
@@ -1921,7 +1923,7 @@
                     <div class="device-info-stats" style="gap: 12px;">
                         <div class="device-stat-box" style="padding: 12px;">
                             <span>NOMBRE DEL DISPOSITIVO</span>
-                            <strong>iFruit 2 SE</strong>
+                            <strong>iFruit 2SE TRI-FOLD</strong>
                         </div>
                         <div class="device-stat-box" style="padding: 12px;">
                             <span>ALMACENAMIENTO</span>
@@ -2636,7 +2638,8 @@
           appName: "Seguridad",
           icon: "alert-triangle",
           title: "No disponible",
-          message: "Solo el dueño del móvil puede usar huella o Face ID, y el móvil necesita un PIN.",
+          message:
+            "Solo el dueño del móvil puede usar huella o Face ID, y el móvil necesita un PIN.",
         });
         return;
       }
@@ -2682,7 +2685,8 @@
         text.textContent = "…";
         nui("getPin")
           .then((pin) => {
-            text.textContent = typeof pin === "string" && pin ? pin : devMode ? "1234" : "----";
+            text.textContent =
+              typeof pin === "string" && pin ? pin : devMode ? "1234" : "----";
           })
           .catch(() => {
             text.textContent = "----";
@@ -3632,6 +3636,9 @@
       state.appOpen = true;
 
       document.getElementById("snake-app").hidden = false;
+      phone.classList.add("snake-open");
+      desktopStatusbar.hidden = false;
+      desktopStatusbar.style.background = "#101010";
       document.getElementById("snake-logo-screen").hidden = false;
       document.getElementById("snake-game-screen").hidden = true;
       document.getElementById("snake-gameover").hidden = true;
@@ -4090,6 +4097,7 @@
 
     await saveUiState();
     hideOverlayApps();
+    phone.classList.remove("snake-open");
 
     isClosingPhone = true;
 
@@ -4118,6 +4126,15 @@
     if (!target) return;
 
     if (target.id === "home-button") {
+      if (window.dpCameraBusy?.()) {
+        showNotification({
+          appName: "Cámara",
+          icon: "alert-triangle",
+          title: "Grabación en curso",
+          message: "Termina de grabar o guardar el vídeo antes de salir.",
+        });
+        return;
+      }
       return state.storeOpen || state.settingsOpen || state.weatherOpen || isLicensesOpen()
         ? leaveOverlayApp()
         : returnToDesktop();
@@ -4692,13 +4709,22 @@
         event.stopPropagation(); // Evita que se propague hacia FiveM
 
         if (!devMode) {
+          if (window.dpCameraBusy?.()) {
+            showNotification({
+              appName: "Cámara",
+              icon: "alert-triangle",
+              title: "Grabación en curso",
+              message: "Termina de grabar o guardar el vídeo antes de salir.",
+            });
+            return;
+          }
           // Si estamos cerrando con el ratón fuera (dimmed), cerramos normal
           closePhone();
         }
       }
     },
     true,
-  ); // El 'true' usa la fase de captura, garantizando que este script intercepte primero
+  );
 
   if (devMode) {
     document.querySelector("#dev-badge").hidden = false;
@@ -5588,7 +5614,7 @@
   function drawSnake() {
     if (snakeCanvas.width === 0 || snakeCanvas.height === 0) return;
 
-    snakeCtx.fillStyle = "#101810";
+    snakeCtx.fillStyle = "#101010";
     snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
 
     // Cuadrícula sutil
@@ -6457,7 +6483,10 @@
   };
 
   // ---------- utilidades ----------
-  const digitsOnly = (value) => String(value ?? "").replace(/\D/g, "").slice(0, 10);
+  const digitsOnly = (value) =>
+    String(value ?? "")
+      .replace(/\D/g, "")
+      .slice(0, 10);
 
   function formatNumber(value) {
     const d = digitsOnly(value);
@@ -6468,13 +6497,16 @@
 
   const isFullNumber = (value) => digitsOnly(value).length === 10;
   const contactByNumber = (number) => comms.contacts.find((c) => c.number === number);
-  const displayName = (number, fallback) => contactByNumber(number)?.name || fallback || number;
+  const displayName = (number, fallback) =>
+    contactByNumber(number)?.name || fallback || number;
 
   function initials(name) {
     const text = String(name || "").trim();
     if (!text || /^[\d-]+$/.test(text)) return "#";
     const parts = text.split(/\s+/);
-    return ((parts[0][0] || "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+    return (
+      (parts[0][0] || "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")
+    ).toUpperCase();
   }
 
   function avatarHue(seed) {
@@ -6488,7 +6520,8 @@
 
   function parseTime(value) {
     if (value === null || value === undefined) return null;
-    const d = typeof value === "number" ? new Date(value) : new Date(String(value).replace(" ", "T"));
+    const d =
+      typeof value === "number" ? new Date(value) : new Date(String(value).replace(" ", "T"));
     return isNaN(d) ? null : d;
   }
 
@@ -6529,12 +6562,42 @@
       { id: 3, name: "Taller Benny's", number: "633-4455-667" },
     ],
     messages: [
-      { id: 1, from: "611-2233-445", to: "555-1234-567", mine: false, text: "¿Vienes esta noche al Vanilla?", time: Date.now() - 3600e3, read: false },
-      { id: 2, from: "555-1234-567", to: "622-3344-556", mine: true, text: "Te debo 200$, mañana te los paso", time: Date.now() - 86400e3, read: true },
+      {
+        id: 1,
+        from: "611-2233-445",
+        to: "555-1234-567",
+        mine: false,
+        text: "¿Vienes esta noche al Vanilla?",
+        time: Date.now() - 3600e3,
+        read: false,
+      },
+      {
+        id: 2,
+        from: "555-1234-567",
+        to: "622-3344-556",
+        mine: true,
+        text: "Te debo 200$, mañana te los paso",
+        time: Date.now() - 86400e3,
+        read: true,
+      },
     ],
     calls: [
-      { id: 1, number: "611-2233-445", outgoing: false, status: "missed", duration: 0, time: Date.now() - 7200e3 },
-      { id: 2, number: "622-3344-556", outgoing: true, status: "answered", duration: 95, time: Date.now() - 90000e3 },
+      {
+        id: 1,
+        number: "611-2233-445",
+        outgoing: false,
+        status: "missed",
+        duration: 0,
+        time: Date.now() - 7200e3,
+      },
+      {
+        id: 2,
+        number: "622-3344-556",
+        outgoing: true,
+        status: "answered",
+        duration: 95,
+        time: Date.now() - 90000e3,
+      },
     ],
     nextId: 100,
   };
@@ -6545,8 +6608,13 @@
       case "getCommsData":
         return { number: devData.number, contacts: devData.contacts.slice() };
       case "saveContact": {
-        if (!data.name || !isFullNumber(data.number)) return { ok: false, message: "Revisa el nombre y el número." };
-        const contact = { id: data.id || ++devData.nextId, name: data.name, number: formatNumber(data.number) };
+        if (!data.name || !isFullNumber(data.number))
+          return { ok: false, message: "Revisa el nombre y el número." };
+        const contact = {
+          id: data.id || ++devData.nextId,
+          name: data.name,
+          number: formatNumber(data.number),
+        };
         devData.contacts = devData.contacts.filter((c) => c.id !== contact.id).concat(contact);
         return { ok: true, contact };
       }
@@ -6559,7 +6627,8 @@
         return [...map.entries()].map(([number, last]) => ({
           number,
           name: devData.contacts.find((c) => c.number === number)?.name,
-          unread: devData.messages.filter((m) => other(m) === number && !m.mine && !m.read).length,
+          unread: devData.messages.filter((m) => other(m) === number && !m.mine && !m.read)
+            .length,
           last,
         }));
       }
@@ -6589,10 +6658,22 @@
         setTimeout(() => handleCallUpdate({ id: 9001, state: "active", channel: 9001 }), 1500);
         return { ok: true, id: 9001 };
       case "answerCall":
-        setTimeout(() => handleCallUpdate({ id: comms.call?.id, state: "active", channel: 1 }), 200);
+        setTimeout(
+          () => handleCallUpdate({ id: comms.call?.id, state: "active", channel: 1 }),
+          200,
+        );
         return true;
       case "endCall":
-        setTimeout(() => handleCallUpdate({ id: comms.call?.id, state: "ended", reason: "ended", endedByMe: true }), 100);
+        setTimeout(
+          () =>
+            handleCallUpdate({
+              id: comms.call?.id,
+              state: "ended",
+              reason: "ended",
+              endedByMe: true,
+            }),
+          100,
+        );
         return true;
       case "insertSimActive":
         return { ok: true, number: devData.number, message: "SIM insertada." };
@@ -6638,7 +6719,10 @@
 
   // Tablet = dos columnas. Móvil estrecho = una columna (lista o detalle)
   function applyNarrow(section) {
-    section.classList.toggle("is-narrow", section.clientWidth > 0 && section.clientWidth < 620);
+    section.classList.toggle(
+      "is-narrow",
+      section.clientWidth > 0 && section.clientWidth < 620,
+    );
   }
   if (window.ResizeObserver) {
     const ro = new ResizeObserver((entries) => entries.forEach((e) => applyNarrow(e.target)));
@@ -6664,7 +6748,10 @@
       await loadCommsData();
       rerender();
     } else {
-      commsToast("No se pudo insertar la SIM", res?.message || "Lleva una tarjeta SIM encima.");
+      commsToast(
+        "No se pudo insertar la SIM",
+        res?.message || "Lleva una tarjeta SIM encima.",
+      );
     }
   }
 
@@ -6731,7 +6818,8 @@
     list.innerHTML = items
       .map((c) => {
         const letter = (c.name[0] || "#").toUpperCase();
-        const header = letter !== lastLetter ? `<div class="comms-letter">${esc(letter)}</div>` : "";
+        const header =
+          letter !== lastLetter ? `<div class="comms-letter">${esc(letter)}</div>` : "";
         lastLetter = letter;
         return `${header}
           <button class="comms-row ${c.id === comms.selectedContactId ? "selected" : ""}" data-act="select-contact" data-id="${c.id}">
@@ -6853,7 +6941,8 @@
     } else if (e.target.name === "number") {
       const pos = e.target.value.length;
       e.target.value = formatNumber(e.target.value);
-      if (pos >= e.target.value.length) e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+      if (pos >= e.target.value.length)
+        e.target.setSelectionRange(e.target.value.length, e.target.value.length);
     }
   });
 
@@ -6866,12 +6955,29 @@
       name: form.elements.name.value.trim(),
       number: formatNumber(form.elements.number.value),
     };
-    if (!payload.name) return commsToast("Falta el nombre", "Escribe un nombre para el contacto.", "alert-triangle", "Contactos");
+    if (!payload.name)
+      return commsToast(
+        "Falta el nombre",
+        "Escribe un nombre para el contacto.",
+        "alert-triangle",
+        "Contactos",
+      );
     if (!isFullNumber(payload.number))
-      return commsToast("Número incompleto", "El número tiene que tener 10 cifras.", "alert-triangle", "Contactos");
+      return commsToast(
+        "Número incompleto",
+        "El número tiene que tener 10 cifras.",
+        "alert-triangle",
+        "Contactos",
+      );
 
     const res = await commsCall("saveContact", payload);
-    if (!res || !res.ok) return commsToast("No se pudo guardar", res?.message || "Inténtalo de nuevo.", "alert-triangle", "Contactos");
+    if (!res || !res.ok)
+      return commsToast(
+        "No se pudo guardar",
+        res?.message || "Inténtalo de nuevo.",
+        "alert-triangle",
+        "Contactos",
+      );
 
     comms.contacts = comms.contacts.filter((c) => c.id !== res.contact.id).concat(res.contact);
     comms.contacts.sort((a, b) => a.name.localeCompare(b.name, "es"));
@@ -6973,7 +7079,8 @@
 
   function bubbleHtml(m) {
     let body = "";
-    if (m.image) body += `<img class="chat-image" src="${esc(m.image)}" alt="Foto" loading="lazy" />`;
+    if (m.image)
+      body += `<img class="chat-image" src="${esc(m.image)}" alt="Foto" loading="lazy" />`;
     if (m.location) {
       const [x, y] = String(m.location).split(",");
       body += `
@@ -7060,7 +7167,12 @@
   async function sendChatMessage(payload) {
     const to = comms.newChat ? formatNumber(comms.newChatTo) : comms.openChat;
     if (!isFullNumber(to)) {
-      commsToast("¿A quién?", "Escribe un número de 10 cifras o elige un contacto.", "alert-triangle", "Mensajes");
+      commsToast(
+        "¿A quién?",
+        "Escribe un número de 10 cifras o elige un contacto.",
+        "alert-triangle",
+        "Mensajes",
+      );
       return false;
     }
     if (comms.sending) return false;
@@ -7068,7 +7180,12 @@
     const res = await commsCall("sendMessage", { number: to, ...payload });
     comms.sending = false;
     if (!res || !res.ok) {
-      commsToast("No se ha enviado", res?.message || "Inténtalo de nuevo.", "alert-triangle", "Mensajes");
+      commsToast(
+        "No se ha enviado",
+        res?.message || "Inténtalo de nuevo.",
+        "alert-triangle",
+        "Mensajes",
+      );
       return false;
     }
 
@@ -7101,7 +7218,12 @@
         <div class="comms-photo-grid">
           ${
             list.length
-              ? list.map((p) => `<button data-act="send-photo" data-url="${esc(p.image_url)}"><img src="${esc(p.image_url)}" alt="" loading="lazy" /></button>`).join("")
+              ? list
+                  .map(
+                    (p) =>
+                      `<button data-act="send-photo" data-url="${esc(p.image_url)}"><img src="${esc(p.image_url)}" alt="" loading="lazy" /></button>`,
+                  )
+                  .join("")
               : `<p class="comms-list-empty">No tienes fotos. Haz alguna con la Cámara.</p>`
           }
         </div>
@@ -7132,7 +7254,8 @@
     if (act === "call") return startCall(btn.dataset.number);
     if (act === "add-contact-from-chat") return openContactsApp(comms.openChat);
     if (act === "gps") {
-      if (!devMode) nui("setGps", { x: Number(btn.dataset.x), y: Number(btn.dataset.y) }).catch(() => {});
+      if (!devMode)
+        nui("setGps", { x: Number(btn.dataset.x), y: Number(btn.dataset.y) }).catch(() => {});
       return commsToast("GPS", "Ubicación marcada en el mapa.", "map-pin", "Mensajes");
     }
     if (act === "share-location") return sendChatMessage({ shareLocation: true });
@@ -7181,7 +7304,13 @@
   function handleNewMessage(msg) {
     if (!msg || msg.to !== comms.number) {
       // Puede ser para otro móvil que llevas encima: solo avisamos
-      if (msg) commsToast(displayName(msg.from, msg.from_name), messagePreview(msg), "message-circle", "Mensajes");
+      if (msg)
+        commsToast(
+          displayName(msg.from, msg.from_name),
+          messagePreview(msg),
+          "message-circle",
+          "Mensajes",
+        );
       return;
     }
     const viewing = !messagesApp.hidden && comms.openChat === msg.from && !phone.hidden;
@@ -7190,7 +7319,12 @@
       conv.last = msg;
       if (!viewing) conv.unread = (conv.unread || 0) + 1;
     } else {
-      comms.conversations.unshift({ number: msg.from, name: msg.from_name, unread: viewing ? 0 : 1, last: msg });
+      comms.conversations.unshift({
+        number: msg.from,
+        name: msg.from_name,
+        unread: viewing ? 0 : 1,
+        last: msg,
+      });
     }
     comms.conversations.sort((a, b) => (b.last?.id || 0) - (a.last?.id || 0));
 
@@ -7254,10 +7388,18 @@
     let body = "";
     if (comms.dialerTab === "keypad") {
       const keys = [
-        ["1", ""], ["2", "ABC"], ["3", "DEF"],
-        ["4", "GHI"], ["5", "JKL"], ["6", "MNO"],
-        ["7", "PQRS"], ["8", "TUV"], ["9", "WXYZ"],
-        ["*", ""], ["0", "+"], ["#", ""],
+        ["1", ""],
+        ["2", "ABC"],
+        ["3", "DEF"],
+        ["4", "GHI"],
+        ["5", "JKL"],
+        ["6", "MNO"],
+        ["7", "PQRS"],
+        ["8", "TUV"],
+        ["9", "WXYZ"],
+        ["*", ""],
+        ["0", "+"],
+        ["#", ""],
       ];
       const match = contactByNumber(formatNumber(comms.dialValue));
       body = `
@@ -7358,7 +7500,11 @@
   // Teclado físico en el marcador: números, borrar e Intro para llamar
   document.addEventListener("keydown", (e) => {
     if (dialerApp.hidden || phone.hidden || comms.dialerTab !== "keypad" || comms.call) return;
-    if (e.target instanceof Element && e.target.closest("input, textarea, [contenteditable='true']")) return;
+    if (
+      e.target instanceof Element &&
+      e.target.closest("input, textarea, [contenteditable='true']")
+    )
+      return;
     if (/^\d$/.test(e.key)) dialerPress(e.key);
     else if (e.key === "Backspace") {
       comms.dialValue = comms.dialValue.slice(0, -1);
@@ -7388,7 +7534,8 @@
       return;
     }
     const name = displayName(call.number, call.name);
-    const minimized = comms.callMinimized && call.state !== "incoming" && call.state !== "ended";
+    const minimized =
+      comms.callMinimized && call.state !== "incoming" && call.state !== "ended";
 
     callPill.hidden = !minimized;
     callPill.innerHTML = `<span class="call-pill-dot"></span><span>${esc(name)}</span><strong>${esc(callStatusText(call))}</strong>`;
@@ -7457,7 +7604,12 @@
       return;
     }
     clearTimeout(callHideTimer);
-    comms.call = { id: null, number: target, name: contactByNumber(target)?.name, state: "calling" };
+    comms.call = {
+      id: null,
+      number: target,
+      name: contactByNumber(target)?.name,
+      state: "calling",
+    };
     comms.callMinimized = false;
     renderCallScreen();
 
@@ -7611,14 +7763,20 @@
   let takingPhoto = false;
 
   function cameraFlash() {
-    const flash = document.createElement("div");
-    flash.style.cssText =
-      "position:fixed;inset:0;background:#fff;z-index:999999;opacity:1;transition:opacity .3s;pointer-events:none";
-    document.body.appendChild(flash);
+    const screenEl = phoneScreen || document.querySelector(".phone-screen");
+    if (!screenEl) return;
+    let flash = screenEl.querySelector(".camera-flash-overlay");
+    if (!flash) {
+      flash = document.createElement("div");
+      flash.className = "camera-flash-overlay";
+      screenEl.appendChild(flash);
+    }
+    flash.classList.remove("is-active");
+    void flash.offsetWidth;
+    flash.classList.add("is-active");
     setTimeout(() => {
-      flash.style.opacity = "0";
-      setTimeout(() => flash.remove(), 300);
-    }, 50);
+      flash.classList.remove("is-active");
+    }, 60);
   }
 
   async function takePhoto() {
@@ -7627,13 +7785,12 @@
 
     if (SCREENSHOT_INCLUDES_UI) {
       phone.style.visibility = "hidden";
-      await new Promise((resolve) => setTimeout(resolve, 80)); // dejamos que el motor repinte sin la interfaz
+      await new Promise((resolve) => setTimeout(resolve, 80));
     } else {
       cameraFlash();
     }
 
     try {
-      // Pedimos al cliente Lua que haga la captura y la suba (sale con el zoom que tengas puesto)
       const result = await Promise.race([
         nui("takePhoto"),
         new Promise((resolve) =>
@@ -7647,13 +7804,6 @@
       }
 
       if (result && result.success) {
-        showNotification({
-          appName: "Cámara",
-          icon: "check",
-          title: "Foto guardada",
-          message: "La foto se ha guardado en tu galería.",
-        });
-
         if (!cameraGalleryView.hidden) {
           loadGallery();
         }
@@ -7667,8 +7817,14 @@
       }
     } catch (e) {
       console.error("Error al tomar foto:", e);
+      showNotification({
+        appName: "Cámara",
+        icon: "alert-triangle",
+        title: "Error",
+        message: "No se pudo tomar la foto.",
+      });
     } finally {
-      phone.style.visibility = ""; // pase lo que pase, el móvil vuelve a verse
+      phone.style.visibility = "";
       takingPhoto = false;
     }
   }
@@ -7676,7 +7832,7 @@
   // 3. Cargar la galería
   async function loadGallery() {
     try {
-      const photos = (await nui("getGalleryPhotos")) || [];
+      const photos = (await nui("getGalleryPhotos", { imei: window.PhoneData?.imei })) || [];
       cameraPhotos = Array.isArray(photos) ? photos : [];
       renderGallery();
     } catch (e) {
@@ -7684,7 +7840,7 @@
     }
   }
 
-  // 4. Renderizar galería (creando los elementos a mano: una URL rara no puede inyectar HTML)
+  // 4. Renderizar galería
   function renderGallery() {
     if (!cameraGalleryGrid) return;
     if (cameraPhotos.length === 0) {
@@ -7695,11 +7851,43 @@
       ...cameraPhotos.map((photo) => {
         const item = document.createElement("div");
         item.className = "camera-gallery-item";
+        const rawUrl = String(photo.image_url || "").trim();
+        const isVideo = /\.(webm|mp4|mov)(\?.*)?$/i.test(rawUrl);
+
+        if (isVideo) {
+          const video = document.createElement("video");
+          video.src = rawUrl;
+          video.controls = true;
+          video.playsInline = true;
+          video.preload = "metadata";
+          video.addEventListener("error", () => {
+            item.classList.add("is-broken");
+          });
+          item.appendChild(video);
+          return item;
+        }
+
         const img = document.createElement("img");
         img.alt = "Foto";
-        img.loading = "lazy";
-        img.src = String(photo.image_url || "");
-        img.addEventListener("error", () => item.classList.add("is-broken"));
+        img.referrerPolicy = "no-referrer";
+        img.src = rawUrl;
+        img.addEventListener("error", async () => {
+          if (!img.dataset.retried && rawUrl) {
+            img.dataset.retried = "1";
+            try {
+              const resp = await fetch(rawUrl, {
+                cache: "reload",
+                referrerPolicy: "no-referrer",
+              });
+              if (resp.ok) {
+                const blob = await resp.blob();
+                img.src = URL.createObjectURL(blob);
+                return;
+              }
+            } catch (err) {}
+          }
+          item.classList.add("is-broken");
+        });
         item.appendChild(img);
         return item;
       }),
@@ -7736,21 +7924,11 @@
     returnToDesktop();
   }
 
-  // ================= ZOOM (rueda del ratón + botones tipo Android) =================
-  // Botones: 0.5 · 1 · 2 · 4 · 8 · 10 · 15 · 20  (clic = salto directo, con transición suave)
-  // Rueda:   de 0.5 a 1 en pasos de 0.1 y de 1 a 20 en pasos de 1 (2, 3, 4, 5, 6...)
-  // El botón "activo" muestra el zoom real en el que estás (p. ej. 3x aparece en el botón del 2).
-  const ZOOM_PRESETS = [0.5, 1, 2, 4, 8, 10, 15, 20];
-  const ZOOM_STEPS = (() => {
-    const steps = [];
-    for (let v = 0.5; v < 1 - 1e-9; v += 0.1) steps.push(Math.round(v * 10) / 10);
-    for (let v = 1; v <= 20; v += 1) steps.push(v);
-    return steps;
-  })();
-  const ZOOM_MIN = ZOOM_STEPS[0];
-  const ZOOM_MAX = ZOOM_STEPS[ZOOM_STEPS.length - 1];
-  const ZOOM_TICK_GAP = 12; // px entre rayitas de la regla
+  const ZOOM_MIN = 0.5;
+  const ZOOM_TICK_GAP = 5; // px por cada paso de 0.1 en la regla
   const ZOOM_DIAL_HIDE_MS = 1300;
+  const CAMERA_CACHE_KEY = "dpPhone.cameraState";
+  const VIDEO_SAVE_DURATION_MS = 2500;
 
   const zoomChipsEl = document.getElementById("camera-zoom-chips");
   const zoomDialEl = document.getElementById("camera-zoom-dial");
@@ -7765,6 +7943,189 @@
   let zoomSendTimer = null;
   let zoomLastSent = null;
 
+  let cameraFacing = "back"; // "back" | "front"
+  let cameraGridEnabled = false;
+  let cameraFiltersEnabled = false;
+  let cameraToolsExpanded = false;
+  let cameraCaptureMode = "photo"; // "photo" | "video"
+  let isRecordingVideo = false;
+  let isSavingVideo = false;
+  let recordingTicker = null;
+  let recordingElapsedSec = 0;
+
+  window.dpCameraBusy = () => isRecordingVideo || isSavingVideo;
+
+  function loadCameraCachedState() {
+    const hwCam = window.PhoneData?.hardware?.settings?.camera;
+    if (hwCam && typeof hwCam === "object") return hwCam;
+    try {
+      return JSON.parse(localStorage.getItem(CAMERA_CACHE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function saveCameraCachedState() {
+    const payload = {
+      toolsExpanded: cameraToolsExpanded,
+      facing: cameraFacing,
+      grid: cameraGridEnabled,
+      filters: cameraFiltersEnabled,
+      captureMode: cameraCaptureMode,
+    };
+    try {
+      localStorage.setItem(CAMERA_CACHE_KEY, JSON.stringify(payload));
+    } catch {}
+    if (window.PhoneData?.imei) {
+      if (!window.PhoneData.hardware) window.PhoneData.hardware = {};
+      if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
+      window.PhoneData.hardware.settings.camera = payload;
+      nui("saveHardwareData", {
+        imei: window.PhoneData.imei,
+        settings: window.PhoneData.hardware.settings,
+        installed_apps: window.PhoneData.hardware.installed_apps || [],
+      }).catch(() => {});
+    }
+  }
+
+  function applyCameraButtonsState({ syncFacingNui = false } = {}) {
+    const busy = isRecordingVideo || isSavingVideo;
+    const toolsGroup = document.getElementById("camera-tools-group");
+    toolsGroup?.classList.toggle("expanded", cameraToolsExpanded);
+
+    document
+      .getElementById("camera-btn-flip")
+      ?.classList.toggle("active", cameraFacing === "front");
+    document.getElementById("camera-btn-grid")?.classList.toggle("active", cameraGridEnabled);
+    document
+      .getElementById("camera-btn-filters")
+      ?.classList.toggle("active", cameraFiltersEnabled);
+
+    const gridOverlay = document.getElementById("camera-grid-overlay");
+    if (gridOverlay) gridOverlay.hidden = !cameraGridEnabled;
+
+    const shutterBtn = document.getElementById("camera-btn-shutter");
+    shutterBtn?.classList.toggle("is-recording", isRecordingVideo);
+    if (shutterBtn) shutterBtn.disabled = isSavingVideo;
+
+    const galleryBtn = document.getElementById("camera-btn-gallery");
+    if (galleryBtn) galleryBtn.disabled = busy;
+
+    document.querySelectorAll("[data-camera-mode]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.cameraMode === cameraCaptureMode);
+      btn.disabled = busy;
+    });
+
+    const minZoom = getZoomMin();
+    const maxZoom = getZoomMax();
+    zoomTarget = Math.min(maxZoom, Math.max(minZoom, zoomTarget));
+    zoomShown = zoomTarget;
+    zoomLastSent = zoomTarget;
+    buildZoomUi();
+    renderZoom();
+
+    if (syncFacingNui) {
+      nui("cameraFacing", { facing: cameraFacing, zoom: zoomTarget }).catch(() => {});
+    }
+  }
+
+  function restoreCameraCachedState() {
+    const saved = loadCameraCachedState();
+    cameraToolsExpanded = saved.toolsExpanded === true;
+    cameraFacing = saved.facing === "front" ? "front" : "back";
+    cameraGridEnabled = saved.grid === true;
+    cameraFiltersEnabled = saved.filters === true;
+    cameraCaptureMode = saved.captureMode === "video" ? "video" : "photo";
+    isRecordingVideo = false;
+    isSavingVideo = false;
+    recordingElapsedSec = 0;
+    if (recordingTicker) {
+      clearInterval(recordingTicker);
+      recordingTicker = null;
+    }
+    const saveBox = document.getElementById("camera-save-progress");
+    if (saveBox) saveBox.hidden = true;
+    zoomTarget = 1;
+    zoomShown = 1;
+    zoomLastSent = 1;
+    applyCameraButtonsState({ syncFacingNui: true });
+  }
+
+  function runVideoSaveProgress() {
+    const saveBox = document.getElementById("camera-save-progress");
+    const saveFill = document.getElementById("camera-save-fill");
+    const saveLabel = document.getElementById("camera-save-label");
+    if (!saveBox || !saveFill) return;
+
+    isSavingVideo = true;
+    applyCameraButtonsState();
+    saveBox.hidden = false;
+    saveFill.style.width = "0%";
+    if (saveLabel) saveLabel.textContent = "Guardando vídeo...";
+
+    const startedAt = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const pct = Math.min(100, Math.round((elapsed / VIDEO_SAVE_DURATION_MS) * 100));
+      saveFill.style.width = `${pct}%`;
+
+      if (pct >= 100) {
+        clearInterval(timer);
+        isSavingVideo = false;
+        saveBox.hidden = true;
+        saveFill.style.width = "0%";
+        applyCameraButtonsState();
+      }
+    }, 60);
+  }
+
+  function handleShutterClick() {
+    if (cameraCaptureMode === "photo") {
+      return takePhoto();
+    }
+    if (isSavingVideo) return;
+
+    if (!isRecordingVideo) {
+      isRecordingVideo = true;
+      recordingElapsedSec = 0;
+      applyCameraButtonsState();
+      nui("cameraVideoStart").catch(() => {});
+      recordingTicker = setInterval(() => {
+        recordingElapsedSec += 1;
+      }, 1000);
+    } else {
+      isRecordingVideo = false;
+      if (recordingTicker) {
+        clearInterval(recordingTicker);
+        recordingTicker = null;
+      }
+      applyCameraButtonsState();
+      nui("cameraVideoStop")
+        .then((res) => console.log("[DP-Phone] Respuesta cameraVideoStop:", res))
+        .catch((err) => console.error("[DP-Phone] Error cameraVideoStop:", err));
+      runVideoSaveProgress();
+    }
+  }
+
+  const BACK_ZOOM_PRESETS = [0.5, 1, 2, 5, 10, 20];
+  const FRONT_ZOOM_PRESETS = [1, 2];
+
+  const getZoomPresets = () =>
+    cameraFacing === "front" ? FRONT_ZOOM_PRESETS : BACK_ZOOM_PRESETS;
+
+  const getZoomMin = () => (cameraFacing === "front" ? 1.0 : 0.5);
+  const getZoomMax = () => (cameraFacing === "front" ? 2.0 : 20.0);
+
+  const getZoomSteps = () => {
+    const minVal = getZoomMin();
+    const maxVal = getZoomMax();
+    const steps = [];
+    for (let v = minVal; v <= maxVal + 1e-9; v += 0.1) {
+      steps.push(Math.round(v * 10) / 10);
+    }
+    return steps;
+  };
+
   const roundZoom = (v) => Math.round(v * 10) / 10;
   const formatZoom = (v) => {
     const r = roundZoom(v);
@@ -7773,28 +8134,63 @@
   const presetLabel = (v) => (v < 1 ? String(v).replace(/^0/, "") : String(v));
 
   function zoomIndexOf(value) {
+    const steps = getZoomSteps();
     let best = 0;
-    ZOOM_STEPS.forEach((v, i) => {
-      if (Math.abs(v - value) < Math.abs(ZOOM_STEPS[best] - value)) best = i;
+    steps.forEach((v, i) => {
+      if (Math.abs(v - value) < Math.abs(steps[best] - value)) best = i;
     });
     return best;
   }
 
   // Posición "decimal" en la regla (para que se deslice suave entre dos rayitas)
   function zoomFractionalIndex(value) {
+    const steps = getZoomSteps();
     if (value <= ZOOM_MIN) return 0;
-    for (let i = 0; i < ZOOM_STEPS.length - 1; i++) {
-      const a = ZOOM_STEPS[i];
-      const b = ZOOM_STEPS[i + 1];
+    for (let i = 0; i < steps.length - 1; i++) {
+      const a = steps[i];
+      const b = steps[i + 1];
       if (value <= b) return i + (value - a) / (b - a);
     }
-    return ZOOM_STEPS.length - 1;
+    return steps.length - 1;
+  }
+
+  function toggleCameraFacing() {
+    cameraFacing = cameraFacing === "back" ? "front" : "back";
+    applyCameraButtonsState({ syncFacingNui: true });
+    saveCameraCachedState();
+  }
+
+  function toggleCameraGrid() {
+    cameraGridEnabled = !cameraGridEnabled;
+    applyCameraButtonsState();
+    saveCameraCachedState();
+  }
+
+  function toggleCameraTimer() {
+    cameraTimerEnabled = !cameraTimerEnabled;
+    applyCameraButtonsState();
+    saveCameraCachedState();
+  }
+
+  function toggleCameraFilters() {
+    cameraFiltersEnabled = !cameraFiltersEnabled;
+    applyCameraButtonsState();
+    saveCameraCachedState();
+  }
+
+  function setCameraToolsExpanded(expanded) {
+    cameraToolsExpanded = expanded === true;
+    applyCameraButtonsState();
+    saveCameraCachedState();
   }
 
   function buildZoomUi() {
+    const presets = getZoomPresets();
+    const steps = getZoomSteps();
+
     if (zoomChipsEl) {
       zoomChipsEl.innerHTML = "";
-      zoomChipEls = ZOOM_PRESETS.map((preset) => {
+      zoomChipEls = presets.map((preset) => {
         const chip = document.createElement("button");
         chip.type = "button";
         chip.className = "camera-zoom-chip";
@@ -7808,10 +8204,11 @@
 
     if (zoomDialTicksEl) {
       zoomDialTicksEl.innerHTML = "";
-      ZOOM_STEPS.forEach((value, i) => {
+      steps.forEach((value, i) => {
+        const major = presets.some((p) => Math.abs(p - value) < 1e-6);
+        const half = !major && Math.abs((value * 2) % 1) < 1e-6;
         const tick = document.createElement("span");
-        const major = ZOOM_PRESETS.includes(value);
-        tick.className = `camera-zoom-tick${major ? " major" : ""}`;
+        tick.className = `camera-zoom-tick${major ? " major" : half ? " half" : ""}`;
         tick.style.left = `${i * ZOOM_TICK_GAP}px`;
         if (major) {
           const label = document.createElement("span");
@@ -7825,15 +8222,15 @@
   }
 
   function renderZoom() {
-    // Botón activo = el preset más alto que no supera el zoom actual
+    const presets = getZoomPresets();
     let activeIndex = 0;
-    ZOOM_PRESETS.forEach((preset, i) => {
+    presets.forEach((preset, i) => {
       if (zoomShown + 0.001 >= preset) activeIndex = i;
     });
     zoomChipEls.forEach((chip, i) => {
       const active = i === activeIndex;
       chip.classList.toggle("active", active);
-      chip.textContent = active ? formatZoom(zoomShown) : presetLabel(ZOOM_PRESETS[i]);
+      chip.textContent = active ? formatZoom(zoomShown) : presetLabel(presets[i]);
     });
 
     if (zoomDialValueEl) zoomDialValueEl.textContent = formatZoom(zoomShown);
@@ -7842,7 +8239,6 @@
     }
   }
 
-  // Animación suave del número/regla (en escala logarítmica, igual que en Lua)
   function animateZoom() {
     const ls = Math.log(zoomShown);
     const lt = Math.log(zoomTarget);
@@ -7852,7 +8248,6 @@
     zoomRaf = zoomShown === zoomTarget ? null : requestAnimationFrame(animateZoom);
   }
 
-  // Manda el zoom a Lua como mucho cada 40 ms (siempre llega el último valor)
   function sendZoom() {
     if (zoomSendTimer) return;
     zoomSendTimer = setTimeout(() => {
@@ -7867,11 +8262,16 @@
     if (!zoomDialEl) return;
     zoomDialEl.classList.add("visible");
     clearTimeout(zoomDialTimer);
-    zoomDialTimer = setTimeout(() => zoomDialEl.classList.remove("visible"), ZOOM_DIAL_HIDE_MS);
+    zoomDialTimer = setTimeout(
+      () => zoomDialEl.classList.remove("visible"),
+      ZOOM_DIAL_HIDE_MS,
+    );
   }
 
   function setZoom(value) {
-    const clamped = roundZoom(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(value) || 1)));
+    const clamped = roundZoom(
+      Math.min(getZoomMax(), Math.max(getZoomMin(), Number(value) || 1)),
+    );
     if (clamped === zoomTarget) return;
     zoomTarget = clamped;
     sendZoom();
@@ -7882,15 +8282,11 @@
   function resetZoom() {
     if (zoomRaf) cancelAnimationFrame(zoomRaf);
     zoomRaf = null;
-    zoomTarget = 1;
-    zoomShown = 1;
-    zoomLastSent = 1; // Lua también empieza en 1x al abrir la cámara
     clearTimeout(zoomDialTimer);
     zoomDialEl?.classList.remove("visible");
-    renderZoom();
+    restoreCameraCachedState();
   }
 
-  // Rueda del ratón con el cursor DENTRO del visor: arriba = acercar, abajo = alejar (paso a paso)
   cameraView?.addEventListener(
     "wheel",
     (e) => {
@@ -7898,20 +8294,22 @@
       e.preventDefault();
       const dir = e.deltaY < 0 ? 1 : e.deltaY > 0 ? -1 : 0;
       if (!dir) return;
-      const index = Math.min(ZOOM_STEPS.length - 1, Math.max(0, zoomIndexOf(zoomTarget) + dir));
-      setZoom(ZOOM_STEPS[index]);
+      const steps = getZoomSteps();
+      const index = Math.min(steps.length - 1, Math.max(0, zoomIndexOf(zoomTarget) + dir));
+      setZoom(steps[index]);
     },
     { passive: false },
   );
 
-  // ================= GIRAR LA CÁMARA ARRASTRANDO =================
-  // Mantén clic izquierdo dentro del visor y arrastra: la cámara gira y el cursor se oculta.
-  // Al soltar vuelve el cursor (al sitio donde hiciste clic) y el ratón deja de girar la cámara.
   let cameraDrag = null;
 
   function startCameraDrag(e) {
     if (e.button !== 0 || !cameraModeActive || cameraView.hidden || takingPhoto) return;
-    if (e.target instanceof Element && e.target.closest("button, .camera-zoom, .camera-controls")) return;
+    if (
+      e.target instanceof Element &&
+      e.target.closest("button, .camera-zoom, .camera-controls")
+    )
+      return;
     e.preventDefault();
 
     cameraDrag = { pointerId: e.pointerId };
@@ -7942,29 +8340,41 @@
   cameraView?.addEventListener("pointercancel", endCameraDrag);
   cameraView?.addEventListener("lostpointercapture", endCameraDrag);
   window.addEventListener("blur", endCameraDrag);
-  window.dpCameraReset = endCameraDrag; // exitCameraMode() lo llama al cerrar la cámara
+  window.dpCameraReset = endCameraDrag;
 
   buildZoomUi();
   renderZoom();
 
-  // --- EVENT LISTENERS ---
   setTimeout(() => {
-    document.getElementById("camera-btn-shutter")?.addEventListener("click", takePhoto);
     document
-      .getElementById("camera-btn-gallery")
-      ?.addEventListener("click", toggleCameraGallery);
+      .getElementById("camera-btn-shutter")
+      ?.addEventListener("click", handleShutterClick);
+    document.getElementById("camera-btn-gallery")?.addEventListener("click", () => {
+      if (isRecordingVideo || isSavingVideo) return;
+      toggleCameraGallery();
+    });
+    document.getElementById("camera-btn-expand-tools")?.addEventListener("click", () => {
+      setCameraToolsExpanded(true);
+      renderCameraIcons();
+    });
+    document.getElementById("camera-btn-collapse-tools")?.addEventListener("click", () => {
+      setCameraToolsExpanded(false);
+      renderCameraIcons();
+    });
+    document.getElementById("camera-btn-flip")?.addEventListener("click", toggleCameraFacing);
+    document.getElementById("camera-btn-grid")?.addEventListener("click", toggleCameraGrid);
     document
-      .getElementById("camera-btn-back-gallery")
-      ?.addEventListener("click", backFromGallery);
-    document.getElementById("camera-btn-close")?.addEventListener("click", closeCameraApp);
+      .getElementById("camera-btn-filters")
+      ?.addEventListener("click", toggleCameraFilters);
 
-    document.getElementById("camera-btn-flash")?.addEventListener("click", (e) => {
-      e.currentTarget.classList.toggle("active");
-      showNotification({
-        appName: "Cámara",
-        icon: "flash",
-        title: "Flash",
-        message: "Flash activado (simulado)",
+    document.querySelectorAll("[data-camera-mode]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (isRecordingVideo || isSavingVideo) return;
+        const mode = btn.dataset.cameraMode === "video" ? "video" : "photo";
+        if (cameraCaptureMode === mode) return;
+        cameraCaptureMode = mode;
+        applyCameraButtonsState();
+        saveCameraCachedState();
       });
     });
   }, 1000);
