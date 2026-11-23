@@ -954,6 +954,42 @@ exports('IsPhoneOpen', function()
     return isPhoneOpen
 end)
 
+local GALLERY_COMMS_CALLBACKS = {
+    'toggleGalleryFavorite',
+    'getGalleryAlbums',
+    'createGalleryAlbum',
+    'updateGalleryAlbum',
+    'deleteGalleryAlbum',
+    'setMediaInAlbum',
+    'setAlbumCollaborative',
+    'shareGalleryAlbum',
+    'respondGalleryAlbumInvite'
+}
+
+for _, cbName in ipairs(GALLERY_COMMS_CALLBACKS) do
+    RegisterNUICallback(cbName, function(data, cb)
+        cb(lib.callback.await('dp-phone:server:' .. cbName, false, type(data) == 'table' and data or {}) or false)
+    end)
+end
+
+RegisterNetEvent('dp-phone:client:galleryAlbumInvite', function(inviteData)
+    if type(inviteData) == 'table' then
+        SendNUIMessage({
+            action = 'galleryAlbumInvite',
+            data = inviteData
+        })
+    end
+end)
+
+RegisterNetEvent('dp-phone:client:galleryAlbumCollabItem', function(payload)
+    if type(payload) == 'table' then
+        SendNUIMessage({
+            action = 'galleryAlbumCollabItem',
+            data = payload
+        })
+    end
+end)
+
 -- ==========================================
 -- CALLBACKS DE RANKING (VÍBORA)
 -- ==========================================

@@ -232,9 +232,57 @@ CreateThread(function()
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `imei` varchar(50) NOT NULL,
             `image_url` TEXT NOT NULL,
+            `is_favorite` tinyint(1) DEFAULT 0,
             `date` timestamp NULL DEFAULT current_timestamp(),
             PRIMARY KEY (`id`),
             KEY `idx_gallery_imei` (`imei`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]])
+
+    if not columnExists('dp_phone_gallery', 'is_favorite') then
+        MySQL.query.await('ALTER TABLE `dp_phone_gallery` ADD COLUMN `is_favorite` tinyint(1) DEFAULT 0')
+    end
+
+    -- Álbumes / Carpetas de galería
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `dp_phone_albums` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `imei` varchar(50) NOT NULL,
+            `title` varchar(60) NOT NULL,
+            `description` varchar(220) DEFAULT '',
+            `color` varchar(20) DEFAULT '#e5a93c',
+            `is_collaborative` tinyint(1) DEFAULT 0,
+            `shared_from` varchar(50) DEFAULT NULL,
+            `created_at` timestamp NULL DEFAULT current_timestamp(),
+            PRIMARY KEY (`id`),
+            KEY `idx_albums_imei` (`imei`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]])
+
+    -- Elementos dentro de cada álbum
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `dp_phone_album_items` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `album_id` int(11) NOT NULL,
+            `media_id` int(11) NOT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `uq_album_media` (`album_id`, `media_id`),
+            KEY `idx_album_items_album` (`album_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ]])
+
+    -- Enlaces de álbumes colaboradores entre dispositivos
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS `dp_phone_album_collab_links` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `source_imei` varchar(50) NOT NULL,
+            `source_album_id` int(11) NOT NULL,
+            `target_imei` varchar(50) NOT NULL,
+            `target_album_id` int(11) NOT NULL,
+            `created_at` timestamp NULL DEFAULT current_timestamp(),
+            PRIMARY KEY (`id`),
+            KEY `idx_collab_source` (`source_imei`, `source_album_id`),
+            KEY `idx_collab_target` (`target_imei`, `target_album_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ]])
 
@@ -813,8 +861,6 @@ RegisterNetEvent('dp-phone:server:saveSetup', function(imei, pin, cloudUser)
 
     -- Quien acaba de configurar el móvil lo tiene desbloqueado
     markUnlocked(src, imei)
-
-    -- ⚠️ Ya NO se imprime el PIN en la consola
     debugPrint(('Dispositivo %s configurado por %s.'):format(imei, Player.PlayerData.citizenid))
 end)
 
@@ -2035,5 +2081,366 @@ end)
 -- Para otros scripts: ¿está este jugador en una llamada?
 exports('IsInCall', function(src)
     return PlayerCall[src] ~= nil
+end)
+
+-- ==========================================================
+-- FAVORITOS Y ÁLBUMES DE GALERÍA (SQL + COLABORACIÓN)
+-- ==========================================================
+local PendingAlbumInvites = {}
+local nextAlbumInviteId = 1
+
+local function getPlayerSrcByImei(targetImei)
+    for _, pSrc in pairs(QBCore.Functions.GetPlayers()) do
+        if findPhoneItem(pSrc, targetImei) then
+            return pSrc
+        end
+    end
+    return nil
+end
+
+local function fetchAlbumsForImei(imei)
+    local rows = MySQL.query.await('SELECT * FROM dp_phone_albums WHERE imei = ? ORDER BY id ASC', {imei}) or {}
+    local itemRows = MySQL.query.await([[
+        SELECT ai.album_id, ai.media_id
+        FROM dp_phone_album_items ai
+        JOIN dp_phone_albums a ON a.id = ai.album_id
+        WHERE a.imei = ?
+    ]], {imei}) or {}
+
+    local mapIds = {}
+    for _, ir in ipairs(itemRows) do
+        local aid = tonumber(ir.album_id)
+        mapIds[aid] = mapIds[aid] or {}
+        mapIds[aid][#mapIds[aid] + 1] = tonumber(ir.media_id)
+    end
+
+    local result = {}
+    for _, r in ipairs(rows) do
+        local aid = tonumber(r.id)
+        result[#result + 1] = {
+            id = aid,
+            title = r.title,
+            description = r.description or '',
+            color = r.color or '#e5a93c',
+            is_collaborative = dbBool(r.is_collaborative),
+            shared_from = r.shared_from,
+            is_default = false,
+            media_ids = mapIds[aid] or {}
+        }
+    end
+    return result
+end
+
+lib.callback.register('dp-phone:server:toggleGalleryFavorite', function(source, data)
+    local imei = getUsableActiveImei(source)
+    if not imei or type(data) ~= 'table' then
+        return false
+    end
+    local mediaId = tonumber(data.mediaId)
+    if not mediaId then
+        return false
+    end
+    local favVal = data.favorite == true and 1 or 0
+    local affected = MySQL.update.await('UPDATE dp_phone_gallery SET is_favorite = ? WHERE id = ? AND imei = ?',
+        {favVal, mediaId, imei})
+    return (affected or 0) > 0
+end)
+
+lib.callback.register('dp-phone:server:getGalleryAlbums', function(source, data)
+    local imei = getUsableActiveImei(source)
+    if not imei and type(data) == 'table' and isValidString(data.imei, 1, 50) and canUsePhone(source, data.imei) then
+        imei = data.imei
+    end
+    if not imei then
+        return {}
+    end
+    return fetchAlbumsForImei(imei)
+end)
+
+lib.callback.register('dp-phone:server:createGalleryAlbum', function(source, data)
+    local imei = getUsableActiveImei(source)
+    if not imei or type(data) ~= 'table' then
+        return false
+    end
+    local title = cleanText(data.title, 60)
+    if not title then
+        return false
+    end
+    local desc = type(data.description) == 'string' and data.description:sub(1, 220) or ''
+    local color = type(data.color) == 'string' and data.color:match('^#%x%x%x%x?%x?%x?$') and data.color or '#e5a93c'
+
+    local newId = MySQL.insert.await([[
+        INSERT INTO dp_phone_albums (imei, title, description, color, is_collaborative)
+        VALUES (?, ?, ?, ?, 0)
+    ]], {imei, title, desc, color})
+    if not newId then
+        return false
+    end
+    return {
+        id = tonumber(newId),
+        title = title,
+        description = desc,
+        color = color,
+        is_collaborative = false,
+        is_default = false,
+        media_ids = {}
+    }
+end)
+
+lib.callback.register('dp-phone:server:updateGalleryAlbum', function(source, data)
+    local imei = getUsableActiveImei(source)
+    if not imei or type(data) ~= 'table' then
+        return false
+    end
+    local albumId = tonumber(data.albumId)
+    local title = cleanText(data.title, 60)
+    if not albumId or not title then
+        return false
+    end
+    local desc = type(data.description) == 'string' and data.description:sub(1, 220) or ''
+    local color = type(data.color) == 'string' and data.color:match('^#%x%x%x%x?%x?%x?$') and data.color or '#e5a93c'
+
+    local affected = MySQL.update.await([[
+        UPDATE dp_phone_albums SET title = ?, description = ?, color = ?
+        WHERE id = ? AND imei = ?
+    ]], {title, desc, color, albumId, imei})
+    return (affected or 0) > 0
+end)
+
+lib.callback.register('dp-phone:server:deleteGalleryAlbum', function(source, data)
+    local imei = getUsableActiveImei(source)
+    if not imei or type(data) ~= 'table' then
+        return false
+    end
+    local albumId = tonumber(data.albumId)
+    if not albumId then
+        return false
+    end
+    MySQL.query.await('DELETE FROM dp_phone_album_items WHERE album_id = ?', {albumId})
+    MySQL.query.await('DELETE FROM dp_phone_album_collab_links WHERE source_album_id = ? OR target_album_id = ?',
+        {albumId, albumId})
+    local affected = MySQL.update.await('DELETE FROM dp_phone_albums WHERE id = ? AND imei = ?', {albumId, imei})
+    return (affected or 0) > 0
+end)
+
+lib.callback.register('dp-phone:server:setAlbumCollaborative', function(source, data)
+    local imei = getUsableActiveImei(source)
+    if not imei or type(data) ~= 'table' then
+        return false
+    end
+    local albumId = tonumber(data.albumId)
+    if not albumId then
+        return false
+    end
+    local val = data.collaborative == true and 1 or 0
+    local affected = MySQL.update.await('UPDATE dp_phone_albums SET is_collaborative = ? WHERE id = ? AND imei = ?',
+        {val, albumId, imei})
+    return (affected or 0) > 0
+end)
+
+local function syncCollaboratorAddedMedia(adderImei, addedAlbumId, mediaRow)
+    if not mediaRow or not mediaRow.image_url then
+        return
+    end
+    local links = MySQL.query.await([[
+        SELECT * FROM dp_phone_album_collab_links
+        WHERE (source_imei = ? AND source_album_id = ?) OR (target_imei = ? AND target_album_id = ?)
+    ]], {adderImei, addedAlbumId, adderImei, addedAlbumId}) or {}
+
+    for _, lnk in ipairs(links) do
+        local peerImei = (lnk.source_imei == adderImei and tonumber(lnk.source_album_id) == tonumber(addedAlbumId)) and
+                             lnk.target_imei or lnk.source_imei
+        local peerAlbumId = (lnk.source_imei == adderImei and tonumber(lnk.source_album_id) == tonumber(addedAlbumId)) and
+                                tonumber(lnk.target_album_id) or tonumber(lnk.source_album_id)
+
+        local peerAlbum = MySQL.single.await('SELECT * FROM dp_phone_albums WHERE id = ? AND imei = ? LIMIT 1',
+            {peerAlbumId, peerImei})
+        if peerAlbum and dbBool(peerAlbum.is_collaborative) then
+            local newMediaId = MySQL.insert.await('INSERT INTO dp_phone_gallery (imei, image_url) VALUES (?, ?)',
+                {peerImei, mediaRow.image_url})
+            if newMediaId then
+                MySQL.query.await('INSERT IGNORE INTO dp_phone_album_items (album_id, media_id) VALUES (?, ?)',
+                    {peerAlbumId, newMediaId})
+                local peerSrc = getPlayerSrcByImei(peerImei)
+                if peerSrc then
+                    TriggerClientEvent('dp-phone:client:galleryAlbumCollabItem', peerSrc, {
+                        albumId = peerAlbumId,
+                        photo = {
+                            id = tonumber(newMediaId),
+                            imei = peerImei,
+                            image_url = mediaRow.image_url,
+                            is_favorite = 0,
+                            date = os.date('%Y-%m-%d %H:%M:%S')
+                        },
+                        albums = fetchAlbumsForImei(peerImei)
+                    })
+                end
+            end
+        end
+    end
+end
+
+lib.callback.register('dp-phone:server:setMediaInAlbum', function(source, data)
+    local imei = getUsableActiveImei(source)
+    if not imei or type(data) ~= 'table' then
+        return false
+    end
+    local albumId = tonumber(data.albumId)
+    local mediaId = tonumber(data.mediaId)
+    if not albumId or not mediaId then
+        return false
+    end
+
+    local albumRow = MySQL.single.await('SELECT * FROM dp_phone_albums WHERE id = ? AND imei = ? LIMIT 1',
+        {albumId, imei})
+    if not albumRow then
+        return false
+    end
+
+    if data.add == true then
+        local mediaRow = MySQL.single.await('SELECT * FROM dp_phone_gallery WHERE id = ? AND imei = ? LIMIT 1',
+            {mediaId, imei})
+        if not mediaRow then
+            return false
+        end
+        MySQL.query.await('INSERT IGNORE INTO dp_phone_album_items (album_id, media_id) VALUES (?, ?)',
+            {albumId, mediaId})
+        if dbBool(albumRow.is_collaborative) then
+            syncCollaboratorAddedMedia(imei, albumId, mediaRow)
+        end
+    else
+        MySQL.query.await('DELETE FROM dp_phone_album_items WHERE album_id = ? AND media_id = ?', {albumId, mediaId})
+    end
+    return true
+end)
+
+lib.callback.register('dp-phone:server:shareGalleryAlbum', function(source, data)
+    local myImei = getUsableActiveImei(source)
+    if not myImei or type(data) ~= 'table' then
+        return {
+            ok = false,
+            message = 'Desbloquea el móvil primero.'
+        }
+    end
+    local albumId = tonumber(data.albumId)
+    local targetNumber = normalizeNumber(data.targetNumber)
+    local mode = data.mode == 'collab' and 'collab' or 'copy'
+    if not albumId or not targetNumber then
+        return {
+            ok = false,
+            message = 'Número de SIM no válido.'
+        }
+    end
+
+    local albumRow = MySQL.single.await('SELECT * FROM dp_phone_albums WHERE id = ? AND imei = ? LIMIT 1',
+        {albumId, myImei})
+    if not albumRow then
+        return {
+            ok = false,
+            message = 'Álbum no encontrado.'
+        }
+    end
+
+    local targetSrc, targetImei = findOnlineByNumber(targetNumber)
+    if not targetSrc or not targetImei then
+        return {
+            ok = false,
+            message = 'El jugador no está conectado o no tiene su SIM activa.'
+        }
+    end
+
+    local mediaRows = MySQL.query.await([[
+        SELECT g.* FROM dp_phone_gallery g
+        JOIN dp_phone_album_items ai ON ai.media_id = g.id
+        WHERE ai.album_id = ? AND g.imei = ?
+    ]], {albumId, myImei}) or {}
+
+    nextAlbumInviteId = nextAlbumInviteId + 1
+    local inviteId = nextAlbumInviteId
+    PendingAlbumInvites[inviteId] = {
+        id = inviteId,
+        fromSrc = source,
+        fromImei = myImei,
+        targetSrc = targetSrc,
+        targetImei = targetImei,
+        albumRow = albumRow,
+        mediaRows = mediaRows,
+        mode = mode
+    }
+
+    TriggerClientEvent('dp-phone:client:galleryAlbumInvite', targetSrc, {
+        inviteId = inviteId,
+        title = albumRow.title,
+        description = albumRow.description or '',
+        color = albumRow.color or '#e5a93c',
+        mode = mode,
+        count = #mediaRows
+    })
+
+    return {
+        ok = true
+    }
+end)
+
+lib.callback.register('dp-phone:server:respondGalleryAlbumInvite', function(source, data)
+    if type(data) ~= 'table' then
+        return {
+            ok = false
+        }
+    end
+    local inviteId = tonumber(data.inviteId)
+    local inv = inviteId and PendingAlbumInvites[inviteId]
+    if not inv or inv.targetSrc ~= source then
+        return {
+            ok = false
+        }
+    end
+    PendingAlbumInvites[inviteId] = nil
+
+    if data.accept ~= true then
+        return {
+            ok = true,
+            accepted = false
+        }
+    end
+
+    local targetImei = inv.targetImei
+    local isCollab = inv.mode == 'collab' and 1 or 0
+    local newAlbumId = MySQL.insert.await([[
+        INSERT INTO dp_phone_albums (imei, title, description, color, is_collaborative, shared_from)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ]], {targetImei, inv.albumRow.title, inv.albumRow.description or '', inv.albumRow.color or '#e5a93c', isCollab,
+         inv.fromImei})
+
+    if not newAlbumId then
+        return {
+            ok = false
+        }
+    end
+    newAlbumId = tonumber(newAlbumId)
+
+    for _, mr in ipairs(inv.mediaRows or {}) do
+        local copiedMediaId = MySQL.insert.await('INSERT INTO dp_phone_gallery (imei, image_url, is_favorite) VALUES (?, ?, 0)',
+            {targetImei, mr.image_url})
+        if copiedMediaId then
+            MySQL.query.await('INSERT IGNORE INTO dp_phone_album_items (album_id, media_id) VALUES (?, ?)',
+                {newAlbumId, tonumber(copiedMediaId)})
+        end
+    end
+
+    if isCollab == 1 then
+        MySQL.update.await('UPDATE dp_phone_albums SET is_collaborative = 1 WHERE id = ? AND imei = ?',
+            {tonumber(inv.albumRow.id), inv.fromImei})
+        MySQL.query.await([[
+            INSERT INTO dp_phone_album_collab_links (source_imei, source_album_id, target_imei, target_album_id)
+            VALUES (?, ?, ?, ?)
+        ]], {inv.fromImei, tonumber(inv.albumRow.id), targetImei, newAlbumId})
+    end
+
+    return {
+        ok = true,
+        accepted = true,
+        albumId = newAlbumId
+    }
 end)
 

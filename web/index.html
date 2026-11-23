@@ -390,166 +390,254 @@
           <div id="desktop-app-grid" class="desktop-app-grid" aria-label="Aplicaciones"></div>
         </section>
 
-        <!-- APP AJUSTES -->
+        <!-- APP AJUSTES (REDESIGN MONOCROMO v2 · SIN BORDER-LEFT · RADIUS <= 5PX) -->
         <section id="settings-app" class="settings-app" aria-label="Ajustes" hidden>
-          <header class="store-header">
-            <div class="store-title">
-              <span class="store-logo" data-iconify="settings"> </span>
-              <div>
-                <span class="eyebrow">iFruit OS</span>
-                <h2>Ajustes</h2>
+          <header class="settings-topbar">
+            <div class="settings-topbar-brand">
+              <div class="settings-brand-badge" data-iconify="sliders" aria-hidden="true"></div>
+              <div class="settings-brand-copy">
+                <span class="settings-eyebrow">IFRUIT OS · SISTEMA</span>
+                <div class="settings-title-line">
+                  <h2>Ajustes</h2>
+                  <span class="settings-active-pill" id="settings-current-category">Inicio</span>
+                </div>
               </div>
             </div>
-            <div class="expandable-search" id="settings-search-container">
-              <span class="ui-icon search-icon" data-iconify="search"></span>
-              <input
-                id="settings-search"
-                type="text"
-                placeholder="Buscar…"
-                autocomplete="off" />
-              <button
-                type="button"
-                class="clear-search-btn"
-                tabindex="-1"
-                title="Borrar"
-                aria-label="Borrar búsqueda">
-                <span class="ui-icon" data-iconify="x"></span>
-              </button>
+
+            <div class="settings-topbar-right">
+              <div class="settings-telemetry-strip" aria-hidden="true">
+                <div class="settings-telemetry-cell">
+                  <span class="ui-icon" data-iconify="device-tablet"></span>
+                  <span>2SE TRI-FOLD</span>
+                </div>
+                <div class="settings-telemetry-divider"></div>
+                <div class="settings-telemetry-cell">
+                  <span class="ui-icon" data-iconify="database"></span>
+                  <span id="settings-topbar-storage">512 GB</span>
+                </div>
+              </div>
+
+              <div class="expandable-search settings-search-box" id="settings-search-container">
+                <span class="ui-icon search-icon" data-iconify="search"></span>
+                <input
+                  id="settings-search"
+                  type="text"
+                  placeholder="Buscar en ajustes…"
+                  autocomplete="off" />
+                <button
+                  type="button"
+                  class="clear-search-btn"
+                  tabindex="-1"
+                  title="Borrar"
+                  aria-label="Borrar búsqueda">
+                  <span class="ui-icon" data-iconify="x"></span>
+                </button>
+              </div>
             </div>
           </header>
-          <div class="settings-layout">
-            <div class="settings-sidebar">
+
+          <div class="settings-workspace">
+            <aside class="settings-nav-rail">
+              <!-- Tarjeta de Perfil y Línea -->
               <article
-                class="settings-card"
-                data-keywords="perfil usuario cuenta nombre id ciudadano citizen">
-                <div
-                  class="settings-avatar"
-                  data-iconify="user-filled"
-                  aria-hidden="true"></div>
-                <div class="settings-user-info">
-                  <div class="settings-name-row">
-                    <strong class="settings-name" id="settings-username-display"
-                      >Usuario próximamente</strong
-                    >
-                    <button
-                      class="settings-edit-btn"
-                      id="settings-edit-name-btn"
-                      title="Cambiar nombre">
-                      <span class="ui-icon" data-iconify="edit"> </span>
-                    </button>
+                class="settings-identity-card"
+                data-keywords="perfil usuario cuenta nombre id ciudadano citizen telefono sim">
+                <div class="settings-identity-top">
+                  <div
+                    class="settings-avatar"
+                    data-iconify="user-filled"
+                    aria-hidden="true"></div>
+                  <div class="settings-user-info">
+                    <span class="settings-identity-tag">CUENTA &amp; LÍNEA</span>
+                    <div class="settings-name-row">
+                      <strong class="settings-name" id="settings-username-display"
+                        >Usuario próximamente</strong
+                      >
+                    </div>
+                    <div class="settings-user-details">
+                      <span class="settings-detail-item">
+                        <span class="ui-icon" data-iconify="sim-card"></span> 555-0173
+                      </span>
+                      <span class="settings-detail-separator">·</span>
+                      <span class="settings-detail-item">
+                        <span class="ui-icon" data-iconify="hash"></span>
+                        <span id="settings-citizen">—</span>
+                      </span>
+                    </div>
                   </div>
-                  <div class="settings-user-details">
-                    <span class="settings-detail-item">
-                      <span class="ui-icon" data-iconify="phone"></span> 555-0173
-                    </span>
-                    <span class="settings-detail-separator">|</span>
-                    <span class="settings-detail-item">
-                      <span class="ui-icon" data-iconify="user-filled"></span>
-                      <span id="settings-citizen">—</span>
-                    </span>
-                  </div>
+                  <button
+                    class="settings-edit-btn"
+                    id="settings-edit-name-btn"
+                    title="Editar perfil y avatar">
+                    <span class="ui-icon" data-iconify="edit"></span>
+                  </button>
                 </div>
               </article>
-              <div id="settings-list" class="settings-list">
-                <div class="settings-divider"></div>
-                <button
-                  class="setting-item"
-                  data-settings-tab="wallpaper"
-                  data-keywords="apariencia fondos pantalla personalizacion">
-                  <span class="setting-icon" data-iconify="photo"> </span>
-                  <div class="setting-text">
-                    <strong>Apariencia</strong>
-                    <span>Personaliza el aspecto de tu dispositivo</span>
-                  </div>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
-                </button>
-                <button
-                  class="setting-item"
-                  data-settings-tab="display"
-                  data-keywords="pantalla brillo">
-                  <span class="setting-icon" data-iconify="eye"> </span>
-                  <div class="setting-text">
-                    <strong>Pantalla y Brillo</strong>
-                    <span>Ajustar pantalla y brillo del teléfono</span>
-                  </div>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
-                </button>
-                <button
-                  class="setting-item"
-                  data-settings-tab="blockednumbers"
-                  data-keywords="bloqueados numeros telefono llamadas spam">
-                  <span class="setting-icon" data-iconify="shield-x"> </span>
-                  <div class="setting-text">
-                    <strong>Números Bloqueados</strong>
-                    <span>Gestiona los números que no pueden llamarte</span>
-                  </div>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
-                </button>
-                <button
-                  class="setting-item"
-                  data-settings-tab="security"
-                  data-keywords="contraseña huella face id seguridad">
-                  <span class="setting-icon" data-iconify="shield-star"> </span>
-                  <div class="setting-text">
-                    <strong>Contraseña, Huella, Face ID</strong>
-                    <span>Seguridad de tu teléfono</span>
-                  </div>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
-                </button>
-                <button
-                  class="setting-item"
-                  data-settings-tab="privacy"
-                  data-keywords="privacidad formatear reset zona peligro">
-                  <span class="setting-icon" data-iconify="shield-star"> </span>
-                  <div class="setting-text">
-                    <strong>Privacidad</strong>
-                    <span>Opciones de restablecimiento y seguridad</span>
-                  </div>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
-                </button>
-                <div class="settings-divider"></div>
-                <button
-                  class="setting-item"
-                  data-settings-tab="sounds"
-                  data-keywords="sonidos volumen">
-                  <span class="setting-icon" data-iconify="message"> </span>
-                  <div class="setting-text">
-                    <strong>Sonido y Vibración</strong>
-                    <span>Cambiar sonidos de notificaciones a llamadas</span>
-                  </div>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
-                </button>
-                <button
-                  class="setting-item"
-                  data-settings-tab="notifications"
-                  data-keywords="notificaciones alertas">
-                  <span class="setting-icon" data-iconify="bell"> </span>
-                  <div class="setting-text">
-                    <strong>Notificaciones</strong>
-                    <span>Elige qué aplicación envía notificaciones</span>
-                  </div>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
-                </button>
-                <div class="settings-divider"></div>
-                <button
-                  class="setting-item"
-                  data-settings-tab="phone"
-                  data-keywords="telefono informacion dispositivo almacenamiento">
-                  <span class="setting-icon" data-iconify="phone"> </span>
-                  <div class="setting-text">
-                    <strong>Información del Dispositivo</strong>
-                    <span>Especificaciones y gestor de almacenamiento</span>
-                  </div>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"> </span>
-                </button>
+
+              <!-- Lista Categorizada de Ajustes -->
+              <div id="settings-list" class="settings-nav-groups">
+                <div class="settings-nav-group">
+                  <span class="settings-group-label">ESTILO Y PANTALLA</span>
+
+                  <button
+                    class="setting-item"
+                    data-settings-tab="wallpaper"
+                    data-keywords="apariencia fondos pantalla personalizacion fundas carcasa">
+                    <span class="setting-icon" data-iconify="palette"></span>
+                    <div class="setting-text">
+                      <strong>Apariencia y Fundas</strong>
+                      <span>Carcasa, bordes y fondo de escritorio</span>
+                    </div>
+                    <span class="setting-arrow" data-iconify="corner-down-right"></span>
+                  </button>
+
+                  <button
+                    class="setting-item"
+                    data-settings-tab="display"
+                    data-keywords="pantalla brillo escala texto interfaz">
+                    <span class="setting-icon" data-iconify="brightness-up"></span>
+                    <div class="setting-text">
+                      <strong>Pantalla y Brillo</strong>
+                      <span>Brillo, escala de pantalla y texto</span>
+                    </div>
+                    <span class="setting-arrow" data-iconify="corner-down-right"></span>
+                  </button>
+                </div>
+
+                <div class="settings-nav-group">
+                  <span class="settings-group-label">AUDIO, ALERTAS Y ACCESO</span>
+
+                  <button
+                    class="setting-item"
+                    data-settings-tab="sounds"
+                    data-keywords="sonidos volumen multimedia llamadas tonos silencio">
+                    <span class="setting-icon" data-iconify="volume"></span>
+                    <div class="setting-text">
+                      <strong>Sonido y Vibración</strong>
+                      <span>Volúmenes, modo silencio y tonos</span>
+                    </div>
+                    <span class="setting-arrow" data-iconify="corner-down-right"></span>
+                  </button>
+
+                  <button
+                    class="setting-item"
+                    data-settings-tab="notifications"
+                    data-keywords="notificaciones alertas no molestar bloqueo">
+                    <span class="setting-icon" data-iconify="bell-ringing"></span>
+                    <div class="setting-text">
+                      <strong>Notificaciones</strong>
+                      <span>No molestar, bloqueo y apps</span>
+                    </div>
+                    <span class="setting-arrow" data-iconify="corner-down-right"></span>
+                  </button>
+
+                  <button
+                    class="setting-item"
+                    data-settings-tab="blockednumbers"
+                    data-keywords="bloqueados numeros telefono llamadas spam">
+                    <span class="setting-icon" data-iconify="phone-off"></span>
+                    <div class="setting-text">
+                      <strong>Números Bloqueados</strong>
+                      <span>Lista de números restringidos</span>
+                    </div>
+                    <span class="setting-arrow" data-iconify="corner-down-right"></span>
+                  </button>
+
+                  <button
+                    class="setting-item"
+                    data-settings-tab="security"
+                    data-keywords="contraseña huella face id seguridad pin biometria">
+                    <span class="setting-icon" data-iconify="shield-lock"></span>
+                    <div class="setting-text">
+                      <strong>Contraseña, Huella, Face ID</strong>
+                      <span>PIN, contraseña y biometría</span>
+                    </div>
+                    <span class="setting-arrow" data-iconify="corner-down-right"></span>
+                  </button>
+
+                  <button
+                    class="setting-item"
+                    data-settings-tab="privacy"
+                    data-keywords="privacidad formatear reset zona peligro lectura numero">
+                    <span class="setting-icon" data-iconify="eye-off"></span>
+                    <div class="setting-text">
+                      <strong>Privacidad y Datos</strong>
+                      <span>Identidad, lectura y borrado</span>
+                    </div>
+                    <span class="setting-arrow" data-iconify="corner-down-right"></span>
+                  </button>
+                </div>
+
+                <div class="settings-nav-group">
+                  <span class="settings-group-label">SISTEMA</span>
+
+                  <button
+                    class="setting-item"
+                    data-settings-tab="phone"
+                    data-keywords="telefono informacion dispositivo almacenamiento imei hardware">
+                    <span class="setting-icon" data-iconify="cpu"></span>
+                    <div class="setting-text">
+                      <strong>Información del Dispositivo</strong>
+                      <span>Hardware, serie y almacenamiento</span>
+                    </div>
+                    <span class="setting-arrow" data-iconify="corner-down-right"></span>
+                  </button>
+                </div>
               </div>
-            </div>
-            <div class="settings-content-panel" id="settings-content-panel">
+            </aside>
+
+            <main class="settings-stage" id="settings-content-panel">
               <div class="settings-placeholder" id="settings-default-placeholder">
-                <span class="ui-icon animate-bounce" data-iconify="settings"> </span>
-                <p>Selecciona una opción a la izquierda para ver sus detalles</p>
+                <div class="settings-home-banner">
+                  <div class="settings-home-banner-badge">
+                    <span class="ui-icon" data-iconify="device-mobile-cog"></span>
+                  </div>
+                  <div class="settings-home-banner-copy">
+                    <span class="settings-eyebrow">RESUMEN DEL SISTEMA</span>
+                    <h3>iFruit 2SE · iFruit OS v1.7</h3>
+                    <p>Selecciona un apartado en la columna izquierda o abre un acceso directo.</p>
+                  </div>
+                </div>
+
+                <div class="settings-home-cards">
+                  <button class="settings-quick-card" type="button" data-quick-tab="wallpaper">
+                    <div class="settings-quick-card-top">
+                      <span class="ui-icon" data-iconify="palette"></span>
+                      <span class="settings-quick-tag">VISUAL</span>
+                    </div>
+                    <strong>Fundas y Fondo</strong>
+                    <span>Cambia la carcasa o el fondo del escritorio</span>
+                  </button>
+
+                  <button class="settings-quick-card" type="button" data-quick-tab="sounds">
+                    <div class="settings-quick-card-top">
+                      <span class="ui-icon" data-iconify="volume"></span>
+                      <span class="settings-quick-tag">AUDIO</span>
+                    </div>
+                    <strong>Niveles de Sonido</strong>
+                    <span>Ajusta multimedia, llamadas y alertas</span>
+                  </button>
+
+                  <button class="settings-quick-card" type="button" data-quick-tab="security">
+                    <div class="settings-quick-card-top">
+                      <span class="ui-icon" data-iconify="shield-lock"></span>
+                      <span class="settings-quick-tag">ACCESO</span>
+                    </div>
+                    <strong>Seguridad y PIN</strong>
+                    <span>Gestiona el bloqueo y la biometría</span>
+                  </button>
+
+                  <button class="settings-quick-card" type="button" data-quick-tab="phone">
+                    <div class="settings-quick-card-top">
+                      <span class="ui-icon" data-iconify="hard-drive"></span>
+                      <span class="settings-quick-tag">HARDWARE</span>
+                    </div>
+                    <strong>Almacenamiento</strong>
+                    <span>Revisa el espacio usado y libera caché</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            </main>
           </div>
           <p id="settings-empty" class="store-empty" hidden>No se han encontrado ajustes.</p>
         </section>
@@ -1696,6 +1784,279 @@
           </div>
         </section>
 
+
+        <!-- APP GALERÍA -->
+        <section id="gallery-app" class="gallery-app" aria-label="Galería" hidden>
+          <header class="gallery-header">
+            <div class="gallery-title-group">
+              <div class="gallery-title-row">
+                <h2>Galería</h2>
+                <span class="gallery-count-pill" id="gallery-total-count">0 elementos</span>
+              </div>
+            </div>
+
+            <div class="gallery-header-actions">
+              <!-- Botones de filtro (Todo / Fotos / Vídeos / Favoritos) -->
+              <div class="gallery-filter-switch" role="tablist" aria-label="Filtrar contenido">
+                <button
+                  type="button"
+                  class="gallery-filter-btn active"
+                  role="tab"
+                  aria-selected="true"
+                  data-gallery-filter="all"
+                  title="Todo">
+                  <span class="ui-icon" data-iconify="photo"></span>
+                  <span>Todo</span>
+                </button>
+                <button
+                  type="button"
+                  class="gallery-filter-btn"
+                  role="tab"
+                  aria-selected="false"
+                  data-gallery-filter="photo"
+                  title="Fotos">
+                  <span class="ui-icon" data-iconify="camera"></span>
+                  <span>Fotos</span>
+                </button>
+                <button
+                  type="button"
+                  class="gallery-filter-btn"
+                  role="tab"
+                  aria-selected="false"
+                  data-gallery-filter="video"
+                  title="Vídeos">
+                  <span class="ui-icon" data-iconify="movie"></span>
+                  <span>Vídeos</span>
+                </button>
+                <button
+                  type="button"
+                  class="gallery-filter-btn"
+                  role="tab"
+                  aria-selected="false"
+                  data-gallery-filter="favorites"
+                  title="Favoritos">
+                  <span class="ui-icon" data-iconify="heart"></span>
+                  <span>Favoritos</span>
+                </button>
+              </div>
+
+              <!-- 2 botones de disposición: Cuadrícula uniforme vs Mosaico sin separación -->
+              <div class="gallery-layout-switch" role="group" aria-label="Estilo de cuadrícula">
+                <button
+                  type="button"
+                  class="gallery-layout-btn active"
+                  data-gallery-layout="uniform"
+                  title="Cuadrícula uniforme (todos iguales)">
+                  <span class="ui-icon" data-iconify="bi:grid-3x3"></span>
+                </button>
+                <button
+                  type="button"
+                  class="gallery-layout-btn"
+                  data-gallery-layout="mosaic"
+                  title="Mosaico (tamaños variados sin separación)">
+                  <span class="ui-icon" data-iconify="layout-dashboard"></span>
+                </button>
+              </div>
+
+              <!-- Botones de agrupación / vista (Todas juntas / Por fechas / Álbumes) -->
+              <div class="gallery-view-switch" role="group" aria-label="Modo de agrupación">
+                <button
+                  type="button"
+                  class="gallery-view-btn active"
+                  data-gallery-view="flat"
+                  title="Todas juntas (más reciente arriba)">
+                  <span class="ui-icon" data-iconify="photo"></span>
+                </button>
+                <button
+                  type="button"
+                  class="gallery-view-btn"
+                  data-gallery-view="dates"
+                  title="Ordenar por fechas">
+                  <span class="ui-icon" data-iconify="calendar"></span>
+                </button>
+                <button
+                  type="button"
+                  class="gallery-view-btn"
+                  data-gallery-view="albums"
+                  title="Álbumes y carpetas">
+                  <span class="ui-icon" data-iconify="folder"></span>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div class="gallery-body-wrapper">
+            <div class="gallery-scroll-body" id="gallery-scroll-body">
+              <div class="gallery-groups" id="gallery-groups">
+                <div class="gallery-empty">
+                  <span class="ui-icon" data-iconify="photo"></span>
+                  <p>Cargando galería…</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Selector rápido de fecha/mes a la derecha (solo visible en vista por fechas) -->
+            <aside class="gallery-date-scrubber" id="gallery-date-scrubber" hidden aria-label="Saltar a fecha">
+              <div class="gallery-scrubber-list" id="gallery-scrubber-list"></div>
+            </aside>
+          </div>
+
+          <!-- Visor de Foto / Vídeo -->
+          <div class="gallery-viewer" id="gallery-viewer" hidden>
+            <header class="gallery-viewer-header">
+              <div class="gallery-viewer-left">
+                <button
+                  type="button"
+                  class="gallery-icon-btn"
+                  id="gallery-viewer-close"
+                  title="Volver a la galería">
+                  <span class="ui-icon" data-iconify="chevron-left"></span>
+                </button>
+                <div class="gallery-viewer-meta">
+                  <strong id="gallery-viewer-type">Elemento</strong>
+                  <span id="gallery-viewer-date">—</span>
+                </div>
+              </div>
+
+              <!-- Botones superiores derechos de acción -->
+              <div class="gallery-viewer-actions" role="toolbar" aria-label="Acciones del elemento">
+                <button type="button" class="gallery-action-btn" id="gallery-btn-add-album" data-viewer-action="add-to-album" title="Añadir a álbum">
+                  <span class="ui-icon" data-iconify="folder-plus"></span>
+                </button>
+                <button type="button" class="gallery-action-btn" data-viewer-action="share" title="Compartir">
+                  <span class="ui-icon" data-iconify="mdi:share-variant-outline"></span>
+                </button>
+                <button type="button" class="gallery-action-btn" data-viewer-action="edit" title="Editar">
+                  <span class="ui-icon" data-iconify="edit"></span>
+                </button>
+                <button type="button" class="gallery-action-btn" id="gallery-btn-wallpaper" data-viewer-action="wallpaper" title="Establecer fondo de pantalla">
+                  <span class="ui-icon" data-iconify="photo"></span>
+                </button>
+                <button type="button" class="gallery-action-btn" id="gallery-btn-copy" data-viewer-action="copy" title="Copiar al portapapeles">
+                  <span class="ui-icon" data-iconify="copy"></span>
+                </button>
+                <button type="button" class="gallery-action-btn" id="gallery-btn-favorite" data-viewer-action="favorite" title="Favoritos">
+                  <span class="ui-icon" data-iconify="heart"></span>
+                </button>
+                <button type="button" class="gallery-action-btn" data-viewer-action="info" title="Información">
+                  <span class="ui-icon" data-iconify="info-circle"></span>
+                </button>
+                <button type="button" class="gallery-action-btn danger" data-viewer-action="delete" title="Eliminar">
+                  <span class="ui-icon" data-iconify="trash"></span>
+                </button>
+              </div>
+            </header>
+
+            <!-- Minimodal para seleccionar a qué álbumes personales añadir el elemento -->
+            <div class="gallery-add-album-popover" id="gallery-add-album-popover" hidden>
+              <div class="gallery-popover-header">
+                <strong>Añadir a álbum</strong>
+                <button type="button" class="gallery-popover-close" id="gallery-add-album-close" title="Cerrar">
+                  <span class="ui-icon" data-iconify="x"></span>
+                </button>
+              </div>
+              <div class="gallery-add-album-list" id="gallery-add-album-list"></div>
+            </div>
+
+            <!-- Zona central (hacer clic fuera de la foto/vídeo cierra el visor) -->
+            <div class="gallery-viewer-stage" id="gallery-viewer-stage"></div>
+
+            <!-- Carrusel inferior para cambiar rápidamente entre elementos -->
+            <div class="gallery-viewer-carousel-wrap">
+              <div class="gallery-viewer-carousel" id="gallery-viewer-carousel" role="listbox" aria-label="Elementos de la galería"></div>
+            </div>
+          </div>
+
+
+          <!-- Modal Crear / Editar Álbum -->
+          <div class="gallery-modal-backdrop" id="gallery-album-modal" hidden>
+            <div class="gallery-modal-card">
+              <div class="gallery-modal-header">
+                <h3 id="gallery-album-modal-title">Nuevo álbum</h3>
+                <button type="button" class="gallery-popover-close" id="gallery-album-modal-close" title="Cerrar">
+                  <span class="ui-icon" data-iconify="x"></span>
+                </button>
+              </div>
+              <form class="gallery-album-form" id="gallery-album-form">
+                <label class="gallery-form-field">
+                  <span>Título del álbum</span>
+                  <input type="text" id="gallery-album-title-input" maxlength="40" placeholder="Ej: Vacaciones, Ruta nocturna..." required />
+                </label>
+                <label class="gallery-form-field">
+                  <span>Descripción</span>
+                  <textarea id="gallery-album-desc-input" rows="2" maxlength="180" placeholder="Descripción corta del álbum..."></textarea>
+                </label>
+                <div class="gallery-form-field">
+                  <span>Color de carpeta</span>
+                  <div class="gallery-color-swatches" id="gallery-album-colors">
+                    <button type="button" class="gallery-color-swatch active" data-color="#e5a93c" style="background:#e5a93c"></button>
+                    <button type="button" class="gallery-color-swatch" data-color="#4b8bf5" style="background:#4b8bf5"></button>
+                    <button type="button" class="gallery-color-swatch" data-color="#38b778" style="background:#38b778"></button>
+                    <button type="button" class="gallery-color-swatch" data-color="#e05260" style="background:#e05260"></button>
+                    <button type="button" class="gallery-color-swatch" data-color="#9b6dff" style="background:#9b6dff"></button>
+                    <button type="button" class="gallery-color-swatch" data-color="#2bb3c0" style="background:#2bb3c0"></button>
+                    <button type="button" class="gallery-color-swatch" data-color="#d0d0d0" style="background:#d0d0d0"></button>
+                  </div>
+                </div>
+                <div class="gallery-modal-footer">
+                  <button type="button" class="gallery-btn-secondary" id="gallery-album-modal-cancel">Cancelar</button>
+                  <button type="submit" class="gallery-btn-primary">Guardar álbum</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Modal Compartir Álbum (Copia vs Colaborador) -->
+          <div class="gallery-modal-backdrop" id="gallery-share-album-modal" hidden>
+            <div class="gallery-modal-card">
+              <div class="gallery-modal-header">
+                <h3>Compartir álbum</h3>
+                <button type="button" class="gallery-popover-close" id="gallery-share-album-close" title="Cerrar">
+                  <span class="ui-icon" data-iconify="x"></span>
+                </button>
+              </div>
+              <form class="gallery-album-form" id="gallery-share-album-form">
+                <p class="gallery-share-subtitle" id="gallery-share-album-name"></p>
+                <label class="gallery-form-field">
+                  <span>Número de SIM del jugador (XXX-XXXX-XXX)</span>
+                  <input type="text" id="gallery-share-target-input" maxlength="15" placeholder="Ej: 555-1234-567" required />
+                </label>
+                <div class="gallery-form-field">
+                  <span>Modo de envío</span>
+                  <div class="gallery-share-mode-grid">
+                    <button type="button" class="gallery-share-mode-btn active" data-share-mode="copy">
+                      <strong>Copia</strong>
+                      <small>Le pasa las fotos y una carpeta copia</small>
+                    </button>
+                    <button type="button" class="gallery-share-mode-btn" data-share-mode="collab">
+                      <strong>Colaborador</strong>
+                      <small>Las fotos que añada se descargan en la tuya</small>
+                    </button>
+                  </div>
+                </div>
+                <div class="gallery-modal-footer">
+                  <button type="button" class="gallery-btn-secondary" id="gallery-share-album-cancel">Cancelar</button>
+                  <button type="submit" class="gallery-btn-primary">Enviar álbum</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Modal Invitación de Álbum Recibido -->
+          <div class="gallery-modal-backdrop" id="gallery-invite-modal" hidden>
+            <div class="gallery-modal-card">
+              <div class="gallery-modal-header">
+                <h3>Álbum compartido</h3>
+              </div>
+              <div class="gallery-invite-body" id="gallery-invite-body"></div>
+              <div class="gallery-modal-footer">
+                <button type="button" class="gallery-btn-secondary" id="gallery-invite-reject">Rechazar</button>
+                <button type="button" class="gallery-btn-primary" id="gallery-invite-accept">Aceptar</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- PANTALLA DE ARRANQUE -->
         <section
           id="boot-screen"
@@ -1964,6 +2325,12 @@
       <span id="dev-badge" class="dev-badge" hidden
         >VISTA DE DESARROLLO · DATOS DE PRUEBA</span
       >
+    </div>
+
+    <!-- Pantalla completa real del monitor (100vw x 100vh por encima de la tablet) -->
+    <div class="gallery-fullscreen-overlay" id="gallery-fullscreen-overlay" hidden>
+      <div class="gallery-fullscreen-stage" id="gallery-fullscreen-stage"></div>
+      <div class="gallery-fullscreen-hint" id="gallery-fullscreen-hint" aria-hidden="true"></div>
     </div>
 
     <script src="js/iconify.js"></script>

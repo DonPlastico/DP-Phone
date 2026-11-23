@@ -433,6 +433,181 @@
     sparkles: {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 3v4m-2-2h4"/><path d="M5 17v3m-1.5-1.5h3"/></g>',
     },
+    "akar-icons:full-screen": {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 7V2h5m15 5V2h-5M2 17v5h5m15-5v5h-5"/>',
+      width: 24,
+      height: 24,
+    },
+    "akar-icons:normal-screen": {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 2v5H2m15-5v5h5M7 22v-5H2m15 5v-5h5"/>',
+      width: 24,
+      height: 24,
+    },
+    "akar-icons:sound-on": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "akar-icons:sound-off": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="m23 9l-6 6"/><path d="m17 9l6 6"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "tabler:rewind-backward-5": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M15 18a6 6 0 1 0 0-12H4"/><path d="M7 9L4 6l3-3"/><path d="M8 20h2a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1H8v-3h3"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "tabler:rewind-forward-5": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M9 18a6 6 0 1 1 0-12h11"/><path d="m17 9l3-3l-3-3"/><path d="M13 20h2a1 1 0 0 0 1-1v-1a1 1 0 0 0-1-1h-2v-3h3"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "heart-filled": {
+      body: '<path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>',
+      width: 24,
+      height: 24,
+    },
+    "folder-plus": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 19H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4l3 3h7a2 2 0 0 1 2 2v3.5"/><path d="M16 19h6m-3-3v6"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "share-forward": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M13 4v4C6.5 8 4 12.5 3 17c2.5-3.5 6-5 10-5v4l8-6-8-6z"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "users-plus": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0M3 21v-2a4 4 0 0 1 4-4h4c.96 0 1.84.338 2.53.901M16 3.13a4 4 0 0 1 0 7.75M19 16v6m-3-3h6"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "palette": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 21a9 9 0 0 1 0-18c4.97 0 9 3.582 9 8c0 1.06-.474 2.078-1.318 2.828c-.844.75-1.989 1.172-3.182 1.172h-2.5a2 2 0 0 0-1 3.75a1.3 1.3 0 0 1-1 2.25"/><path d="M8.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0m4-3m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0m4 3m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "brightness-up": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/><path d="M12 5V3m0 18v-2m7-7h2M3 12h2m12.66-5.66l1.41-1.41M4.93 19.07l1.41-1.41m11.32 0l1.41 1.41M4.93 4.93l1.41 1.41"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "phone-off": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M3 3l18 18"/><path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5-2.5l5 2v4a2 2 0 0 1-2 2a16 16 0 0 1-15-15a2 2 0 0 1 2-2"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "shield-lock": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1-8.5 15a12 12 0 0 1-8.5-15a12 12 0 0 0 8.5-3"/><path d="M12 11m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0m1 1v2.5"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "eye-off": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M10.585 10.587a2 2 0 0 0 2.829 2.828"/><path d="M16.681 16.673A8.717 8.717 0 0 1 12 18c-3.6 0-6.6-2-9-6c1.272-2.12 2.712-3.678 4.32-4.674m2.86-1.146A9.055 9.055 0 0 1 12 6c3.6 0 6.6 2 9 6c-.666 1.11-1.379 2.067-2.138 2.87"/><path d="M3 3l18 18"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "volume": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M15 8a5 5 0 0 1 0 8m2.7-11a9 9 0 0 1 0 14"/><path d="M6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l3.5-4.5A.8.8 0 0 1 11 5v14a.8.8 0 0 1-1.5.5z"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "bell-ringing": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3H4a4 4 0 0 0 2-3v-3a7 7 0 0 1 4-6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1m6-10.273A11.05 11.05 0 0 0 18.206 3M3 6.727A11.05 11.05 0 0 1 5.792 3"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "cpu": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="14" height="14" x="5" y="5" rx="1"/><path d="M9 9h6v6H9zm-6 1h2m-2 4h2m5-11v2m4-2v2m7 5h-2m2 4h-2m-5 7v-2m-4 2v-2"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "sliders": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M14 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M4 6h8m4 0h4M8 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M4 12h2m4 0h10M17 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M4 18h11m4 0h1"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "device-tablet": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="14" height="18" x="5" y="3" rx="1"/><circle cx="12" cy="17" r="1"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "typography": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M4 20h3m7 0h7M6.9 15h6.9m-3.6-8.7L16 20M5 20l6-16h2l7 16"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "database": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6a8 3 0 0 0 16 0V6"/><path d="M4 12v6a8 3 0 0 0 16 0v-6"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "sim-card": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M6 3h8l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2"/><path d="M9 11h6v6H9zm0 3h6m-3-3v6"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "battery-charging": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M16 7h1a2 2 0 0 1 2 2v.5a.5.5 0 0 0 .5.5a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5a.5.5 0 0 0-.5.5v.5a2 2 0 0 1-2 2h-2M8 7H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h1"/><path d="m12 8-2 4h3l-2 4"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "hash": {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 9h14M5 15h14M11 4L7 20M17 4l-4 16"/>',
+      width: 24,
+      height: 24,
+    },
+    "shield-check": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M11.46 20.846a12 12 0 0 1-7.96-14.846A12 12 0 0 0 12 3a12 12 0 0 0 8.5 3a12 12 0 0 1-.09 7.06"/><path d="m15 19l2 2l4-4"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "layers": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="m12 4l8 4l-8 4l-8-4z"/><path d="m4 12l8 4l8-4"/><path d="m4 16l8 4l8-4"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "device-mobile-cog": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 21H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v7"/><path d="M11 4h2m-1 13v.01"/><circle cx="19" cy="19" r="2"/><path d="M19 15.5v1.5m0 4v1.5m-3.03-5.25l1.3.75m3.46 2l1.3.75m0-3.5l-1.3.75m-3.46 2l-1.3.75"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "corner-down-right": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="m15 11l4 4l-4 4"/><path d="M5 4v7a4 4 0 0 0 4 4h10"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "hard-drive": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6.01 18h.01M10.01 18h.01"/><path d="M2 15l2.2-7.3A2 2 0 0 1 6.1 6h11.8a2 2 0 0 1 1.9 1.7L22 15"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "volume-2": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "phone-incoming": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M16 3v5h5m0-5l-5 5"/><path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5-2.5l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "bell-z": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3H4a4 4 0 0 0 2-3v-3a7 7 0 0 1 4-6"/><path d="M9 17v1a3 3 0 0 0 6 0v-1"/><path d="M10 10h4l-4 4h4"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "disc": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 3a9 9 0 0 1 9 9"/></g>',
+      width: 24,
+      height: 24,
+    },
+    "device-mobile-vibrate": {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="10" height="16" x="7" y="4" rx="1"/><path d="M11 5h2m-1 12v.01M3 8l1 2l-1 2l1 2l-1 2m18-8l-1 2l1 2l-1 2l1 2"/></g>',
+      width: 24,
+      height: 24,
+    },
   });
 
   const icons = window.DPPhoneIconify;

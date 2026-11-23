@@ -838,18 +838,19 @@
 
   // --- FUNCION PARA BRILLO ---
   function applyBrightness(val) {
-    // Actualizar slider de Ajustes
     const settingsSlider = document.getElementById("brightness-slider");
     if (settingsSlider) {
       settingsSlider.value = val;
+      settingsSlider.style.setProperty("--brightness-fill", `${val}%`);
+      const badge = document.getElementById("brightness-percent-badge");
+      if (badge) badge.textContent = `${val}%`;
       const lowIcon = document.querySelector(".brightness-icon-low");
       const highIcon = document.querySelector(".brightness-icon-high");
       if (lowIcon && highIcon) {
-        lowIcon.style.opacity = 0.1 + (val / 100) * 0.9;
-        highIcon.style.opacity = 1 - (val / 100) * 0.9;
+        lowIcon.style.opacity = String(0.35 + (val / 100) * 0.65);
+        highIcon.style.opacity = String(0.35 + (val / 100) * 0.65);
       }
     }
-    // Actualizar slider del Header (Centro de notificaciones)
     const headerSlider = document.querySelector(
       '.qs-slider-vertical input[aria-label="Brillo"]',
     );
@@ -858,10 +859,8 @@
       headerSlider.style.setProperty("--p", val / 100);
       headerSlider.parentElement.style.setProperty("--p", val / 100);
     }
-    // Aplicar filtro visual al teléfono (opcional, pero recomendado)
     const phoneScreen = document.querySelector(".phone-screen");
     if (phoneScreen) {
-      // Hacemos que el brillo mínimo sea 0.3 para que no se vea todo negro
       const opacity = 0.3 + (val / 100) * 0.7;
       phoneScreen.style.filter = `brightness(${opacity})`;
     }
@@ -911,6 +910,12 @@
       rNotif.value = notificaciones;
       rNotif.style.setProperty("--p", notificaciones / 200);
       document.getElementById("val-notificaciones").textContent = `${notificaciones}%`;
+    }
+
+    const profileBadge = document.getElementById("sound-profile-badge");
+    if (profileBadge) {
+      const allZero = Number(multimedia) === 0 && Number(llamadas) === 0 && Number(notificaciones) === 0;
+      profileBadge.textContent = allZero ? "SILENCIADO" : "PERFIL SONORO";
     }
 
     // Actualizar sliders del Header (Centro de Notificaciones)
@@ -1469,6 +1474,8 @@
     document.getElementById("licenses-app").hidden = true;
     document.getElementById("notes-app").hidden = true;
     document.getElementById("camera-app").hidden = true;
+    const gApp = document.getElementById("gallery-app");
+    if (gApp) gApp.hidden = true;
     document.getElementById("weather-app").hidden = true;
     desktopStatusbar.style.background = "";
     ["contacts-app", "messages-app", "dialer-app"].forEach((id) => {
@@ -1533,127 +1540,213 @@
   // ==========================================
   const PHONE_CASES = [
     // --- SIN FUNDA ---
-    { id: "none", name: "Sin Funda", color: "#77797c", type: "none" },
+    { id: "none", name: "Chasis Desnudo", color: "#77797c", type: "none" },
 
-    // --- COLORES SÓLIDOS (NORMALES) ---
-    { id: "white", name: "Blanco", color: "#FFFFFF", type: "solid" },
-    { id: "black", name: "Negro", color: "#000000", type: "solid" },
-    { id: "silver", name: "Plateado", color: "#C0C0C0", type: "solid" },
-    { id: "red", name: "Rojo", color: "#FF0000", type: "solid" },
-    { id: "dark_red", name: "Rojo Oscuro", color: "#8B0000", type: "solid" },
-    { id: "coral", name: "Coral", color: "#FF7F50", type: "solid" },
-    { id: "orange", name: "Naranja", color: "#CD7F32", type: "solid" },
-    { id: "yellow", name: "Amarillo", color: "#FFFF00", type: "solid" },
-    { id: "lime", name: "Verde Lima", color: "#32CD32", type: "solid" },
-    { id: "green", name: "Verde", color: "#008000", type: "solid" },
-    { id: "olive", name: "Verde Oliva", color: "#808000", type: "solid" },
-    { id: "teal", name: "Verde Azulado", color: "#008080", type: "solid" },
-    { id: "cyan", name: "Cian", color: "#00FFFF", type: "solid" },
-    { id: "light_blue", name: "Azul Claro", color: "#ADD8E6", type: "solid" },
-    { id: "blue", name: "Azul", color: "#0000FF", type: "solid" },
-    { id: "dark_blue", name: "Azul Oscuro", color: "#00008B", type: "solid" },
-    { id: "purple", name: "Morado", color: "#800080", type: "solid" },
-    { id: "fuchsia", name: "Fucsia", color: "#FF00FF", type: "solid" },
-    { id: "pink", name: "Rosa", color: "#FFC0CB", type: "solid" },
+    // --- COLORES SÓLIDOS (MISMOS TONOS EXACTOS, NOMBRES LLAMATIVOS) ---
+    { id: "white", name: "Polar Nieve", color: "#FFFFFF", type: "solid" },
+    { id: "black", name: "Obsidiana Pura", color: "#000000", type: "solid" },
+    { id: "silver", name: "Cromo Brillo", color: "#C0C0C0", type: "solid" },
+    { id: "red", name: "Carmesí Turbo", color: "#FF0000", type: "solid" },
+    { id: "dark_red", name: "Granate Sangre", color: "#8B0000", type: "solid" },
+    { id: "coral", name: "Atardecer Coral", color: "#FF7F50", type: "solid" },
+    { id: "orange", name: "Ámbar Cobrizo", color: "#CD7F32", type: "solid" },
+    { id: "yellow", name: "Voltio Solar", color: "#FFFF00", type: "solid" },
+    { id: "lime", name: "Ácido Lima", color: "#32CD32", type: "solid" },
+    { id: "green", name: "Bosque Esmeralda", color: "#008000", type: "solid" },
+    { id: "olive", name: "Militar Oliva", color: "#808000", type: "solid" },
+    { id: "teal", name: "Abismo Azulado", color: "#008080", type: "solid" },
+    { id: "cyan", name: "Neón Cian", color: "#00FFFF", type: "solid" },
+    { id: "light_blue", name: "Cielo Glacial", color: "#ADD8E6", type: "solid" },
+    { id: "blue", name: "Cobalto Eléctrico", color: "#0000FF", type: "solid" },
+    { id: "dark_blue", name: "Medianoche Naval", color: "#00008B", type: "solid" },
+    { id: "purple", name: "Amatista Real", color: "#800080", type: "solid" },
+    { id: "fuchsia", name: "Fucsia Láser", color: "#FF00FF", type: "solid" },
+    { id: "pink", name: "Sakura Dulce", color: "#FFC0CB", type: "solid" },
   ];
 
   const SETTINGS_TABS = {
     wallpaper: {
-      title: "Apariencia",
+      title: "Apariencia y Fundas",
       content: `
-        <!-- ================= SECCIÓN FUNDAS ================= -->
-        <div class="display-title-group" style="margin-bottom: 12px;">
-            <h3 class="settings-submenu-title">Fundas</h3>
-            <p class="settings-submenu-desc">El diseño del dispositivo por el exterior, el borde frontal de la pantalla y las teclas/botones laterales.</p>
-        </div>
-        <div class="case-grid" id="case-grid"></div>
-
-        <!-- ================= SECCIÓN FONDO DE PANTALLA ================= -->
-        <div class="wallpaper-header-row" style="margin-top: 32px; border-top: 1px solid var(--border); padding-top: 24px;">
-            <div>
-                <h3 class="settings-submenu-title">Fondo de Pantalla</h3>
-                <p class="settings-submenu-desc">Personaliza el fondo de pantalla de tu escritorio.</p>
+        <div class="appearance-sections-wrapper">
+          <div class="appearance-section-group appearance-cases-group" id="appearance-cases-group">
+            <div class="appearance-group-title-bar">
+              <div class="settings-section-banner-left">
+                <span class="settings-section-banner-icon" data-iconify="palette"></span>
+                <div>
+                  <h3 class="settings-submenu-title">Fundas del Dispositivo</h3>
+                  <p class="settings-submenu-desc">El diseño exterior del dispositivo, el borde frontal y las teclas laterales.</p>
+                </div>
+              </div>
+              <span class="appearance-block-badge">CARCASA</span>
             </div>
-            <div class="custom-wallpaper-input-wrapper">
+            <div class="case-grid" id="case-grid"></div>
+          </div>
+
+          <div class="appearance-section-group appearance-wallpapers-group" id="appearance-wallpapers-group">
+            <div class="appearance-group-title-bar appearance-block-header-split">
+              <div class="settings-section-banner-left">
+                <span class="settings-section-banner-icon" data-iconify="photo"></span>
+                <div>
+                  <h3 class="settings-submenu-title">Fondo de Pantalla</h3>
+                  <p class="settings-submenu-desc">Personaliza el fondo de pantalla de tu escritorio en formato compacto.</p>
+                </div>
+              </div>
+              <div class="custom-wallpaper-input-wrapper">
                 <span class="ui-icon" data-iconify="link"></span>
                 <input type="text" id="custom-wallpaper-url" placeholder="URL de imagen (PNG/JPG)..." autocomplete="off" />
                 <button id="btn-apply-custom-wallpaper" title="Aplicar imagen">
-                    <span class="ui-icon" data-iconify="check"></span>
+                  <span class="ui-icon" data-iconify="check"></span>
                 </button>
+              </div>
             </div>
-        </div>
-        <div class="wallpaper-grid" id="wallpaper-grid"></div>
-        <div class="wallpaper-actions" id="wallpaper-actions" hidden>
-            <button class="button primary" id="btn-apply-wallpaper">Cambiar fondo de pantalla</button>
+            <div class="wallpaper-grid" id="wallpaper-grid"></div>
+            <div class="wallpaper-actions" id="wallpaper-actions" hidden>
+              <button class="button primary" id="btn-apply-wallpaper">Cambiar fondo de pantalla</button>
+            </div>
+          </div>
         </div>
       `,
     },
     display: {
       title: "Pantalla y Brillo",
       content: `
-        <div class="display-settings-container">
-            <div class="display-title-group">
+        <div class="display-redesign-wrapper">
+          <!-- Cabecera Principal -->
+          <div class="settings-section-banner" style="margin-bottom: 0;">
+            <div class="settings-section-banner-left">
+              <span class="settings-section-banner-icon" data-iconify="brightness-up"></span>
+              <div>
                 <h3 class="settings-submenu-title">Pantalla y Brillo</h3>
-                <p class="settings-submenu-desc">Controla la apariencia visual de tu phone.</p>
+                <p class="settings-submenu-desc">Calibración de panel OLED, proporciones de interfaz y tipografía.</p>
+              </div>
             </div>
-            <div class="display-section">
-                <div class="display-section-header">
-                    <span class="ui-icon" data-iconify="sun"></span>
-                    <div class="display-section-text">
-                        <strong>Brillo</strong>
-                        <span>Ajusta la intensidad de la luz de la pantalla.</span>
-                    </div>
+            <span class="appearance-block-badge">PANEL OLED</span>
+          </div>
+
+          <!-- Bloque 1: Luminosidad con medidor numérico, barra visual y accesos rápidos -->
+          <div class="display-card-module">
+            <div class="display-card-header">
+              <div class="display-card-title-group">
+                <span class="ui-icon" data-iconify="sun"></span>
+                <div>
+                  <strong>Luminosidad del Panel</strong>
+                  <span>Intensidad de retroiluminación sincronizada con los ajustes rápidos.</span>
                 </div>
-                <div class="display-brightness-wrapper">
-                    <span class="ui-icon brightness-icon-low" data-iconify="sun"></span>
-                    <input type="range" min="0" max="100" value="70" class="brightness-slider" id="brightness-slider">
-                    <span class="ui-icon brightness-icon-high" data-iconify="sun"></span>
-                </div>
+              </div>
+              <div class="display-brightness-readout">
+                <span id="brightness-percent-badge">70%</span>
+              </div>
             </div>
-            <div class="display-grid-2col">
-                <div class="display-section">
-                    <div class="display-section-header">
-                        <span class="ui-icon" data-iconify="phone"></span>
-                        <div class="display-section-text">
-                            <strong>Tamaño de pantalla móvil</strong>
-                            <span>Ajusta el tamaño de la interfaz en modo vertical.</span>
-                        </div>
-                    </div>
-                    <div class="display-button-group" id="mobile-size-group">
-                        <button class="display-option-btn" data-value="small">Pequeño</button>
-                        <button class="display-option-btn active" data-value="normal">Normal</button>
-                        <button class="display-option-btn" data-value="large">Grande</button>
-                    </div>
-                </div>
-                <div class="display-section">
-                    <div class="display-section-header">
-                        <span class="ui-icon" data-iconify="layout-dashboard"></span>
-                        <div class="display-section-text">
-                            <strong>Tamaño de pantalla expandida</strong>
-                            <span>Ajusta el tamaño de la interfaz en modo horizontal.</span>
-                        </div>
-                    </div>
-                    <div class="display-button-group" id="expanded-size-group">
-                        <button class="display-option-btn" data-value="small">Pequeño</button>
-                        <button class="display-option-btn active" data-value="normal">Normal</button>
-                        <button class="display-option-btn" data-value="large">Grande</button>
-                    </div>
-                </div>
+
+            <div class="display-brightness-control-bar">
+              <button type="button" class="display-brightness-step-btn" data-brightness-preset="15" title="Brillo bajo (15%)">
+                <span class="ui-icon brightness-icon-low" data-iconify="moon"></span>
+              </button>
+
+              <div class="display-brightness-track-wrap">
+                <input type="range" min="0" max="100" value="70" class="brightness-slider" id="brightness-slider" aria-label="Brillo">
+              </div>
+
+              <button type="button" class="display-brightness-step-btn" data-brightness-preset="100" title="Brillo máximo (100%)">
+                <span class="ui-icon brightness-icon-high" data-iconify="sun"></span>
+              </button>
             </div>
-            <div class="display-section">
-                <div class="display-section-header">
-                    <span class="ui-icon" data-iconify="file-text"></span>
-                    <div class="display-section-text">
-                        <strong>Tamaño de textos</strong>
-                        <span>Elige el tamaño de la tipografía en la interfaz.</span>
-                    </div>
-                </div>
-                <div class="display-button-group" id="text-size-group">
-                    <button class="display-option-btn" data-value="small">A-</button>
-                    <button class="display-option-btn active" data-value="normal">A</button>
-                    <button class="display-option-btn" data-value="large">A+</button>
-                </div>
+
+            <div class="display-brightness-presets">
+              <button type="button" class="display-preset-chip" data-brightness-preset="25">25% Nocturno</button>
+              <button type="button" class="display-preset-chip" data-brightness-preset="50">50% Interior</button>
+              <button type="button" class="display-preset-chip" data-brightness-preset="75">75% Estándar</button>
+              <button type="button" class="display-preset-chip" data-brightness-preset="100">100% Exterior</button>
             </div>
+          </div>
+
+          <!-- Bloque 2: Escala de Interfaz (Móvil vs Expandida) con esquema visual de formato -->
+          <div class="display-scale-grid">
+            <div class="display-card-module">
+              <div class="display-card-header">
+                <div class="display-card-title-group">
+                  <span class="ui-icon" data-iconify="device-mobile"></span>
+                  <div>
+                    <strong>Modo Compacto (Móvil)</strong>
+                    <span>Proporción de elementos en vista vertical.</span>
+                  </div>
+                </div>
+                <span class="display-form-badge">VERTICAL</span>
+              </div>
+
+              <div class="display-segmented-bar" id="mobile-size-group">
+                <button type="button" class="display-option-btn" data-value="small">
+                  <strong>Pequeño</strong>
+                  <span>85%</span>
+                </button>
+                <button type="button" class="display-option-btn active" data-value="normal">
+                  <strong>Normal</strong>
+                  <span>100%</span>
+                </button>
+                <button type="button" class="display-option-btn" data-value="large">
+                  <strong>Grande</strong>
+                  <span>115%</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="display-card-module">
+              <div class="display-card-header">
+                <div class="display-card-title-group">
+                  <span class="ui-icon" data-iconify="device-tablet"></span>
+                  <div>
+                    <strong>Modo Expandido (Tri-Fold)</strong>
+                    <span>Proporción de elementos en vista panorámica.</span>
+                  </div>
+                </div>
+                <span class="display-form-badge">3 PANELES</span>
+              </div>
+
+              <div class="display-segmented-bar" id="expanded-size-group">
+                <button type="button" class="display-option-btn" data-value="small">
+                  <strong>Pequeño</strong>
+                  <span>85%</span>
+                </button>
+                <button type="button" class="display-option-btn active" data-value="normal">
+                  <strong>Normal</strong>
+                  <span>100%</span>
+                </button>
+                <button type="button" class="display-option-btn" data-value="large">
+                  <strong>Grande</strong>
+                  <span>115%</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloque 3: Tipografía con vista previa en vivo -->
+          <div class="display-card-module">
+            <div class="display-card-header">
+              <div class="display-card-title-group">
+                <span class="ui-icon" data-iconify="typography"></span>
+                <div>
+                  <strong>Escalado Tipográfico</strong>
+                  <span>Ajusta el tamaño de lectura en menús, mensajes y notificaciones.</span>
+                </div>
+              </div>
+              <div class="display-segmented-bar display-text-bar" id="text-size-group">
+                <button type="button" class="display-option-btn" data-value="small">A-</button>
+                <button type="button" class="display-option-btn active" data-value="normal">A</button>
+                <button type="button" class="display-option-btn" data-value="large">A+</button>
+              </div>
+            </div>
+
+            <div class="display-typography-preview">
+              <div class="display-preview-meta">
+                <span>VISTA PREVIA EN VIVO</span>
+                <span>IFRUIT SANS · RENDERIZADO NÍTIDO</span>
+              </div>
+              <p class="display-preview-sample">
+                Así se verán los títulos, mensajes y notificaciones del sistema con el tamaño seleccionado.
+              </p>
+            </div>
+          </div>
         </div>
       `,
     },
@@ -1661,11 +1754,18 @@
       title: "Números Bloqueados",
       content: `
         <div class="settings-col" style="height: 100%;">
-            <h3 class="settings-submenu-title">Números Bloqueados</h3>
-            <p class="settings-submenu-desc">Gestiona los números que no pueden llamarte.</p>
-            <div class="custom-wallpaper-input-wrapper" style="margin-bottom: 24px; width: 100%;">
+            <div class="settings-section-banner">
+                <div class="settings-section-banner-left">
+                    <span class="settings-section-banner-icon" data-iconify="phone-off"></span>
+                    <div>
+                        <h3 class="settings-submenu-title">Números Bloqueados</h3>
+                        <p class="settings-submenu-desc">Gestiona los números que no pueden llamarte ni contactarte.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="custom-wallpaper-input-wrapper" style="margin-bottom: 16px; width: 100%;">
                 <span class="ui-icon" data-iconify="phone"></span>
-                <input type="text" id="input-blocked-number" placeholder="Añadir número a la lista..." autocomplete="off" />
+                <input type="text" id="input-blocked-number" placeholder="Añadir número a la lista (XXX-XXXX-XXX)..." autocomplete="off" />
                 <button id="btn-add-blocked" title="Añadir número">
                     <span class="ui-icon" data-iconify="plus"></span>
                 </button>
@@ -1677,10 +1777,18 @@
     security: {
       title: "Seguridad",
       content: `
-        <h3 class="settings-submenu-title">Seguridad</h3>
-        <p class="settings-submenu-desc">Protege tu dispositivo y tus datos.</p>
+        <div class="settings-section-banner">
+            <div class="settings-section-banner-left">
+                <span class="settings-section-banner-icon" data-iconify="shield-lock"></span>
+                <div>
+                    <h3 class="settings-submenu-title">Contraseña, Huella y Face ID</h3>
+                    <p class="settings-submenu-desc">Protege el acceso físico a tu dispositivo y tus datos.</p>
+                </div>
+            </div>
+        </div>
         <div class="security-pin-display">
-            <div class="setting-item" style="background:transparent; border:none; padding:0;">
+            <div class="setting-item" style="background:transparent; border:none; padding:0; box-shadow:none;">
+              <span class="setting-icon" data-iconify="key"></span>
               <div class="setting-text"><strong>PIN actual</strong><span>El PIN protege el acceso a tu teléfono.</span></div>
               <div class="pin-blur-box">
                 <span class="pin-hidden-text">••••</span>
@@ -1688,17 +1796,22 @@
               </div>
             </div>
         </div>
-        <div class="settings-menu-group" style="margin-top: 24px;">
+        <div class="settings-menu-group" style="margin-top: 16px;">
             <button class="settings-menu-btn" id="btn-change-pin">
-                <span>Cambiar PIN</span>
+                <span class="settings-menu-btn-left">
+                    <span class="ui-icon" data-iconify="lock"></span>
+                    <span>Cambiar PIN</span>
+                </span>
                 <span class="ui-icon chevron" data-iconify="chevron-right"></span>
             </button>
-            <div class="setting-item" style="background:transparent; border:none; padding: 14px 16px;">
-              <div class="setting-text"><strong>Utilizar Huella</strong></div>
+            <div class="setting-item" style="background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.08); border-radius:0 !important; padding: 12px 16px; box-shadow:none;">
+              <span class="setting-icon" data-iconify="fingerprint"></span>
+              <div class="setting-text"><strong>Utilizar Huella</strong><span>Desbloqueo rápido mediante lector dactilar</span></div>
               <label class="toggle-switch"><input type="checkbox" id="toggle-fingerprint"><span class="slider"></span></label>
             </div>
-            <div class="setting-item" style="background:transparent; border:none; padding: 14px 16px;">
-              <div class="setting-text"><strong>Utilizar Face ID</strong></div>
+            <div class="setting-item" style="background:transparent; border:none; border-radius:0 !important; padding: 12px 16px; box-shadow:none;">
+              <span class="setting-icon" data-iconify="face-id"></span>
+              <div class="setting-text"><strong>Utilizar Face ID</strong><span>Reconocimiento facial al encender pantalla</span></div>
               <label class="toggle-switch"><input type="checkbox" id="toggle-faceid"><span class="slider"></span></label>
             </div>
         </div>
@@ -1707,8 +1820,15 @@
     privacy: {
       title: "Privacidad",
       content: `
-        <h3 class="settings-submenu-title">Privacidad</h3>
-        <p class="settings-submenu-desc">Gestiona la seguridad, tus datos y el restablecimiento de tu dispositivo.</p>
+        <div class="settings-section-banner">
+            <div class="settings-section-banner-left">
+                <span class="settings-section-banner-icon" data-iconify="eye-off"></span>
+                <div>
+                    <h3 class="settings-submenu-title">Privacidad y Restablecimiento</h3>
+                    <p class="settings-submenu-desc">Gestiona la visibilidad de tu identidad y el borrado del terminal.</p>
+                </div>
+            </div>
+        </div>
         <div class="privacy-list">
             <div class="privacy-row">
                 <div class="privacy-row-info">
@@ -1732,7 +1852,7 @@
             </div>
             <div class="privacy-row">
                 <div class="privacy-row-info">
-                    <span class="privacy-row-icon" data-iconify="eye"></span>
+                    <span class="privacy-row-icon" data-iconify="shield-check"></span>
                     <div class="privacy-row-text">
                         <strong>Modo Privacidad</strong>
                         <span>Desenfocar contenido sensible en pantalla.</span>
@@ -1743,13 +1863,19 @@
         </div>
         <div class="privacy-bottom-grid">
             <div class="danger-zone">
-                <div class="danger-zone-header">Limpiar Historial</div>
+                <div class="danger-zone-header">
+                    <span class="ui-icon" data-iconify="trash"></span>
+                    <span>Limpiar Historial</span>
+                </div>
                 <p class="danger-zone-desc">Elimina de forma permanente todas tus llamadas, mensajes y fotos guardadas en este terminal.</p>
                 <button class="danger-btn" id="btn-wipe-terminal"><span class="ui-icon" data-iconify="trash"></span><span>BORRAR HISTORIAL</span></button>
                 <p class="settings-warning-text"><strong>ACCIÓN IRREVERSIBLE:</strong> Esta acción no se puede deshacer.</p>
             </div>
             <div class="danger-zone">
-                <div class="danger-zone-header">Formatear Dispositivo</div>
+                <div class="danger-zone-header">
+                    <span class="ui-icon" data-iconify="alert-triangle"></span>
+                    <span>Formatear Dispositivo</span>
+                </div>
                 <p class="danger-zone-desc">Restablece el sistema operativo iFruit OS a sus valores de fábrica y elimina todo el contenido.</p>
                 <button class="danger-btn" id="btn-format-device"><span class="ui-icon" data-iconify="alert-triangle"></span><span>FORMATEAR MÓVIL</span></button>
                 <p class="settings-warning-text"><strong>ADVERTENCIA CRÍTICA:</strong> Perderás <strong>absolutamente todos</strong> tus datos.</p>
@@ -1758,133 +1884,181 @@
       `,
     },
     sounds: {
-      title: "Sonidos",
+      title: "Sonidos y Vibración",
       content: `
-        <div class="sound-settings-container">
-            <div class="display-title-group">
+        <div class="sound-v2-wrapper">
+          <!-- Cabecera -->
+          <div class="settings-section-banner" style="margin-bottom: 0;">
+            <div class="settings-section-banner-left">
+              <span class="settings-section-banner-icon" data-iconify="volume"></span>
+              <div>
                 <h3 class="settings-submenu-title">Sonidos y Vibración</h3>
-                <p class="settings-submenu-desc">Ajusta el volumen y los tonos de tu dispositivo.</p>
+                <p class="settings-submenu-desc">Perfil acústico, niveles de salida y melodías del terminal.</p>
+              </div>
             </div>
-            <div class="sound-section">
-                <div class="sound-section-header">
-                    <span class="ui-icon" data-iconify="activity"></span>
-                    <div class="display-section-text">
-                        <strong>Volúmenes</strong>
-                        <span>Ajusta el nivel de sonido de las diferentes funciones.</span>
-                    </div>
+            <button type="button" class="sound-v2-reset-btn" id="btn-reset-volumes" title="Restaurar niveles al 100%">
+              <span class="ui-icon" data-iconify="refresh"></span>
+              <span>Restaurar</span>
+            </button>
+          </div>
+
+          <!-- Bloque 1: Perfil Rápido (Sonido / Vibración / Silencio) + Respuesta Háptica -->
+          <div class="sound-v2-card">
+            <div class="sound-v2-card-top">
+              <div class="sound-v2-heading">
+                <span class="ui-icon" data-iconify="sliders"></span>
+                <div>
+                  <strong>Perfil de Audio</strong>
+                  <span>Cambia al instante entre sonido activo, solo vibración o silencio total.</span>
                 </div>
-                <div class="sound-slider-row">
-                    <span class="sound-slider-icon">
-                        <svg class="nc-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M15 8a5 5 0 0 1 0 8" />
-                            <path d="M17.7 5a9 9 0 0 1 0 14" />
-                            <path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
-                        </svg>
-                    </span>
-                    <div class="sound-slider-content">
-                        <div class="sound-slider-labels">
-                            <strong>Multimedia</strong>
-                            <span id="val-multimedia">100%</span>
-                        </div>
-                        <input type="range" class="sound-range" id="range-multimedia" min="0" max="200" value="100" aria-label="Multimedia" style="--p: 0.5">
-                    </div>
-                </div>
-                <div class="sound-slider-row">
-                    <span class="sound-slider-icon">
-                        <svg class="nc-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2" />
-                        </svg>
-                    </span>
-                    <div class="sound-slider-content">
-                        <div class="sound-slider-labels">
-                            <strong>Llamadas</strong>
-                            <span id="val-llamadas">100%</span>
-                        </div>
-                        <input type="range" class="sound-range" id="range-llamadas" min="0" max="200" value="100" aria-label="Llamadas" style="--p: 0.5">
-                    </div>
-                </div>
-                <div class="sound-slider-row">
-                    <span class="sound-slider-icon">
-                        <svg class="nc-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
-                            <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
-                        </svg>
-                    </span>
-                    <div class="sound-slider-content">
-                        <div class="sound-slider-labels">
-                            <strong>Notificaciones</strong>
-                            <span id="val-notificaciones">100%</span>
-                        </div>
-                        <input type="range" class="sound-range" id="range-notificaciones" min="0" max="200" value="100" aria-label="Notificaciones" style="--p: 0.5">
-                    </div>
-                </div>
+              </div>
+
+              <div class="sound-v2-mode-switch" role="group" aria-label="Perfil de audio">
+                <button type="button" class="sound-v2-mode-btn active" data-sound-profile="sound">
+                  <span class="ui-icon" data-iconify="volume"></span>
+                  <span>Sonido</span>
+                </button>
+                <button type="button" class="sound-v2-mode-btn" data-sound-profile="vibrate">
+                  <span class="ui-icon" data-iconify="activity"></span>
+                  <span>Vibración</span>
+                </button>
+                <button type="button" class="sound-v2-mode-btn" data-sound-profile="silent">
+                  <span class="ui-icon" data-iconify="bell-off"></span>
+                  <span>Silencio</span>
+                </button>
+              </div>
             </div>
-            <div class="settings-menu-group" style="margin-top: 10px; margin-bottom: 24px;">
-                <div class="setting-item" style="background:transparent; border:none; padding: 14px 16px;">
-                    <span class="setting-icon" data-iconify="bell-off" style="background: rgba(255, 90, 82, 0.1); color: #ff5a52;"></span>
-                    <div class="setting-text">
-                        <strong>Modo Silencio</strong>
-                        <span>Desactiva todos los sonidos del dispositivo.</span>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="toggle-silence">
-                        <span class="slider"></span>
-                    </label>
+
+            <input type="checkbox" id="toggle-silence" hidden />
+
+            <div class="sound-v2-haptic-row">
+              <div class="sound-v2-haptic-info">
+                <span class="sound-v2-mini-icon" data-iconify="device-mobile"></span>
+                <div>
+                  <strong>Vibrar al recibir llamadas y avisos</strong>
+                  <span>Pulso háptico incluso cuando el volumen esté bajo.</span>
                 </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-vibrate-calls" checked />
+                <span class="slider"></span>
+              </label>
             </div>
-            <div class="sound-section">
-                <div class="sound-section-header">
-                    <span class="ui-icon" data-iconify="music"></span>
-                    <div class="display-section-text">
-                        <strong>Tonos</strong>
-                        <span>Selecciona los sonidos para llamadas y alertas.</span>
-                    </div>
-                </div>
-                <div class="sound-select-group">
-                    <div class="sound-select-item">
-                        <div class="sound-select-info">
-                            <strong>Tono de llamada</strong>
-                            <span>Sonido al recibir una llamada.</span>
-                        </div>
-                        <select class="sound-select" aria-label="Tono de llamada">
-                            <option value="" disabled selected>Seleccionar...</option>
-                        </select>
-                    </div>
-                    <div class="sound-select-item">
-                        <div class="sound-select-info">
-                            <strong>Tono de notificación</strong>
-                            <span>Sonido al recibir una alerta.</span>
-                        </div>
-                        <select class="sound-select" aria-label="Tono de notificación">
-                            <option value="" disabled selected>Seleccionar...</option>
-                        </select>
-                    </div>
-                </div>
+          </div>
+
+          <!-- Bloque 2: Niveles de Volumen en filas limpias de ancho completo -->
+          <div class="sound-v2-card">
+            <div class="sound-v2-heading">
+              <span class="ui-icon" data-iconify="volume"></span>
+              <div>
+                <strong>Niveles de Volumen</strong>
+                <span>Sincronizados en tiempo real con las teclas laterales y el panel superior.</span>
+              </div>
             </div>
+
+            <div class="sound-v2-sliders-list">
+              <!-- Multimedia -->
+              <div class="sound-v2-track-row">
+                <span class="sound-v2-channel-icon" data-iconify="music"></span>
+                <div class="sound-v2-track-body">
+                  <div class="sound-v2-track-meta">
+                    <div>
+                      <strong>Multimedia</strong>
+                      <span>Música, vídeos y juegos</span>
+                    </div>
+                    <span class="sound-v2-value-pill" id="val-multimedia">100%</span>
+                  </div>
+                  <input type="range" class="sound-range sound-v2-range" id="range-multimedia" min="0" max="200" value="100" aria-label="Multimedia" style="--p: 0.5">
+                </div>
+              </div>
+
+              <!-- Llamadas -->
+              <div class="sound-v2-track-row">
+                <span class="sound-v2-channel-icon" data-iconify="phone"></span>
+                <div class="sound-v2-track-body">
+                  <div class="sound-v2-track-meta">
+                    <div>
+                      <strong>Llamadas</strong>
+                      <span>Tono entrante y auricular</span>
+                    </div>
+                    <span class="sound-v2-value-pill" id="val-llamadas">100%</span>
+                  </div>
+                  <input type="range" class="sound-range sound-v2-range" id="range-llamadas" min="0" max="200" value="100" aria-label="Llamadas" style="--p: 0.5">
+                </div>
+              </div>
+
+              <!-- Notificaciones -->
+              <div class="sound-v2-track-row">
+                <span class="sound-v2-channel-icon" data-iconify="bell-ringing"></span>
+                <div class="sound-v2-track-body">
+                  <div class="sound-v2-track-meta">
+                    <div>
+                      <strong>Notificaciones</strong>
+                      <span>Mensajes, alertas y sistema</span>
+                    </div>
+                    <span class="sound-v2-value-pill" id="val-notificaciones">100%</span>
+                  </div>
+                  <input type="range" class="sound-range sound-v2-range" id="range-notificaciones" min="0" max="200" value="100" aria-label="Notificaciones" style="--p: 0.5">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bloque 3: Tonos del Sistema en 2 columnas -->
+          <div class="sound-v2-tones-grid">
+            <div class="sound-v2-tone-box">
+              <div class="sound-v2-tone-top">
+                <span class="sound-v2-mini-icon" data-iconify="phone"></span>
+                <div>
+                  <strong>Tono de llamada</strong>
+                  <span>Melodía al recibir llamada</span>
+                </div>
+              </div>
+              <select class="sound-select sound-v2-select" aria-label="Tono de llamada">
+                <option value="" disabled selected>Seleccionar melodía...</option>
+              </select>
+            </div>
+
+            <div class="sound-v2-tone-box">
+              <div class="sound-v2-tone-top">
+                <span class="sound-v2-mini-icon" data-iconify="bell"></span>
+                <div>
+                  <strong>Tono de notificación</strong>
+                  <span>Aviso corto de mensajes</span>
+                </div>
+              </div>
+              <select class="sound-select sound-v2-select" aria-label="Tono de notificación">
+                <option value="" disabled selected>Seleccionar aviso...</option>
+              </select>
+            </div>
+          </div>
         </div>
       `,
     },
     notifications: {
       title: "Notificaciones",
       content: `
-        <div class="notifications-settings-container" style="gap: 5px;">
-            <div class="display-title-group" style="margin-bottom: 15px;">
-                <h3 class="settings-submenu-title">Notificaciones</h3>
-                <p class="settings-submenu-desc">Configura cómo y cuándo quieres recibir alertas.</p>
+        <div class="notifications-settings-container">
+            <div class="settings-section-banner" style="margin-bottom: 0;">
+                <div class="settings-section-banner-left">
+                    <span class="settings-section-banner-icon" data-iconify="bell-ringing"></span>
+                    <div>
+                        <h3 class="settings-submenu-title">Notificaciones</h3>
+                        <p class="settings-submenu-desc">Configura cómo y cuándo quieres recibir alertas en pantalla.</p>
+                    </div>
+                </div>
             </div>
-            <div class="settings-menu-group" style="margin-bottom: 0 !important;">
-                <div class="setting-item" style="background:transparent; border:none; padding: 14px 16px;">
-                    <span class="setting-icon" data-iconify="moon" style="background: rgba(90, 158, 255, 0.1); color: #5a9eff;"></span>
+            <div class="settings-menu-group" style="margin-bottom: 0;">
+                <div class="setting-item" style="background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.08); border-radius:0 !important; padding: 12px 14px; box-shadow:none;">
+                    <span class="setting-icon" data-iconify="moon"></span>
                     <div class="setting-text">
                         <strong>No Molestar</strong>
                         <span>Silencia todas las notificaciones del dispositivo.</span>
                     </div>
                     <label class="toggle-switch"><input type="checkbox" id="toggle-do-not-disturb" ${notificationSettings.doNotDisturb ? "checked" : ""}><span class="slider"></span></label>
                 </div>
-            </div>
-            <div class="settings-menu-group" style="margin-bottom: 0 !important;">
-                <div class="setting-item" style="background:transparent; border:none; padding: 14px 16px;">
-                    <span class="setting-icon" data-iconify="lock" style="background: rgba(160, 160, 160, 0.1); color: #a0a0a0;"></span>
+                <div class="setting-item" style="background:transparent; border:none; border-radius:0 !important; padding: 12px 14px; box-shadow:none;">
+                    <span class="setting-icon" data-iconify="lock"></span>
                     <div class="setting-text">
                         <strong>Vista previa en bloqueo</strong>
                         <span>Mostrar notificaciones en la pantalla de bloqueo.</span>
@@ -1892,7 +2066,7 @@
                     <label class="toggle-switch"><input type="checkbox" id="toggle-lock-preview" ${notificationSettings.lockPreview ? "checked" : ""}><span class="slider"></span></label>
                 </div>
             </div>
-            <div class="sound-section" style="border-bottom: none; padding-bottom: 0; margin-top: 15px;">
+            <div class="sound-section">
                 <div class="sound-section-header">
                     <span class="ui-icon" data-iconify="layout-dashboard"></span>
                     <div class="display-section-text" style="display:flex; flex-direction:row; justify-content:space-between; align-items:center; width:100%;">
@@ -1900,10 +2074,10 @@
                             <strong>Por aplicación</strong>
                             <span>Elige qué apps pueden enviarte alertas.</span>
                         </div>
-                        <span class="muted" id="app-notif-counter" style="font-size: calc(12px * var(--text-scale));">0/0</span>
+                        <span id="app-notif-counter" style="font-size: calc(11px * var(--text-scale));">0/0</span>
                     </div>
                 </div>
-                <div class="settings-menu-group" id="app-notification-list"></div>
+                <div class="settings-menu-group" id="app-notification-list" style="margin-bottom: 0;"></div>
             </div>
         </div>
       `,
@@ -1912,105 +2086,113 @@
       title: "Información del Dispositivo",
       content: `
         <div class="settings-grid-2col" style="height: 100%;">
-            <div class="settings-col" style="gap: 12px;">
+            <div class="settings-col">
                 <div class="device-info-wrapper">
-                    <div class="device-info-header" style="padding: 16px;">
-                        <img src="images/ifruit-logo.webp" alt="iFruit Logo" class="device-info-logo" style="width: 40px; height: 40px; margin-bottom: 4px;" />
-                        <span class="device-version-label">VERSIÓN</span>
-                        <h4 class="device-version-title" style="font-size: calc(16px * var(--text-scale));">iFruit OS v1.7</h4>
+                    <div class="device-info-header">
+                        <img src="images/ifruit-logo.webp" alt="iFruit Logo" class="device-info-logo" />
+                        <span class="device-version-label">VERSIÓN DEL SISTEMA</span>
+                        <h4 class="device-version-title">iFruit OS v1.7</h4>
                     </div>
                     
-                    <div class="device-info-stats" style="gap: 12px;">
-                        <div class="device-stat-box" style="padding: 12px;">
-                            <span>NOMBRE DEL DISPOSITIVO</span>
+                    <div class="device-info-stats">
+                        <div class="device-stat-box">
+                            <div class="device-stat-header">
+                                <span class="ui-icon" data-iconify="device-tablet"></span>
+                                <span>DISPOSITIVO</span>
+                            </div>
                             <strong>iFruit 2SE TRI-FOLD</strong>
                         </div>
-                        <div class="device-stat-box" style="padding: 12px;">
-                            <span>ALMACENAMIENTO</span>
+                        <div class="device-stat-box">
+                            <div class="device-stat-header">
+                                <span class="ui-icon" data-iconify="database"></span>
+                                <span>ALMACENAMIENTO</span>
+                            </div>
                             <strong id="device-total-storage-text">— GB / 512 GB</strong>
-                            <div class="device-progress-bar" style="margin-top: 2px;"><span id="device-total-storage-bar" style="width: 0%"></span></div>
+                            <div class="device-progress-bar"><span id="device-total-storage-bar" style="width: 0%"></span></div>
                         </div>
                     </div>
 
-                    <div class="device-info-list" style="padding: 0 16px;">
-                        <div class="device-info-row" style="padding: 15px 0;">
-                            <span>NÚMERO DE SERIE:</span>
+                    <div class="device-info-list">
+                        <div class="device-info-row">
+                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="hash"></span><span>NÚMERO DE SERIE</span></span>
                             <strong id="device-imei-display">—</strong>
                         </div>
                         
-                        <div class="device-info-row" style="padding: 15px 0;">
-                            <span>ESTADO DE LA SIM:</span>
+                        <div class="device-info-row">
+                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="sim-card"></span><span>ESTADO DE LA SIM</span></span>
                             <strong id="device-sim-status-display">—</strong>
                         </div>
 
-                        <div class="device-info-row" style="padding: 15px 0;">
-                            <span>PROCESADOR:</span>
+                        <div class="device-info-row">
+                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="cpu"></span><span>PROCESADOR</span></span>
                             <strong>PROLABS G-Octa Bionic</strong>
                         </div>
-                        <div class="device-info-row" style="padding: 15px 0;">
-                            <span>ALMACENAMIENTO:</span>
+                        <div class="device-info-row">
+                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="database"></span><span>ALMACENAMIENTO</span></span>
                             <strong>512 GB (UFS 4.1)</strong>
                         </div>
-                        <div class="device-info-row" style="padding: 15px 0;">
-                            <span>MEMORIA RAM:</span>
+                        <div class="device-info-row">
+                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="layers"></span><span>MEMORIA RAM</span></span>
                             <strong>16 GB + 4 GB</strong>
                         </div>
-                        <div class="device-info-row" style="padding: 15px 0;">
-                            <span>BATERÍA:</span>
+                        <div class="device-info-row">
+                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="battery-charging"></span><span>BATERÍA</span></span>
                             <strong>4800 mAh Li-Polymer</strong>
                         </div>
-                        <div class="device-info-row" style="padding: 15px 0;">
-                            <span>IDENTIFICADOR DE HARDWARE:</span>
+                        <div class="device-info-row">
+                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="info-circle"></span><span>HARDWARE ID</span></span>
                             <strong>iFruit-2SE</strong>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="settings-col" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 16px; height: 100%; justify-content: space-between;">
-                <div>
-                    <div class="storage-header">
-                        <span>ESPACIO</span>
-                        <span id="storage-total-gb">— GB</span>
-                    </div>
-                    <div class="storage-main" style="margin-bottom: 12px;">
-                        <h2 id="storage-used-gb" style="font-size: calc(28px * var(--text-scale));">— GB</h2>
-                        <span id="storage-free-gb" style="font-size: calc(12px * var(--text-scale));">— GB libres</span>
-                    </div>
-                    <div class="storage-multi-bar" style="margin-bottom: 16px;">
-                        <div class="storage-segment system" id="storage-seg-system" style="width: 0%"></div>
-                        <div class="storage-segment photos" id="storage-seg-photos" style="width: 0%"></div>
-                        <div class="storage-segment messages" id="storage-seg-messages" style="width: 0%"></div>
-                        <div class="storage-segment apps" id="storage-seg-apps" style="width: 0%"></div>
-                    </div>
-                    <div class="storage-category-header" style="margin-bottom: 8px;">POR CATEGORÍA</div>
-                    <div class="storage-list" style="gap: 6px;">
-                        <div class="storage-list-item" style="padding: 10px 12px;">
-                            <span class="ui-icon" data-iconify="device-desktop"></span>
-                            <span class="storage-list-label">Sistema</span>
-                            <span class="storage-list-value" id="storage-val-system">— GB</span>
+            <div class="settings-col">
+                <div class="storage-panel-card">
+                    <div>
+                        <div class="storage-header">
+                            <span>ESPACIO TOTAL</span>
+                            <span id="storage-total-gb">— GB</span>
                         </div>
-                        <div class="storage-list-item" style="padding: 10px 12px;">
-                            <span class="ui-icon" data-iconify="photo"></span>
-                            <span class="storage-list-label">Fotos</span>
-                            <span class="storage-list-value" id="storage-val-photos">— GB</span>
+                        <div class="storage-main">
+                            <h2 id="storage-used-gb">— GB</h2>
+                            <span id="storage-free-gb">— GB libres</span>
                         </div>
-                        <div class="storage-list-item" style="padding: 10px 12px;">
-                            <span class="ui-icon" data-iconify="message"></span>
-                            <span class="storage-list-label">Mensajes</span>
-                            <span class="storage-list-value" id="storage-val-messages">— GB</span>
+                        <div class="storage-multi-bar">
+                            <div class="storage-segment system" id="storage-seg-system" style="width: 0%"></div>
+                            <div class="storage-segment photos" id="storage-seg-photos" style="width: 0%"></div>
+                            <div class="storage-segment messages" id="storage-seg-messages" style="width: 0%"></div>
+                            <div class="storage-segment apps" id="storage-seg-apps" style="width: 0%"></div>
                         </div>
-                        <div class="storage-list-item" style="padding: 10px 12px;">
-                            <span class="ui-icon" data-iconify="layout-dashboard"></span>
-                            <span class="storage-list-label">Apps</span>
-                            <span class="storage-list-value" id="storage-val-apps">— GB</span>
+                        <div class="storage-category-header">DESGLOSE POR CATEGORÍA</div>
+                        <div class="storage-list">
+                            <div class="storage-list-item">
+                                <span class="ui-icon" data-iconify="device-desktop"></span>
+                                <span class="storage-list-label">Sistema</span>
+                                <span class="storage-list-value" id="storage-val-system">— GB</span>
+                            </div>
+                            <div class="storage-list-item">
+                                <span class="ui-icon" data-iconify="photo"></span>
+                                <span class="storage-list-label">Fotos</span>
+                                <span class="storage-list-value" id="storage-val-photos">— GB</span>
+                            </div>
+                            <div class="storage-list-item">
+                                <span class="ui-icon" data-iconify="message"></span>
+                                <span class="storage-list-label">Mensajes</span>
+                                <span class="storage-list-value" id="storage-val-messages">— GB</span>
+                            </div>
+                            <div class="storage-list-item">
+                                <span class="ui-icon" data-iconify="layout-dashboard"></span>
+                                <span class="storage-list-label">Apps</span>
+                                <span class="storage-list-value" id="storage-val-apps">— GB</span>
+                            </div>
                         </div>
                     </div>
+                    <button class="storage-free-btn" id="btn-free-space">
+                        <span class="ui-icon" data-iconify="trash"></span>
+                        LIBERAR ESPACIO
+                    </button>
                 </div>
-                <button class="storage-free-btn" id="btn-free-space" style="margin-top: 12px; padding: 10px;">
-                    <span class="ui-icon" data-iconify="trash"></span>
-                    LIBERAR ESPACIO
-                </button>
             </div>
         </div>
       `,
@@ -2090,7 +2272,7 @@
         // Si tiene SIM, mostramos el número una sola vez (usando el color muted por defecto)
         userDetailsContainer.innerHTML = `
           <span class="settings-detail-item" style="color: var(--muted);">
-            <span class="ui-icon" data-iconify="phone"></span> ${phoneNumber}
+            <span class="ui-icon" data-iconify="sim-card"></span> ${phoneNumber}
           </span>
         `;
       }
@@ -2114,7 +2296,11 @@
       el.classList.toggle("active", el.dataset.settingsTab === tabId);
     });
 
+    const categoryBadge = document.getElementById("settings-current-category");
     const tab = SETTINGS_TABS[tabId];
+    if (categoryBadge) {
+      categoryBadge.textContent = tab ? tab.title : "Inicio";
+    }
     if (tab) {
       if (settingsDefaultPlaceholder) settingsDefaultPlaceholder.hidden = true;
       settingsContentPanel.innerHTML = tab.content;
@@ -2125,7 +2311,7 @@
         });
       }
 
-      if (tabId === "blocked-numbers") {
+      if (tabId === "blockednumbers" || tabId === "blocked-numbers") {
         setTimeout(renderBlockedList, 10);
       }
 
@@ -2251,6 +2437,22 @@
         });
       }
 
+      if (tabId === "sounds") {
+        const hwAudio = window.PhoneData?.hardware?.settings?.audio || {
+          multimedia: 100,
+          llamadas: 100,
+          notificaciones: 100,
+        };
+        applyAudioSettings(hwAudio.multimedia, hwAudio.llamadas, hwAudio.notificaciones);
+        const isSilent = window.PhoneData?.hardware?.settings?.silentMode === true;
+        const silentCheckbox = document.getElementById("toggle-silence");
+        if (silentCheckbox) silentCheckbox.checked = isSilent;
+        document.querySelectorAll("[data-sound-profile]").forEach((b) => {
+          const targetProfile = isSilent ? "silent" : "sound";
+          b.classList.toggle("active", b.dataset.soundProfile === targetProfile);
+        });
+      }
+
       if (tabId === "notifications") {
         renderAppNotificationList();
       }
@@ -2263,8 +2465,54 @@
     } else {
       settingsContentPanel.innerHTML = `
         <div class="settings-placeholder" id="settings-default-placeholder">
-          <span class="ui-icon animate-bounce" data-iconify="settings"></span>
-          <p>Selecciona una opción a la izquierda para ver sus detalles</p>
+          <div class="settings-home-banner">
+            <div class="settings-home-banner-badge">
+              <span class="ui-icon" data-iconify="device-mobile-cog"></span>
+            </div>
+            <div class="settings-home-banner-copy">
+              <span class="settings-eyebrow">RESUMEN DEL SISTEMA</span>
+              <h3>iFruit 2SE · iFruit OS v1.7</h3>
+              <p>Selecciona un apartado en la columna izquierda o abre un acceso directo.</p>
+            </div>
+          </div>
+
+          <div class="settings-home-cards">
+            <button class="settings-quick-card" type="button" data-quick-tab="wallpaper">
+              <div class="settings-quick-card-top">
+                <span class="ui-icon" data-iconify="palette"></span>
+                <span class="settings-quick-tag">VISUAL</span>
+              </div>
+              <strong>Fundas y Fondo</strong>
+              <span>Cambia la carcasa o el fondo del escritorio</span>
+            </button>
+
+            <button class="settings-quick-card" type="button" data-quick-tab="sounds">
+              <div class="settings-quick-card-top">
+                <span class="ui-icon" data-iconify="volume"></span>
+                <span class="settings-quick-tag">AUDIO</span>
+              </div>
+              <strong>Niveles de Sonido</strong>
+              <span>Ajusta multimedia, llamadas y alertas</span>
+            </button>
+
+            <button class="settings-quick-card" type="button" data-quick-tab="security">
+              <div class="settings-quick-card-top">
+                <span class="ui-icon" data-iconify="shield-lock"></span>
+                <span class="settings-quick-tag">ACCESO</span>
+              </div>
+              <strong>Seguridad y PIN</strong>
+              <span>Gestiona el bloqueo y la biometría</span>
+            </button>
+
+            <button class="settings-quick-card" type="button" data-quick-tab="phone">
+              <div class="settings-quick-card-top">
+                <span class="ui-icon" data-iconify="hard-drive"></span>
+                <span class="settings-quick-tag">HARDWARE</span>
+              </div>
+              <strong>Almacenamiento</strong>
+              <span>Revisa el espacio usado y libera caché</span>
+            </button>
+          </div>
         </div>
       `;
       settingsContentPanel.querySelectorAll("[data-iconify]").forEach((el) => {
@@ -2283,6 +2531,12 @@
         normalizeText(item.textContent).includes(query);
       item.style.display = show ? "" : "none";
       if (show) visible += 1;
+    });
+    settingsList.querySelectorAll(".settings-nav-group").forEach((group) => {
+      const hasVisible = Array.from(group.querySelectorAll(".setting-item")).some(
+        (btn) => btn.style.display !== "none",
+      );
+      group.style.display = hasVisible ? "" : "none";
     });
     settingsEmpty.hidden = visible > 0;
   }
@@ -2314,6 +2568,15 @@
 
   settingsSearch.addEventListener("input", filterSettings);
 
+  settingsContentPanel.addEventListener("input", (event) => {
+    if (event.target.closest(".sound-range")) {
+      const multi = parseInt(document.getElementById("range-multimedia")?.value || 100, 10);
+      const llam = parseInt(document.getElementById("range-llamadas")?.value || 100, 10);
+      const notif = parseInt(document.getElementById("range-notificaciones")?.value || 100, 10);
+      applyAudioSettings(multi, llam, notif);
+    }
+  });
+
   if (settingsEditBtn) {
     settingsEditBtn.addEventListener("click", () => {
       openProfileModal();
@@ -2321,6 +2584,12 @@
   }
 
   settingsContentPanel.addEventListener("click", (event) => {
+    const quickCard = event.target.closest("[data-quick-tab]");
+    if (quickCard) {
+      setActiveSettingsTab(quickCard.dataset.quickTab);
+      return;
+    }
+
     const toggleBtn = event.target.closest("#screen-size-selector-btn");
     const dropdown = document.getElementById("screen-size-dropdown");
 
@@ -2546,6 +2815,24 @@
       return;
     }
 
+    const brightnessPresetBtn = event.target.closest("[data-brightness-preset]");
+    if (brightnessPresetBtn) {
+      const val = parseInt(brightnessPresetBtn.dataset.brightnessPreset, 10);
+      applyBrightness(val);
+
+      if (window.PhoneData && window.PhoneData.imei) {
+        if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
+        window.PhoneData.hardware.settings.brightness = val;
+
+        nui("saveHardwareData", {
+          imei: window.PhoneData.imei,
+          settings: window.PhoneData.hardware.settings,
+          installed_apps: window.PhoneData.hardware.installed_apps || [],
+        });
+      }
+      return;
+    }
+
     // ==========================================
     // LÓGICA DE BRILLO (Unificada)
     // ==========================================
@@ -2564,6 +2851,44 @@
           installed_apps: window.PhoneData.hardware.installed_apps || [],
         });
       }
+      return;
+    }
+
+    // ==========================================
+    // PERFIL DE AUDIO Y RESET DE VOLÚMENES
+    // ==========================================
+    const profileBtn = event.target.closest("[data-sound-profile]");
+    if (profileBtn) {
+      const profile = profileBtn.dataset.soundProfile;
+      document.querySelectorAll("[data-sound-profile]").forEach((b) => {
+        b.classList.toggle("active", b === profileBtn);
+      });
+
+      const silentCheckbox = document.getElementById("toggle-silence");
+      const vibrateCheckbox = document.getElementById("toggle-vibrate-calls");
+      const shouldSilence = profile === "silent" || profile === "vibrate";
+
+      if (vibrateCheckbox && profile === "vibrate") vibrateCheckbox.checked = true;
+      if (vibrateCheckbox && profile === "silent") vibrateCheckbox.checked = false;
+
+      if (silentCheckbox && silentCheckbox.checked !== shouldSilence) {
+        silentCheckbox.checked = shouldSilence;
+        silentCheckbox.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      return;
+    }
+
+    if (event.target.closest("#btn-reset-volumes")) {
+      applyAudioSettings(100, 100, 100);
+      const silentCheckbox = document.getElementById("toggle-silence");
+      if (silentCheckbox && silentCheckbox.checked) {
+        silentCheckbox.checked = false;
+        silentCheckbox.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      document.querySelectorAll("[data-sound-profile]").forEach((b) => {
+        b.classList.toggle("active", b.dataset.soundProfile === "sound");
+      });
+      scheduleAudioSave();
       return;
     }
 
@@ -2588,7 +2913,7 @@
     // ==========================================
     // BOTONES DE TAMAÑO (Pantalla y Texto)
     // ==========================================
-    const buttonGroup = event.target.closest(".display-button-group");
+    const buttonGroup = event.target.closest(".display-segmented-bar, .display-button-group");
     if (buttonGroup) {
       const clickedBtn = event.target.closest(".display-option-btn");
       if (!clickedBtn) return;
@@ -2847,6 +3172,7 @@
         <div class="case-item ${isActive ? "active" : ""} ${epicClass}" data-case-id="${c.id}">
             <div class="case-preview" style="background-color: ${c.color};" data-type="${c.type}">
                 <div class="case-preview-inner ${c.type}"></div>
+                <span class="case-preview-bar" aria-hidden="true"></span>
             </div>
             <span class="case-label">${c.name}</span>
             ${isActive ? '<span class="case-check">✓</span>' : ""}
@@ -4069,15 +4395,31 @@
     }
   });
 
-  document.addEventListener("keydown", (event) => {
-    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "a") return;
-    if (
-      event.target instanceof Element &&
-      event.target.closest("input, textarea, select, [contenteditable='true']")
-    )
-      return;
+  // Bloquear arrastre de imágenes/elementos al escritorio del PC en toda la tablet
+  document.addEventListener("dragstart", (event) => {
     event.preventDefault();
   });
+
+  // Desactivar Ctrl+A, Ctrl+E y Tab en toda la tablet/móvil salvo cuando escribes en un campo editable
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      const isEditable =
+        event.target instanceof Element &&
+        event.target.closest("input, textarea, select, [contenteditable='true']");
+      if (isEditable) return;
+
+      const key = event.key.toLowerCase();
+      if (event.key === "Tab") {
+        event.preventDefault();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && (key === "a" || key === "e")) {
+        event.preventDefault();
+      }
+    },
+    true,
+  );
 
   function applyTextSize(value) {
     const size = ["small", "normal", "large"].includes(value) ? value : "normal";
@@ -4707,6 +5049,12 @@
       if (event.key === "Escape") {
         event.preventDefault(); // Detiene el comportamiento predeterminado
         event.stopPropagation(); // Evita que se propague hacia FiveM
+
+        const fsOverlay = document.getElementById("gallery-fullscreen-overlay");
+        if (fsOverlay && !fsOverlay.hidden) {
+          closeGalleryFullscreen();
+          return;
+        }
 
         if (!devMode) {
           if (window.dpCameraBusy?.()) {
@@ -7699,20 +8047,862 @@
   // ================= LÓGICA DE LA APP CÁMARA Y DE LA APP GALERÍA =================
 
   let cameraPhotos = [];
-  // true = la galería se abrió desde el icono "Galería" (sin cámara). false = desde el botón de la cámara.
+  let galleryAlbums = [];
+  let galleryActiveAlbumId = null;
+  let galleryFilteredList = [];
+  let galleryCurrentIndex = -1;
   let galleryStandalone = false;
+  let galleryFilter = "all"; // "all" | "photo" | "video" | "favorites"
+  let galleryViewMode = "flat"; // "flat" | "dates" | "albums"
+  let galleryLayoutMode = "uniform"; // "uniform" | "mosaic"
+
+  let editingAlbumId = null;
+  let selectedAlbumColor = "#e5a93c";
+  let sharingAlbumId = null;
+  let selectedShareMode = "copy";
+  let pendingAlbumInvite = null;
 
   const cameraApp = document.getElementById("camera-app");
   const cameraView = document.getElementById("camera-view");
   const cameraGalleryView = document.getElementById("camera-gallery-view");
   const cameraGalleryGrid = document.getElementById("camera-gallery-grid");
 
+  const galleryApp = document.getElementById("gallery-app");
+  const galleryScrollBodyEl = document.getElementById("gallery-scroll-body");
+  const galleryGroupsEl = document.getElementById("gallery-groups");
+  const galleryTotalCountEl = document.getElementById("gallery-total-count");
+  const galleryScrubberEl = document.getElementById("gallery-date-scrubber");
+  const galleryScrubberListEl = document.getElementById("gallery-scrubber-list");
+  const galleryViewerEl = document.getElementById("gallery-viewer");
+  const galleryViewerStageEl = document.getElementById("gallery-viewer-stage");
+  const galleryViewerTypeEl = document.getElementById("gallery-viewer-type");
+  const galleryViewerDateEl = document.getElementById("gallery-viewer-date");
+  const galleryViewerCarouselEl = document.getElementById("gallery-viewer-carousel");
+  const galleryBtnWallpaperEl = document.getElementById("gallery-btn-wallpaper");
+  const galleryBtnCopyEl = document.getElementById("gallery-btn-copy");
+  const galleryBtnFavoriteEl = document.getElementById("gallery-btn-favorite");
+  const galleryFullscreenEl = document.getElementById("gallery-fullscreen-overlay");
+  const galleryFullscreenStageEl = document.getElementById("gallery-fullscreen-stage");
+
   function renderCameraIcons() {
-    if (!window.iconifySvg) return;
-    cameraApp.querySelectorAll("[data-iconify]").forEach((el) => {
-      el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
-    });
+    if (window.iconifySvg) {
+      cameraApp?.querySelectorAll("[data-iconify]").forEach((el) => {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      });
+      galleryApp?.querySelectorAll("[data-iconify]").forEach((el) => {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      });
+      document
+        .getElementById("gallery-fullscreen-overlay")
+        ?.querySelectorAll("[data-iconify]")
+        .forEach((el) => {
+          el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+        });
+    }
   }
+
+  function isVideoUrl(url) {
+    return /\.(webm|mp4|mov)(\?.*)?$/i.test(String(url || "").trim());
+  }
+
+  function isItemFavorite(item) {
+    return item?.is_favorite === true || item?.is_favorite === 1 || item?.is_favorite === "1";
+  }
+
+  function parseGalleryDate(rawDate) {
+    if (!rawDate) return null;
+    if (typeof rawDate === "number") {
+      const d = new Date(rawDate);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    const parsed = new Date(String(rawDate).trim().replace(" ", "T"));
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const MONTHS_SHORT_ES = [
+    "ENE",
+    "FEB",
+    "MAR",
+    "ABR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AGO",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DIC",
+  ];
+  const MONTHS_FULL_ES = [
+    "ENERO",
+    "FEBRERO",
+    "MARZO",
+    "ABRIL",
+    "MAYO",
+    "JUNIO",
+    "JULIO",
+    "AGOSTO",
+    "SEPTIEMBRE",
+    "OCTUBRE",
+    "NOVIEMBRE",
+    "DICIEMBRE",
+  ];
+
+  function getGalleryBucket(rawDate) {
+    const parsed = parseGalleryDate(rawDate);
+    if (!parsed) {
+      return { key: "sin-fecha", title: "SIN FECHA", jumpLabel: "SIN FECHA" };
+    }
+
+    const now = new Date();
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startItem = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    const diffDays = Math.round((startToday - startItem) / 86400000);
+
+    if (diffDays === 0) {
+      return { key: "hoy", title: "HOY", jumpLabel: "HOY" };
+    }
+    if (diffDays === 1) {
+      return { key: "ayer", title: "AYER", jumpLabel: "AYER" };
+    }
+    if (diffDays > 1 && diffDays < 7) {
+      return { key: "esta-semana", title: "ESTA SEMANA", jumpLabel: "SEMANA" };
+    }
+    if (parsed.getFullYear() === now.getFullYear() && parsed.getMonth() === now.getMonth()) {
+      return { key: "este-mes", title: "ESTE MES", jumpLabel: "ESTE MES" };
+    }
+
+    const mIdx = parsed.getMonth();
+    const year = parsed.getFullYear();
+    return {
+      key: `${year}-${String(mIdx + 1).padStart(2, "0")}`,
+      title: `${MONTHS_FULL_ES[mIdx]} - ${year}`,
+      jumpLabel: `${MONTHS_SHORT_ES[mIdx]} - ${year}`,
+    };
+  }
+
+  function formatGalleryTimestamp(rawDate) {
+    const parsed = parseGalleryDate(rawDate);
+    if (!parsed) return "Guardado en el dispositivo";
+    return new Intl.DateTimeFormat("es-ES", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(parsed);
+  }
+
+  function formatVideoTime(sec) {
+    if (!Number.isFinite(sec) || sec < 0) return "0:00";
+    if (sec > 0 && sec < 1) return `0.${Math.max(1, Math.round(sec * 100))}s`;
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  function attachFullscreenZoomPan(box, mediaEl) {
+    let scale = 1;
+    let panX = 0;
+    let panY = 0;
+    let panning = false;
+    let startX = 0;
+    let startY = 0;
+
+    const applyTransform = () => {
+      if (scale <= 1.001) {
+        scale = 1;
+        panX = 0;
+        panY = 0;
+        mediaEl.style.transform = "";
+        box.style.cursor = "zoom-in";
+      } else {
+        mediaEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        box.style.cursor = panning ? "grabbing" : "grab";
+      }
+    };
+
+    box.addEventListener(
+      "wheel",
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const delta = e.deltaY < 0 ? 0.25 : -0.25;
+        scale = Math.min(4, Math.max(1, Math.round((scale + delta) * 100) / 100));
+        applyTransform();
+      },
+      { passive: false },
+    );
+
+    box.addEventListener("mousedown", (e) => {
+      if (e.button === 1) {
+        e.preventDefault();
+        e.stopPropagation();
+        scale = 1;
+        panX = 0;
+        panY = 0;
+        applyTransform();
+        return;
+      }
+      if (e.button === 0 && scale > 1) {
+        if (e.target instanceof Element && e.target.closest("button, input, .gp-video-bar"))
+          return;
+        e.preventDefault();
+        panning = true;
+        startX = e.clientX - panX;
+        startY = e.clientY - panY;
+        applyTransform();
+      }
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (!panning) return;
+      panX = e.clientX - startX;
+      panY = e.clientY - startY;
+      applyTransform();
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (!panning) return;
+      panning = false;
+      applyTransform();
+    });
+
+    applyTransform();
+  }
+
+  function buildViewerMediaElement(itemData, isFullscreen = false) {
+    const rawUrl = String(itemData.image_url || "").trim();
+    const video = isVideoUrl(rawUrl);
+
+    const box = document.createElement("div");
+    box.className = "gallery-media-box";
+
+    if (!video) {
+      const img = document.createElement("img");
+      img.src = rawUrl;
+      img.alt = "Vista previa";
+      img.draggable = false;
+      img.referrerPolicy = "no-referrer";
+      box.appendChild(img);
+
+      if (isFullscreen) {
+        attachFullscreenZoomPan(box, img);
+      }
+
+      const screenBtn = document.createElement("button");
+      screenBtn.type = "button";
+      screenBtn.className = "gallery-photo-expand-btn";
+      screenBtn.title = isFullscreen ? "Salir de pantalla completa" : "Pantalla completa";
+      screenBtn.innerHTML = `<span class="ui-icon" data-iconify="${
+        isFullscreen ? "akar-icons:normal-screen" : "akar-icons:full-screen"
+      }"></span>`;
+      screenBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (isFullscreen) {
+          closeGalleryFullscreen();
+        } else {
+          openGalleryFullscreen(itemData);
+        }
+      });
+      box.appendChild(screenBtn);
+      return box;
+    }
+
+    box.classList.add("is-paused");
+
+    const vid = document.createElement("video");
+    vid.src = rawUrl;
+    vid.autoplay = false;
+    vid.playsInline = true;
+    vid.preload = "auto";
+    box.appendChild(vid);
+
+    if (isFullscreen) {
+      attachFullscreenZoomPan(box, vid);
+    }
+
+    const bar = document.createElement("div");
+    bar.className = "gp-video-bar";
+    bar.addEventListener("click", (e) => e.stopPropagation());
+
+    const leftControls = document.createElement("div");
+    leftControls.className = "gp-controls-left";
+
+    const back5Btn = document.createElement("button");
+    back5Btn.type = "button";
+    back5Btn.className = "gp-bar-btn";
+    back5Btn.title = "Retroceder 5 segundos";
+    back5Btn.innerHTML = `<span class="ui-icon" data-iconify="tabler:rewind-backward-5"></span>`;
+    back5Btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      vid.currentTime = Math.max(0, vid.currentTime - 5);
+    });
+
+    const playBtn = document.createElement("button");
+    playBtn.type = "button";
+    playBtn.className = "gp-bar-btn";
+    playBtn.title = "Reproducir / Pausar";
+    playBtn.innerHTML = `<span class="ui-icon" data-iconify="player-play"></span>`;
+
+    const fwd5Btn = document.createElement("button");
+    fwd5Btn.type = "button";
+    fwd5Btn.className = "gp-bar-btn";
+    fwd5Btn.title = "Adelantar 5 segundos";
+    fwd5Btn.innerHTML = `<span class="ui-icon" data-iconify="tabler:rewind-forward-5"></span>`;
+    fwd5Btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const dur =
+        Number.isFinite(vid.duration) && vid.duration > 0 ? vid.duration : vid.currentTime + 5;
+      vid.currentTime = Math.min(dur, vid.currentTime + 5);
+    });
+
+    leftControls.appendChild(back5Btn);
+    leftControls.appendChild(playBtn);
+    leftControls.appendChild(fwd5Btn);
+
+    const currentTimeEl = document.createElement("span");
+    currentTimeEl.className = "gp-time";
+    currentTimeEl.textContent = "0:00";
+
+    const totalTimeEl = document.createElement("span");
+    totalTimeEl.className = "gp-time gp-time-total";
+    totalTimeEl.textContent = "0:00";
+
+    const progressWrap = document.createElement("div");
+    progressWrap.className = "gp-progress-wrap";
+    progressWrap.innerHTML = `
+      <div class="gp-progress-track">
+        <div class="gp-progress-fill"></div>
+        <div class="gp-progress-thumb"></div>
+        <div class="gp-progress-hover-square"></div>
+      </div>
+      <div class="gp-progress-hover-time">0:00</div>`;
+
+    const progressFill = progressWrap.querySelector(".gp-progress-fill");
+    const progressThumb = progressWrap.querySelector(".gp-progress-thumb");
+    const hoverSquare = progressWrap.querySelector(".gp-progress-hover-square");
+    const hoverTime = progressWrap.querySelector(".gp-progress-hover-time");
+
+    let knownDuration = 0;
+
+    const resolveDuration = () => {
+      if (Number.isFinite(vid.duration) && vid.duration > 0) {
+        knownDuration = vid.duration;
+      } else if (vid.seekable && vid.seekable.length > 0) {
+        const endVal = vid.seekable.end(vid.seekable.length - 1);
+        if (Number.isFinite(endVal) && endVal > 0) knownDuration = endVal;
+      }
+      if (vid.currentTime > knownDuration) {
+        knownDuration = vid.currentTime;
+      }
+      return knownDuration;
+    };
+
+    progressWrap.addEventListener("mousemove", (e) => {
+      const rect = progressWrap.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const pct = ratio * 100;
+      if (hoverSquare) hoverSquare.style.left = `${pct}%`;
+      if (hoverTime) {
+        hoverTime.style.left = `${pct}%`;
+        const dur = resolveDuration();
+        hoverTime.textContent = formatVideoTime(ratio * dur);
+      }
+    });
+
+    progressWrap.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const dur = resolveDuration();
+      if (dur <= 0) return;
+      const rect = progressWrap.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      vid.currentTime = ratio * dur;
+    });
+
+    const volWrapper = document.createElement("div");
+    volWrapper.className = "gp-volume-wrapper";
+
+    const muteBtn = document.createElement("button");
+    muteBtn.type = "button";
+    muteBtn.className = "gp-bar-btn";
+    muteBtn.title = "Silenciar / Activar sonido";
+    muteBtn.innerHTML = `<span class="ui-icon" data-iconify="akar-icons:sound-on"></span>`;
+
+    const volPopover = document.createElement("div");
+    volPopover.className = "gp-volume-popover";
+
+    const volTooltip = document.createElement("span");
+    volTooltip.className = "gp-volume-tooltip";
+    volTooltip.textContent = "100";
+
+    const volVTrack = document.createElement("div");
+    volVTrack.className = "gp-volume-vtrack";
+
+    const volSlider = document.createElement("input");
+    volSlider.type = "range";
+    volSlider.className = "gp-volume-slider-vertical";
+    volSlider.min = "0";
+    volSlider.max = "100";
+    volSlider.step = "1";
+    volSlider.value = "100";
+
+    volVTrack.appendChild(volSlider);
+    volPopover.appendChild(volTooltip);
+    volPopover.appendChild(volVTrack);
+
+    const syncVolumeUi = () => {
+      const pct = vid.muted ? 0 : Math.round(vid.volume * 100);
+      volSlider.value = String(pct);
+      volTooltip.textContent = String(pct);
+      const iconName = pct === 0 ? "akar-icons:sound-off" : "akar-icons:sound-on";
+      muteBtn.innerHTML = window.iconifySvg ? window.iconifySvg(iconName, "iconify-svg") : "";
+    };
+
+    muteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      vid.muted = !vid.muted;
+      if (!vid.muted && vid.volume === 0) {
+        vid.volume = 0.7;
+      }
+      syncVolumeUi();
+    });
+
+    volSlider.addEventListener("input", (e) => {
+      e.stopPropagation();
+      const val = parseInt(volSlider.value, 10);
+      vid.volume = val / 100;
+      vid.muted = val === 0;
+      syncVolumeUi();
+    });
+
+    volWrapper.appendChild(volPopover);
+    volWrapper.appendChild(muteBtn);
+
+    const screenBtn = document.createElement("button");
+    screenBtn.type = "button";
+    screenBtn.className = "gp-bar-btn";
+    screenBtn.title = isFullscreen ? "Salir de pantalla completa" : "Pantalla completa";
+    screenBtn.innerHTML = `<span class="ui-icon" data-iconify="${
+      isFullscreen ? "akar-icons:normal-screen" : "akar-icons:full-screen"
+    }"></span>`;
+    screenBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (isFullscreen) {
+        closeGalleryFullscreen();
+      } else {
+        vid.pause();
+        openGalleryFullscreen(itemData);
+      }
+    });
+
+    bar.appendChild(leftControls);
+    bar.appendChild(currentTimeEl);
+    bar.appendChild(progressWrap);
+    bar.appendChild(totalTimeEl);
+    bar.appendChild(volWrapper);
+    bar.appendChild(screenBtn);
+
+    box.appendChild(bar);
+
+    let progressTimer = null;
+
+    const syncTime = () => {
+      const cur = vid.currentTime || 0;
+      const dur = resolveDuration();
+      currentTimeEl.textContent = formatVideoTime(cur);
+      totalTimeEl.textContent = formatVideoTime(dur);
+      const pct = dur > 0 ? Math.min(100, (cur / dur) * 100) : vid.ended ? 100 : 0;
+      if (progressFill) progressFill.style.width = `${pct}%`;
+      if (progressThumb) progressThumb.style.left = `${pct}%`;
+    };
+
+    const startProgressTicker = () => {
+      if (progressTimer) return;
+      progressTimer = setInterval(syncTime, 40);
+    };
+
+    const stopProgressTicker = () => {
+      if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+      }
+    };
+
+    const syncPlayState = () => {
+      const paused = vid.paused || vid.ended;
+      box.classList.toggle("is-paused", paused);
+      if (paused) {
+        stopProgressTicker();
+      } else {
+        startProgressTicker();
+      }
+      syncTime();
+      const iconName = paused ? "player-play" : "player-pause";
+      playBtn.innerHTML = window.iconifySvg ? window.iconifySvg(iconName, "iconify-svg") : "";
+    };
+
+    const togglePlay = (e) => {
+      e.stopPropagation();
+      if (vid.paused || vid.ended) {
+        if (vid.ended) vid.currentTime = 0;
+        vid.play().catch(() => {});
+      } else {
+        vid.pause();
+      }
+    };
+
+    playBtn.addEventListener("click", togglePlay);
+    vid.addEventListener("click", togglePlay);
+    vid.addEventListener("play", syncPlayState);
+    vid.addEventListener("pause", syncPlayState);
+    vid.addEventListener("ended", syncPlayState);
+    vid.addEventListener("loadedmetadata", syncTime);
+    vid.addEventListener("durationchange", syncTime);
+    vid.addEventListener("canplay", syncTime);
+    vid.addEventListener("timeupdate", syncTime);
+
+    syncTime();
+    return box;
+  }
+
+  function renderViewerCarousel() {
+    if (!galleryViewerCarouselEl) return;
+    galleryViewerCarouselEl.innerHTML = "";
+
+    galleryFilteredList.forEach((item, idx) => {
+      const rawUrl = String(item.image_url || "").trim();
+      const video = isVideoUrl(rawUrl);
+
+      const thumbBtn = document.createElement("button");
+      thumbBtn.type = "button";
+      thumbBtn.className = `gallery-carousel-thumb${idx === galleryCurrentIndex ? " active" : ""}`;
+      thumbBtn.title = formatGalleryTimestamp(item.date);
+      thumbBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openGalleryViewerByIndex(idx);
+      });
+
+      if (video) {
+        const vid = document.createElement("video");
+        vid.src = rawUrl;
+        vid.preload = "metadata";
+        vid.muted = true;
+        vid.playsInline = true;
+        thumbBtn.appendChild(vid);
+
+        const dot = document.createElement("span");
+        dot.className = "gallery-carousel-video-dot";
+        dot.innerHTML = `<span class="ui-icon" data-iconify="player-play"></span>`;
+        thumbBtn.appendChild(dot);
+      } else {
+        const img = document.createElement("img");
+        img.src = rawUrl;
+        img.alt = "Miniatura";
+        img.draggable = false;
+        img.loading = "lazy";
+        img.referrerPolicy = "no-referrer";
+        thumbBtn.appendChild(img);
+      }
+
+      galleryViewerCarouselEl.appendChild(thumbBtn);
+    });
+
+    const activeThumb = galleryViewerCarouselEl.querySelector(
+      ".gallery-carousel-thumb.active",
+    );
+    activeThumb?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }
+
+  function syncFavoriteButtonState(itemData) {
+    if (!galleryBtnFavoriteEl) return;
+    const fav = isItemFavorite(itemData);
+    galleryBtnFavoriteEl.classList.toggle("active", fav);
+    galleryBtnFavoriteEl.innerHTML = `<span class="ui-icon" data-iconify="${
+      fav ? "heart-filled" : "heart"
+    }"></span>`;
+  }
+
+  function openGalleryViewerByIndex(index) {
+    if (index < 0 || index >= galleryFilteredList.length) return;
+    galleryCurrentIndex = index;
+    const itemData = galleryFilteredList[index];
+    if (!galleryViewerEl || !galleryViewerStageEl) return;
+
+    document.getElementById("gallery-add-album-popover")?.setAttribute("hidden", "");
+
+    const rawUrl = String(itemData.image_url || "").trim();
+    const video = isVideoUrl(rawUrl);
+
+    if (galleryViewerTypeEl) {
+      galleryViewerTypeEl.textContent = video ? "Vídeo" : "Foto";
+    }
+    if (galleryViewerDateEl) {
+      galleryViewerDateEl.textContent = formatGalleryTimestamp(itemData.date);
+    }
+
+    if (galleryBtnWallpaperEl) galleryBtnWallpaperEl.hidden = video;
+    if (galleryBtnCopyEl) galleryBtnCopyEl.hidden = video;
+    syncFavoriteButtonState(itemData);
+
+    galleryViewerStageEl.querySelectorAll("video").forEach((v) => {
+      v.pause();
+      v.src = "";
+    });
+    galleryViewerStageEl.innerHTML = "";
+    galleryViewerStageEl.appendChild(buildViewerMediaElement(itemData, false));
+
+    galleryViewerEl.hidden = false;
+    renderViewerCarousel();
+    renderCameraIcons();
+  }
+
+  function openGalleryViewer(itemData) {
+    const idx = galleryFilteredList.findIndex(
+      (x) =>
+        (x.id !== undefined && x.id === itemData.id) ||
+        (x.image_url === itemData.image_url && x.date === itemData.date),
+    );
+    openGalleryViewerByIndex(idx >= 0 ? idx : 0);
+  }
+
+  function closeGalleryViewer() {
+    closeGalleryFullscreen();
+    document.getElementById("gallery-add-album-popover")?.setAttribute("hidden", "");
+    if (!galleryViewerEl) return;
+    galleryViewerStageEl?.querySelectorAll("video").forEach((v) => {
+      v.pause();
+      v.src = "";
+    });
+    if (galleryViewerStageEl) galleryViewerStageEl.innerHTML = "";
+    galleryViewerEl.hidden = true;
+    galleryCurrentIndex = -1;
+  }
+
+  function openGalleryFullscreen(itemData) {
+    if (!galleryFullscreenEl || !galleryFullscreenStageEl) return;
+    galleryFullscreenStageEl.querySelectorAll("video").forEach((v) => {
+      v.pause();
+      v.src = "";
+    });
+    galleryFullscreenStageEl.innerHTML = "";
+    galleryFullscreenStageEl.appendChild(buildViewerMediaElement(itemData, true));
+
+    const hintEl = document.getElementById("gallery-fullscreen-hint");
+    if (hintEl) {
+      const video = isVideoUrl(itemData.image_url);
+      hintEl.innerHTML = video
+        ? `<span><kbd>ESC</kbd> Cerrar pantalla completa</span>
+           <span class="hint-sep">|</span>
+           <span><kbd>SCROLL</kbd> Zoom</span>
+           <span class="hint-sep">|</span>
+           <span><kbd>ARRASTRAR</kbd> Mover con zoom</span>
+           <span class="hint-sep">|</span>
+           <span><kbd>CLIC CENTRAL</kbd> Restaurar zoom</span>`
+        : `<span><kbd>ESC</kbd> Cerrar foto</span>
+           <span class="hint-sep">|</span>
+           <span><kbd>SCROLL</kbd> Hacer zoom en la foto</span>
+           <span class="hint-sep">|</span>
+           <span><kbd>ARRASTRAR</kbd> Mover foto</span>
+           <span class="hint-sep">|</span>
+           <span><kbd>CLIC CENTRAL</kbd> Restaurar zoom</span>`;
+    }
+
+    galleryFullscreenEl.hidden = false;
+    if (window.iconifySvg) {
+      galleryFullscreenEl.querySelectorAll("[data-iconify]").forEach((el) => {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      });
+    }
+  }
+
+  function closeGalleryFullscreen() {
+    if (!galleryFullscreenEl) return;
+    galleryFullscreenStageEl?.querySelectorAll("video").forEach((v) => {
+      v.pause();
+      v.src = "";
+    });
+    if (galleryFullscreenStageEl) galleryFullscreenStageEl.innerHTML = "";
+    galleryFullscreenEl.hidden = true;
+  }
+
+  async function toggleFavoriteCurrentItem() {
+    const itemData = galleryFilteredList[galleryCurrentIndex];
+    if (!itemData || !itemData.id) return;
+    const nextFav = !isItemFavorite(itemData);
+    try {
+      const res = await nui("toggleGalleryFavorite", {
+        mediaId: itemData.id,
+        favorite: nextFav,
+      });
+      if (res === false) return;
+      itemData.is_favorite = nextFav ? 1 : 0;
+      const master = cameraPhotos.find((p) => p.id === itemData.id);
+      if (master) master.is_favorite = nextFav ? 1 : 0;
+      syncFavoriteButtonState(itemData);
+      renderCameraIcons();
+      if (galleryFilter === "favorites") {
+        renderGallery();
+      }
+    } catch (e) {
+      console.error("Error al cambiar favorito:", e);
+    }
+  }
+
+  function openAddToAlbumPopover() {
+    const itemData = galleryFilteredList[galleryCurrentIndex];
+    const popover = document.getElementById("gallery-add-album-popover");
+    const listEl = document.getElementById("gallery-add-album-list");
+    if (!itemData || !popover || !listEl) return;
+
+    const customAlbums = galleryAlbums.filter((a) => !a.is_default);
+    if (!customAlbums.length) {
+      listEl.innerHTML = `<div class="comms-list-empty" style="padding:12px;">Crea primero un álbum en la pestaña Álbumes.</div>`;
+      popover.hidden = false;
+      renderCameraIcons();
+      return;
+    }
+
+    const mediaId = Number(itemData.id);
+    listEl.innerHTML = "";
+    customAlbums.forEach((alb) => {
+      const itemIds = Array.isArray(alb.media_ids) ? alb.media_ids.map(Number) : [];
+      const isIn = itemIds.includes(mediaId);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `gallery-add-album-item${isIn ? " in-album" : ""}`;
+      btn.innerHTML = `
+        <span style="display:inline-flex;align-items:center;gap:8px;min-width:0;">
+          <span style="width:10px;height:10px;background:${esc(alb.color || "#d0d0d0")};flex-shrink:0;"></span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(alb.title)}</span>
+        </span>
+        <span>${isIn ? "✓" : "+"}</span>`;
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const nextAdd = !isIn;
+        const res = await nui("setMediaInAlbum", {
+          albumId: alb.id,
+          mediaId,
+          add: nextAdd,
+        });
+        if (res === false) return;
+        alb.media_ids = alb.media_ids || [];
+        if (nextAdd) {
+          if (!alb.media_ids.map(Number).includes(mediaId)) alb.media_ids.push(mediaId);
+          showNotification({
+            appName: "Galería",
+            icon: "folder",
+            title: "Añadido al álbum",
+            message: `Guardado en "${alb.title}".`,
+          });
+        } else {
+          alb.media_ids = alb.media_ids.filter((id) => Number(id) !== mediaId);
+          showNotification({
+            appName: "Galería",
+            icon: "folder",
+            title: "Quitado del álbum",
+            message: `Eliminado de "${alb.title}".`,
+          });
+        }
+        openAddToAlbumPopover();
+        if (galleryViewMode === "albums" && galleryActiveAlbumId === alb.id) {
+          renderGallery();
+        }
+      });
+      listEl.appendChild(btn);
+    });
+
+    popover.hidden = false;
+    renderCameraIcons();
+  }
+
+  function openAlbumModal(album = null) {
+    const modal = document.getElementById("gallery-album-modal");
+    const titleEl = document.getElementById("gallery-album-modal-title");
+    const nameInput = document.getElementById("gallery-album-title-input");
+    const descInput = document.getElementById("gallery-album-desc-input");
+    if (!modal || !nameInput || !descInput) return;
+
+    editingAlbumId = album ? album.id : null;
+    selectedAlbumColor = album?.color || "#e5a93c";
+    if (titleEl) titleEl.textContent = album ? "Editar álbum" : "Nuevo álbum";
+    nameInput.value = album?.title || "";
+    descInput.value = album?.description || "";
+
+    document.querySelectorAll("#gallery-album-colors .gallery-color-swatch").forEach((sw) => {
+      sw.classList.toggle("active", sw.dataset.color === selectedAlbumColor);
+    });
+
+    modal.hidden = false;
+    renderCameraIcons();
+    setTimeout(() => nameInput.focus(), 40);
+  }
+
+  function closeAlbumModal() {
+    editingAlbumId = null;
+    document.getElementById("gallery-album-modal")?.setAttribute("hidden", "");
+  }
+
+  function openShareAlbumModal(album) {
+    const modal = document.getElementById("gallery-share-album-modal");
+    const nameEl = document.getElementById("gallery-share-album-name");
+    const targetInput = document.getElementById("gallery-share-target-input");
+    if (!modal || !album) return;
+
+    sharingAlbumId = album.id;
+    selectedShareMode = "copy";
+    if (nameEl) nameEl.textContent = `Álbum: ${album.title}`;
+    if (targetInput) targetInput.value = "";
+    document.querySelectorAll("[data-share-mode]").forEach((b) => {
+      b.classList.toggle("active", b.dataset.shareMode === "copy");
+    });
+    modal.hidden = false;
+    renderCameraIcons();
+    setTimeout(() => targetInput?.focus(), 40);
+  }
+
+  function closeShareAlbumModal() {
+    sharingAlbumId = null;
+    document.getElementById("gallery-share-album-modal")?.setAttribute("hidden", "");
+  }
+
+  function showAlbumInviteModal(invite) {
+    pendingAlbumInvite = invite;
+    const modal = document.getElementById("gallery-invite-modal");
+    const bodyEl = document.getElementById("gallery-invite-body");
+    if (!modal || !bodyEl || !invite) return;
+
+    const modeText =
+      invite.mode === "collab"
+        ? "Modo COLABORADOR (las fotos que añada el otro jugador se descargarán en tu álbum)."
+        : "Modo COPIA (recibirás las fotos y una carpeta copia en tus álbumes).";
+
+    bodyEl.innerHTML = `
+      <div>Te han compartido el álbum:</div>
+      <strong>${esc(invite.title || "Álbum")}</strong>
+      ${invite.description ? `<div>${esc(invite.description)}</div>` : ""}
+      <div>${esc(modeText)}</div>`;
+
+    modal.hidden = false;
+    renderCameraIcons();
+  }
+
+  window.addEventListener("message", (event) => {
+    const { action, data } = event.data || {};
+    if (action === "galleryAlbumInvite" && data) {
+      showAlbumInviteModal(data);
+    } else if (action === "galleryAlbumCollabItem" && data) {
+      if (data.photo && !cameraPhotos.some((p) => p.id === data.photo.id)) {
+        cameraPhotos.unshift(data.photo);
+      }
+      if (Array.isArray(data.albums)) {
+        galleryAlbums = data.albums;
+      }
+      if (galleryApp && !galleryApp.hidden) {
+        renderGallery();
+      }
+    }
+  });
 
   // 1. Abrir la cámara (app "Cámara")
   async function openCameraApp() {
@@ -7727,39 +8917,35 @@
     galleryStandalone = false;
     cameraApp.hidden = false;
     cameraView.hidden = false;
-    cameraGalleryView.hidden = true;
+    if (cameraGalleryView) cameraGalleryView.hidden = true;
 
-    // Pantalla transparente + agujero en la funda para ver el juego a través del visor
     enterCameraMode();
-    resetZoom(); // cada vez que abres la cámara empieza en 1x
-
+    resetZoom();
     renderCameraIcons();
   }
 
-  // 1b. Abrir la galería (app "Galería"): solo las fotos, sin cámara
-  function openGalleryApp() {
+  // 1b. Abrir la galería (app "Galería")
+  async function openGalleryApp() {
     if (!state.hasBooted || state.booting || phone.hidden) return;
 
     state.screen = "gallery";
     state.appOpen = true;
-    hideOverlayApps(); // si venías de la cámara, la apaga
+    hideOverlayApps();
     desktopScreen.hidden = true;
     homeButton.hidden = false;
 
     galleryStandalone = true;
-    cameraApp.hidden = false;
-    cameraView.hidden = true;
-    cameraGalleryView.hidden = false;
-
+    closeGalleryViewer();
+    if (galleryApp) {
+      galleryApp.hidden = false;
+      galleryApp.classList.toggle("layout-mosaic", galleryLayoutMode === "mosaic");
+    }
     renderCameraIcons();
-    loadGallery();
+    await loadGallery();
   }
 
-  // 2. Tomar la foto
-  // En FiveM Legacy, screenshot-basic captura SOLO el juego (la interfaz NUI no sale en la foto).
-  // Si en tu build la foto sale con el móvil encima, pon esto a true: se oculta el móvil durante la captura.
   const SCREENSHOT_INCLUDES_UI = false;
-  const PHOTO_TIMEOUT_MS = 20000; // si el cliente no responde, no dejamos el móvil bloqueado
+  const PHOTO_TIMEOUT_MS = 20000;
   let takingPhoto = false;
 
   function cameraFlash() {
@@ -7780,7 +8966,7 @@
   }
 
   async function takePhoto() {
-    if (takingPhoto) return; // evita dobles clics
+    if (takingPhoto) return;
     takingPhoto = true;
 
     if (SCREENSHOT_INCLUDES_UI) {
@@ -7804,7 +8990,7 @@
       }
 
       if (result && result.success) {
-        if (!cameraGalleryView.hidden) {
+        if (galleryApp && !galleryApp.hidden) {
           loadGallery();
         }
       } else {
@@ -7829,98 +9015,450 @@
     }
   }
 
-  // 3. Cargar la galería
   async function loadGallery() {
+    if (galleryGroupsEl && (!galleryApp || !galleryApp.hidden)) {
+      galleryGroupsEl.innerHTML = `<div class="gallery-empty"><p>Cargando archivos…</p></div>`;
+    }
     try {
-      const photos = (await nui("getGalleryPhotos", { imei: window.PhoneData?.imei })) || [];
+      const [photos, albums] = await Promise.all([
+        nui("getGalleryPhotos", { imei: window.PhoneData?.imei }),
+        nui("getGalleryAlbums", { imei: window.PhoneData?.imei }),
+      ]);
       cameraPhotos = Array.isArray(photos) ? photos : [];
+      galleryAlbums = Array.isArray(albums) ? albums : [];
       renderGallery();
     } catch (e) {
       console.error("Error al cargar galería:", e);
+      if (galleryGroupsEl) {
+        galleryGroupsEl.innerHTML = `<div class="gallery-empty"><p>No se pudieron cargar los archivos.</p></div>`;
+      }
     }
   }
 
-  // 4. Renderizar galería
-  function renderGallery() {
-    if (!cameraGalleryGrid) return;
-    if (cameraPhotos.length === 0) {
-      cameraGalleryGrid.innerHTML = `<div class="camera-gallery-empty"><p>No hay fotos aún.</p></div>`;
-      return;
-    }
-    cameraGalleryGrid.replaceChildren(
-      ...cameraPhotos.map((photo) => {
-        const item = document.createElement("div");
-        item.className = "camera-gallery-item";
-        const rawUrl = String(photo.image_url || "").trim();
-        const isVideo = /\.(webm|mp4|mov)(\?.*)?$/i.test(rawUrl);
+  function createGalleryCard(item) {
+    const rawUrl = String(item.image_url || "").trim();
+    const video = isVideoUrl(rawUrl);
 
-        if (isVideo) {
-          const video = document.createElement("video");
-          video.src = rawUrl;
-          video.controls = true;
-          video.playsInline = true;
-          video.preload = "metadata";
-          video.addEventListener("error", () => {
-            item.classList.add("is-broken");
-          });
-          item.appendChild(video);
-          return item;
-        }
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "gallery-media-card";
+    card.addEventListener("click", () => openGalleryViewer(item));
 
-        const img = document.createElement("img");
-        img.alt = "Foto";
-        img.referrerPolicy = "no-referrer";
-        img.src = rawUrl;
-        img.addEventListener("error", async () => {
-          if (!img.dataset.retried && rawUrl) {
-            img.dataset.retried = "1";
-            try {
-              const resp = await fetch(rawUrl, {
-                cache: "reload",
-                referrerPolicy: "no-referrer",
-              });
-              if (resp.ok) {
-                const blob = await resp.blob();
-                img.src = URL.createObjectURL(blob);
-                return;
-              }
-            } catch (err) {}
-          }
-          item.classList.add("is-broken");
-        });
-        item.appendChild(img);
-        return item;
-      }),
-    );
-  }
+    if (video) {
+      const vid = document.createElement("video");
+      vid.src = rawUrl;
+      vid.preload = "metadata";
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.addEventListener("error", () => card.classList.add("is-broken"));
+      card.appendChild(vid);
 
-  // 5. Botón de galería DENTRO de la cámara
-  function toggleCameraGallery() {
-    if (cameraGalleryView.hidden) {
-      galleryStandalone = false;
-      cameraGalleryView.hidden = false;
-      loadGallery();
+      const badge = document.createElement("div");
+      badge.className = "gallery-video-badge";
+      badge.innerHTML = `
+        <span class="gallery-video-play-circle" aria-label="Reproducir vídeo">
+          <span class="ui-icon" data-iconify="player-play"></span>
+        </span>
+        <span class="gallery-video-pill">
+          <span class="ui-icon" data-iconify="player-play"></span>
+          <span>Vídeo</span>
+        </span>`;
+      card.appendChild(badge);
     } else {
-      cameraGalleryView.hidden = true;
+      const img = document.createElement("img");
+      img.alt = "Foto de galería";
+      img.draggable = false;
+      img.loading = "lazy";
+      img.referrerPolicy = "no-referrer";
+      img.src = rawUrl;
+      img.addEventListener("error", async () => {
+        if (!img.dataset.retried && rawUrl) {
+          img.dataset.retried = "1";
+          try {
+            const resp = await fetch(rawUrl, {
+              cache: "reload",
+              referrerPolicy: "no-referrer",
+            });
+            if (resp.ok) {
+              const blob = await resp.blob();
+              img.src = URL.createObjectURL(blob);
+              return;
+            }
+          } catch (err) {}
+        }
+        card.classList.add("is-broken");
+      });
+      card.appendChild(img);
     }
+
+    return card;
   }
 
-  // 6. Flecha atrás de la galería: si la abriste desde el escritorio vuelve al escritorio;
-  //    si la abriste desde la cámara, vuelve a la cámara.
-  function backFromGallery() {
-    if (galleryStandalone) {
-      closeCameraApp();
+  function updateGalleryScrubberActive() {
+    if (!galleryScrollBodyEl || !galleryScrubberListEl || galleryScrubberEl?.hidden) return;
+    const sections = Array.from(galleryGroupsEl.querySelectorAll(".gallery-date-section"));
+    if (!sections.length) return;
+
+    const scrollTop = galleryScrollBodyEl.scrollTop;
+    let activeKey = sections[0].dataset.bucketKey;
+    for (const sec of sections) {
+      if (sec.offsetTop - 32 <= scrollTop) {
+        activeKey = sec.dataset.bucketKey;
+      } else {
+        break;
+      }
+    }
+
+    galleryScrubberListEl.querySelectorAll(".gallery-scrubber-item").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.jumpKey === activeKey);
+    });
+  }
+
+  function renderGallery() {
+    if (!galleryGroupsEl) return;
+
+    const sortedAll = cameraPhotos
+      .filter((item) => Boolean(String(item?.image_url || "").trim()))
+      .slice()
+      .sort((a, b) => {
+        const da = parseGalleryDate(a?.date)?.getTime() ?? 0;
+        const db = parseGalleryDate(b?.date)?.getTime() ?? 0;
+        if (db !== da) return db - da;
+        return (Number(b?.id) || 0) - (Number(a?.id) || 0);
+      });
+
+    const filtered = sortedAll.filter((item) => {
+      const video = isVideoUrl(item.image_url);
+      if (galleryFilter === "favorites") return isItemFavorite(item);
+      if (galleryFilter === "video") return video;
+      if (galleryFilter === "photo") return !video;
+      return true;
+    });
+    galleryFilteredList = filtered;
+
+    if (galleryTotalCountEl) {
+      const count = filtered.length;
+      galleryTotalCountEl.textContent = `${count} ${count === 1 ? "elemento" : "elementos"}`;
+    }
+
+    if (galleryViewMode === "albums") {
+      if (galleryScrubberEl) galleryScrubberEl.hidden = true;
+      galleryApp?.classList.remove("has-scrubber");
+      galleryGroupsEl.innerHTML = "";
+
+      if (galleryActiveAlbumId) {
+        const isDefault = galleryActiveAlbumId === "default";
+        const selectedAlbum = isDefault
+          ? {
+              id: "default",
+              title: "CARPETA POR DEFAULT",
+              description: "Todas las fotos y vídeos guardados en el dispositivo.",
+              color: "#d0d0d0",
+              is_default: true,
+            }
+          : galleryAlbums.find((a) => String(a.id) === String(galleryActiveAlbumId));
+
+        if (!selectedAlbum) {
+          galleryActiveAlbumId = null;
+        } else {
+          const albumItems = isDefault
+            ? filtered
+            : filtered.filter((item) =>
+                (Array.isArray(selectedAlbum.media_ids) ? selectedAlbum.media_ids : [])
+                  .map(Number)
+                  .includes(Number(item.id)),
+              );
+          galleryFilteredList = albumItems;
+
+          const toolbar = document.createElement("div");
+          toolbar.className = "gallery-albums-toolbar";
+          toolbar.innerHTML = `
+            <div class="gallery-albums-heading-group">
+              <button type="button" class="gallery-btn-secondary" id="gallery-album-back-btn">
+                <span class="ui-icon" data-iconify="chevron-left"></span>
+                <span>Álbumes</span>
+              </button>
+              <span class="gallery-albums-heading">${esc(selectedAlbum.title)}</span>
+              <span class="gallery-albums-sub">${albumItems.length} ${albumItems.length === 1 ? "archivo" : "archivos"}</span>
+            </div>`;
+          galleryGroupsEl.appendChild(toolbar);
+
+          if (!albumItems.length) {
+            galleryGroupsEl.insertAdjacentHTML(
+              "beforeend",
+              `<div class="gallery-empty"><span class="ui-icon" data-iconify="folder"></span><p>Este álbum no tiene archivos en este filtro.</p></div>`,
+            );
+          } else {
+            const grid = document.createElement("div");
+            grid.className = "gallery-media-grid";
+            albumItems.forEach((item) => grid.appendChild(createGalleryCard(item)));
+            galleryGroupsEl.appendChild(grid);
+          }
+
+          toolbar.querySelector("#gallery-album-back-btn")?.addEventListener("click", () => {
+            galleryActiveAlbumId = null;
+            renderGallery();
+          });
+          renderCameraIcons();
+          return;
+        }
+      }
+
+      const toolbar = document.createElement("div");
+      toolbar.className = "gallery-albums-toolbar";
+      toolbar.innerHTML = `
+        <div class="gallery-albums-heading-group">
+          <span class="gallery-albums-heading">Álbumes</span>
+          <span class="gallery-albums-sub">Carpetas y álbumes compartidos</span>
+        </div>
+        <button type="button" class="gallery-create-album-btn" id="gallery-btn-create-album">
+          <span class="ui-icon" data-iconify="folder-plus"></span>
+          <span>Crear álbum</span>
+        </button>`;
+      galleryGroupsEl.appendChild(toolbar);
+
+      const foldersGrid = document.createElement("div");
+      foldersGrid.className = "gallery-folders-grid";
+
+      const defaultCard = document.createElement("div");
+      defaultCard.className = "gallery-folder-card";
+      defaultCard.style.setProperty("--folder-color", "#d0d0d0");
+      defaultCard.innerHTML = `
+        <button type="button" class="gallery-folder-open-area">
+          <div class="gallery-folder-top">
+            <span class="gallery-folder-icon-wrap"><span class="ui-icon" data-iconify="folder"></span></span>
+            <span class="gallery-folder-count">${filtered.length}</span>
+          </div>
+          <div class="gallery-folder-title">CARPETA POR DEFAULT</div>
+          <p class="gallery-folder-desc">Todas las fotos y vídeos de tu galería.</p>
+          <div class="gallery-folder-badges"><span class="gallery-folder-tag">Por defecto</span></div>
+        </button>`;
+      defaultCard.querySelector(".gallery-folder-open-area")?.addEventListener("click", () => {
+        galleryActiveAlbumId = "default";
+        renderGallery();
+      });
+      foldersGrid.appendChild(defaultCard);
+
+      const customAlbums = galleryAlbums.filter((a) => !a.is_default);
+      customAlbums.forEach((alb) => {
+        const ids = Array.isArray(alb.media_ids) ? alb.media_ids.map(Number) : [];
+        const countInFilter = filtered.filter((it) => ids.includes(Number(it.id))).length;
+        const isCollab = alb.is_collaborative === true || Number(alb.is_collaborative) === 1;
+
+        const card = document.createElement("div");
+        card.className = "gallery-folder-card";
+        card.style.setProperty("--folder-color", alb.color || "#e5a93c");
+
+        const badges = [];
+        if (isCollab) badges.push(`<span class="gallery-folder-tag">Colaboradora</span>`);
+        if (alb.shared_from) badges.push(`<span class="gallery-folder-tag">Compartida</span>`);
+
+        card.innerHTML = `
+          <button type="button" class="gallery-folder-open-area">
+            <div class="gallery-folder-top">
+              <span class="gallery-folder-icon-wrap"><span class="ui-icon" data-iconify="folder"></span></span>
+              <span class="gallery-folder-count">${countInFilter}</span>
+            </div>
+            <div class="gallery-folder-title">${esc(alb.title)}</div>
+            <p class="gallery-folder-desc">${esc(alb.description || "Sin descripción")}</p>
+            ${badges.length ? `<div class="gallery-folder-badges">${badges.join("")}</div>` : ""}
+          </button>
+          <div class="gallery-folder-actions">
+            <button type="button" class="gallery-folder-collab-toggle${isCollab ? " active" : ""}" title="Permitir que el álbum sea colaborador">
+              <span class="ui-icon" data-iconify="users-plus"></span>
+              <span>${isCollab ? "Colaborador: ON" : "Colaborador"}</span>
+            </button>
+            <div class="gallery-folder-mini-btns">
+              <button type="button" class="gallery-folder-mini-btn" data-alb-act="share" title="Compartir álbum">
+                <span class="ui-icon" data-iconify="share-forward"></span>
+              </button>
+              <button type="button" class="gallery-folder-mini-btn" data-alb-act="edit" title="Editar álbum">
+                <span class="ui-icon" data-iconify="edit"></span>
+              </button>
+              <button type="button" class="gallery-folder-mini-btn danger" data-alb-act="delete" title="Eliminar álbum">
+                <span class="ui-icon" data-iconify="trash"></span>
+              </button>
+            </div>
+          </div>`;
+
+        card.querySelector(".gallery-folder-open-area")?.addEventListener("click", () => {
+          galleryActiveAlbumId = alb.id;
+          renderGallery();
+        });
+
+        card
+          .querySelector(".gallery-folder-collab-toggle")
+          ?.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const nextCollab = !isCollab;
+            const ok = await nui("setAlbumCollaborative", {
+              albumId: alb.id,
+              collaborative: nextCollab,
+            });
+            if (ok !== false) {
+              alb.is_collaborative = nextCollab ? 1 : 0;
+              renderGallery();
+            }
+          });
+
+        card.querySelector('[data-alb-act="share"]')?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openShareAlbumModal(alb);
+        });
+
+        card.querySelector('[data-alb-act="edit"]')?.addEventListener("click", (e) => {
+          e.stopPropagation();
+          openAlbumModal(alb);
+        });
+
+        card.querySelector('[data-alb-act="delete"]')?.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const ok = await nui("deleteGalleryAlbum", { albumId: alb.id });
+          if (ok !== false) {
+            galleryAlbums = galleryAlbums.filter((x) => x.id !== alb.id);
+            if (galleryActiveAlbumId === alb.id) galleryActiveAlbumId = null;
+            renderGallery();
+          }
+        });
+
+        foldersGrid.appendChild(card);
+      });
+
+      galleryGroupsEl.appendChild(foldersGrid);
+      toolbar
+        .querySelector("#gallery-btn-create-album")
+        ?.addEventListener("click", () => openAlbumModal(null));
+      renderCameraIcons();
       return;
     }
-    cameraGalleryView.hidden = true;
-    cameraView.hidden = false;
+
+    if (filtered.length === 0) {
+      const emptyLabel =
+        galleryFilter === "favorites"
+          ? "No tienes fotos ni vídeos en favoritos todavía."
+          : galleryFilter === "video"
+            ? "No hay vídeos guardados todavía."
+            : galleryFilter === "photo"
+              ? "No hay fotos guardadas todavía."
+              : "No hay fotos ni vídeos aún.";
+      galleryGroupsEl.innerHTML = `
+        <div class="gallery-empty">
+          <span class="ui-icon" data-iconify="photo"></span>
+          <p>${esc(emptyLabel)}</p>
+        </div>`;
+      if (galleryScrubberEl) galleryScrubberEl.hidden = true;
+      galleryApp?.classList.remove("has-scrubber");
+      renderCameraIcons();
+      return;
+    }
+
+    galleryGroupsEl.innerHTML = "";
+
+    if (galleryViewMode === "flat") {
+      if (galleryScrubberEl) galleryScrubberEl.hidden = true;
+      galleryApp?.classList.remove("has-scrubber");
+
+      const grid = document.createElement("div");
+      grid.className = "gallery-media-grid";
+      for (const item of filtered) {
+        grid.appendChild(createGalleryCard(item));
+      }
+      galleryGroupsEl.appendChild(grid);
+      renderCameraIcons();
+      return;
+    }
+
+    const groupedMap = new Map();
+    for (const item of filtered) {
+      const bucket = getGalleryBucket(item.date);
+      if (!groupedMap.has(bucket.key)) {
+        groupedMap.set(bucket.key, {
+          key: bucket.key,
+          title: bucket.title,
+          jumpLabel: bucket.jumpLabel,
+          items: [],
+        });
+      }
+      groupedMap.get(bucket.key).items.push(item);
+    }
+
+    const buckets = Array.from(groupedMap.values());
+
+    for (const group of buckets) {
+      const section = document.createElement("div");
+      section.className = "gallery-date-section";
+      section.dataset.bucketKey = group.key;
+
+      const header = document.createElement("div");
+      header.className = "gallery-date-header";
+      header.innerHTML = `
+        <span class="gallery-date-title">${esc(group.title)}</span>
+        <span class="gallery-date-count">${group.items.length} ${group.items.length === 1 ? "archivo" : "archivos"}</span>
+      `;
+
+      const grid = document.createElement("div");
+      grid.className = "gallery-media-grid";
+      for (const item of group.items) {
+        grid.appendChild(createGalleryCard(item));
+      }
+
+      section.appendChild(header);
+      section.appendChild(grid);
+      galleryGroupsEl.appendChild(section);
+    }
+
+    if (galleryScrubberEl && galleryScrubberListEl) {
+      galleryScrubberListEl.innerHTML = "";
+      buckets.forEach((group, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `gallery-scrubber-item${idx === 0 ? " active" : ""}`;
+        btn.dataset.jumpKey = group.key;
+        btn.textContent = group.jumpLabel;
+        btn.title = group.title;
+        btn.addEventListener("click", () => {
+          const targetSection = galleryGroupsEl.querySelector(
+            `.gallery-date-section[data-bucket-key="${group.key}"]`,
+          );
+          if (targetSection && galleryScrollBodyEl) {
+            galleryScrollBodyEl.scrollTo({
+              top: Math.max(0, targetSection.offsetTop - 12),
+              behavior: "smooth",
+            });
+          }
+          galleryScrubberListEl.querySelectorAll(".gallery-scrubber-item").forEach((b) => {
+            b.classList.toggle("active", b === btn);
+          });
+        });
+        galleryScrubberListEl.appendChild(btn);
+      });
+
+      galleryScrubberEl.hidden = false;
+      galleryApp?.classList.add("has-scrubber");
+    }
+
+    renderCameraIcons();
   }
 
-  // 7. Salir de la cámara / galería
+  function toggleCameraGallery() {
+    openGalleryApp();
+  }
+
+  function backFromGallery() {
+    if (!galleryViewerEl?.hidden) {
+      closeGalleryViewer();
+      return;
+    }
+    if (galleryApp) galleryApp.hidden = true;
+    returnToDesktop();
+  }
+
   function closeCameraApp() {
     galleryStandalone = false;
-    cameraApp.hidden = true;
-    exitCameraMode(); // Restauramos el fondo normal y la funda
+    closeGalleryViewer();
+    if (galleryApp) galleryApp.hidden = true;
+    if (cameraApp) cameraApp.hidden = true;
+    exitCameraMode();
     returnToDesktop();
   }
 
@@ -8376,6 +9914,240 @@
         applyCameraButtonsState();
         saveCameraCachedState();
       });
+    });
+
+    document.querySelectorAll("[data-gallery-filter]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        galleryFilter = btn.dataset.galleryFilter || "all";
+        document.querySelectorAll("[data-gallery-filter]").forEach((b) => {
+          const active = b === btn;
+          b.classList.toggle("active", active);
+          b.setAttribute("aria-selected", String(active));
+        });
+        renderGallery();
+      });
+    });
+
+    document.querySelectorAll("[data-gallery-layout]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        galleryLayoutMode = btn.dataset.galleryLayout === "mosaic" ? "mosaic" : "uniform";
+        galleryApp?.classList.toggle("layout-mosaic", galleryLayoutMode === "mosaic");
+        document.querySelectorAll("[data-gallery-layout]").forEach((b) => {
+          b.classList.toggle("active", b === btn);
+        });
+      });
+    });
+
+    document.querySelectorAll("[data-gallery-view]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const mode = btn.dataset.galleryView;
+        galleryViewMode = mode === "dates" ? "dates" : mode === "albums" ? "albums" : "flat";
+        if (galleryViewMode !== "albums") {
+          galleryActiveAlbumId = null;
+        }
+        document.querySelectorAll("[data-gallery-view]").forEach((b) => {
+          b.classList.toggle("active", b === btn);
+        });
+        renderGallery();
+      });
+    });
+
+    galleryScrollBodyEl?.addEventListener("scroll", () => {
+      updateGalleryScrubberActive();
+    });
+
+    document.getElementById("gallery-viewer-close")?.addEventListener("click", () => {
+      closeGalleryViewer();
+    });
+
+    galleryViewerStageEl?.addEventListener("click", (e) => {
+      if (e.target === galleryViewerStageEl) {
+        closeGalleryViewer();
+      }
+    });
+
+    document.getElementById("gallery-fullscreen-close")?.addEventListener("click", () => {
+      closeGalleryFullscreen();
+    });
+
+    galleryFullscreenEl?.addEventListener("click", (e) => {
+      if (e.target === galleryFullscreenEl || e.target === galleryFullscreenStageEl) {
+        closeGalleryFullscreen();
+      }
+    });
+
+    document.querySelectorAll("[data-viewer-action]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const act = btn.dataset.viewerAction;
+        if (act === "add-to-album") {
+          const pop = document.getElementById("gallery-add-album-popover");
+          if (pop && !pop.hidden) {
+            pop.hidden = true;
+          } else {
+            openAddToAlbumPopover();
+          }
+          return;
+        }
+        if (act === "favorite") {
+          toggleFavoriteCurrentItem();
+          return;
+        }
+        const labels = {
+          share: "Compartir",
+          edit: "Editar",
+          wallpaper: "Establecer fondo de pantalla",
+          copy: "Copiar al portapapeles",
+          info: "Información",
+          delete: "Eliminar",
+        };
+        const actionName = labels[act] || "Acción";
+        showNotification({
+          appName: "Galería",
+          icon: "info-circle",
+          title: actionName,
+          message: "Esta función estará disponible próximamente.",
+        });
+      });
+    });
+
+    document.getElementById("gallery-add-album-close")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.getElementById("gallery-add-album-popover")?.setAttribute("hidden", "");
+    });
+
+    document.querySelectorAll("#gallery-album-colors .gallery-color-swatch").forEach((sw) => {
+      sw.addEventListener("click", () => {
+        selectedAlbumColor = sw.dataset.color || "#e5a93c";
+        document
+          .querySelectorAll("#gallery-album-colors .gallery-color-swatch")
+          .forEach((b) => {
+            b.classList.toggle("active", b === sw);
+          });
+      });
+    });
+
+    document
+      .getElementById("gallery-album-modal-close")
+      ?.addEventListener("click", closeAlbumModal);
+    document
+      .getElementById("gallery-album-modal-cancel")
+      ?.addEventListener("click", closeAlbumModal);
+
+    document.getElementById("gallery-album-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("gallery-album-title-input")?.value.trim() || "";
+      const description =
+        document.getElementById("gallery-album-desc-input")?.value.trim() || "";
+      if (!title) return;
+
+      if (editingAlbumId) {
+        const res = await nui("updateGalleryAlbum", {
+          albumId: editingAlbumId,
+          title,
+          description,
+          color: selectedAlbumColor,
+        });
+        if (res !== false) {
+          const alb = galleryAlbums.find((a) => a.id === editingAlbumId);
+          if (alb) {
+            alb.title = title;
+            alb.description = description;
+            alb.color = selectedAlbumColor;
+          }
+          closeAlbumModal();
+          renderGallery();
+        }
+      } else {
+        const created = await nui("createGalleryAlbum", {
+          title,
+          description,
+          color: selectedAlbumColor,
+        });
+        if (created && created.id) {
+          galleryAlbums.push(created);
+          closeAlbumModal();
+          renderGallery();
+        }
+      }
+    });
+
+    document
+      .getElementById("gallery-share-album-close")
+      ?.addEventListener("click", closeShareAlbumModal);
+    document
+      .getElementById("gallery-share-album-cancel")
+      ?.addEventListener("click", closeShareAlbumModal);
+
+    document.querySelectorAll("[data-share-mode]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectedShareMode = btn.dataset.shareMode === "collab" ? "collab" : "copy";
+        document.querySelectorAll("[data-share-mode]").forEach((b) => {
+          b.classList.toggle("active", b === btn);
+        });
+      });
+    });
+
+    document
+      .getElementById("gallery-share-album-form")
+      ?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const targetNumber =
+          document.getElementById("gallery-share-target-input")?.value.trim() || "";
+        if (!sharingAlbumId || !targetNumber) return;
+
+        const res = await nui("shareGalleryAlbum", {
+          albumId: sharingAlbumId,
+          targetNumber,
+          mode: selectedShareMode,
+        });
+        if (res && res.ok) {
+          showNotification({
+            appName: "Galería",
+            icon: "check",
+            title: "Invitación enviada",
+            message: `Se envió la invitación del álbum a ${targetNumber}.`,
+          });
+          closeShareAlbumModal();
+        } else {
+          showNotification({
+            appName: "Galería",
+            icon: "alert-triangle",
+            title: "No se pudo compartir",
+            message: res?.message || "Comprueba el número de SIM del jugador.",
+          });
+        }
+      });
+
+    document.getElementById("gallery-invite-reject")?.addEventListener("click", async () => {
+      if (pendingAlbumInvite) {
+        await nui("respondGalleryAlbumInvite", {
+          inviteId: pendingAlbumInvite.inviteId,
+          accept: false,
+        });
+      }
+      pendingAlbumInvite = null;
+      document.getElementById("gallery-invite-modal")?.setAttribute("hidden", "");
+    });
+
+    document.getElementById("gallery-invite-accept")?.addEventListener("click", async () => {
+      if (pendingAlbumInvite) {
+        const res = await nui("respondGalleryAlbumInvite", {
+          inviteId: pendingAlbumInvite.inviteId,
+          accept: true,
+        });
+        if (res && res.ok) {
+          await loadGallery();
+          showNotification({
+            appName: "Galería",
+            icon: "folder",
+            title: "Álbum añadido",
+            message: `Se añadió "${pendingAlbumInvite.title}" a tus álbumes.`,
+          });
+        }
+      }
+      pendingAlbumInvite = null;
+      document.getElementById("gallery-invite-modal")?.setAttribute("hidden", "");
     });
   }, 1000);
 })();

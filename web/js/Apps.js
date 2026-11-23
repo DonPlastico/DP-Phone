@@ -87,7 +87,7 @@ window.DESKTOP_APPS = [
     id: "gallery",
     cat: "Multimedia",
     name: "Galería",
-    icon: "photo",
+    icon: "clarity:image-gallery-solid",
     c: ["#ffd36b", "#ee6a8a"],
     desc: "Tus fotos y capturas, con álbumes y compartir",
     size: 200, // ~200 MB
