@@ -842,6 +842,9 @@
     if (settingsSlider) {
       settingsSlider.value = val;
       settingsSlider.style.setProperty("--brightness-fill", `${val}%`);
+      if (settingsSlider.parentElement) {
+        settingsSlider.parentElement.style.setProperty("--brightness-fill", `${val}%`);
+      }
       const badge = document.getElementById("brightness-percent-badge");
       if (badge) badge.textContent = `${val}%`;
       const lowIcon = document.querySelector(".brightness-icon-low");
@@ -910,12 +913,6 @@
       rNotif.value = notificaciones;
       rNotif.style.setProperty("--p", notificaciones / 200);
       document.getElementById("val-notificaciones").textContent = `${notificaciones}%`;
-    }
-
-    const profileBadge = document.getElementById("sound-profile-badge");
-    if (profileBadge) {
-      const allZero = Number(multimedia) === 0 && Number(llamadas) === 0 && Number(notificaciones) === 0;
-      profileBadge.textContent = allZero ? "SILENCIADO" : "PERFIL SONORO";
     }
 
     // Actualizar sliders del Header (Centro de Notificaciones)
@@ -1612,7 +1609,6 @@
       title: "Pantalla y Brillo",
       content: `
         <div class="display-redesign-wrapper">
-          <!-- Cabecera Principal -->
           <div class="settings-section-banner" style="margin-bottom: 0;">
             <div class="settings-section-banner-left">
               <span class="settings-section-banner-icon" data-iconify="brightness-up"></span>
@@ -1624,7 +1620,6 @@
             <span class="appearance-block-badge">PANEL OLED</span>
           </div>
 
-          <!-- Bloque 1: Luminosidad con medidor numérico, barra visual y accesos rápidos -->
           <div class="display-card-module">
             <div class="display-card-header">
               <div class="display-card-title-group">
@@ -1641,7 +1636,7 @@
 
             <div class="display-brightness-control-bar">
               <button type="button" class="display-brightness-step-btn" data-brightness-preset="15" title="Brillo bajo (15%)">
-                <span class="ui-icon brightness-icon-low" data-iconify="moon"></span>
+                <span class="ui-icon brightness-icon-low" data-iconify="sun-low"></span>
               </button>
 
               <div class="display-brightness-track-wrap">
@@ -1649,7 +1644,7 @@
               </div>
 
               <button type="button" class="display-brightness-step-btn" data-brightness-preset="100" title="Brillo máximo (100%)">
-                <span class="ui-icon brightness-icon-high" data-iconify="sun"></span>
+                <span class="ui-icon brightness-icon-high" data-iconify="sun-high"></span>
               </button>
             </div>
 
@@ -1661,7 +1656,6 @@
             </div>
           </div>
 
-          <!-- Bloque 2: Escala de Interfaz (Móvil vs Expandida) con esquema visual de formato -->
           <div class="display-scale-grid">
             <div class="display-card-module">
               <div class="display-card-header">
@@ -1675,7 +1669,7 @@
                 <span class="display-form-badge">VERTICAL</span>
               </div>
 
-              <div class="display-segmented-bar" id="mobile-size-group">
+              <div class="display-button-group display-scale-group" id="mobile-size-group">
                 <button type="button" class="display-option-btn" data-value="small">
                   <strong>Pequeño</strong>
                   <span>85%</span>
@@ -1694,7 +1688,7 @@
             <div class="display-card-module">
               <div class="display-card-header">
                 <div class="display-card-title-group">
-                  <span class="ui-icon" data-iconify="device-tablet"></span>
+                  <span class="ui-icon" data-iconify="maximize"></span>
                   <div>
                     <strong>Modo Expandido (Tri-Fold)</strong>
                     <span>Proporción de elementos en vista panorámica.</span>
@@ -1703,7 +1697,7 @@
                 <span class="display-form-badge">3 PANELES</span>
               </div>
 
-              <div class="display-segmented-bar" id="expanded-size-group">
+              <div class="display-button-group display-scale-group" id="expanded-size-group">
                 <button type="button" class="display-option-btn" data-value="small">
                   <strong>Pequeño</strong>
                   <span>85%</span>
@@ -1720,7 +1714,6 @@
             </div>
           </div>
 
-          <!-- Bloque 3: Tipografía con vista previa en vivo -->
           <div class="display-card-module">
             <div class="display-card-header">
               <div class="display-card-title-group">
@@ -1730,7 +1723,7 @@
                   <span>Ajusta el tamaño de lectura en menús, mensajes y notificaciones.</span>
                 </div>
               </div>
-              <div class="display-segmented-bar display-text-bar" id="text-size-group">
+              <div class="display-button-group display-text-group" id="text-size-group">
                 <button type="button" class="display-option-btn" data-value="small">A-</button>
                 <button type="button" class="display-option-btn active" data-value="normal">A</button>
                 <button type="button" class="display-option-btn" data-value="large">A+</button>
@@ -1887,7 +1880,6 @@
       title: "Sonidos y Vibración",
       content: `
         <div class="sound-v2-wrapper">
-          <!-- Cabecera -->
           <div class="settings-section-banner" style="margin-bottom: 0;">
             <div class="settings-section-banner-left">
               <span class="settings-section-banner-icon" data-iconify="volume"></span>
@@ -1902,11 +1894,10 @@
             </button>
           </div>
 
-          <!-- Bloque 1: Perfil Rápido (Sonido / Vibración / Silencio) + Respuesta Háptica -->
           <div class="sound-v2-card">
             <div class="sound-v2-card-top">
               <div class="sound-v2-heading">
-                <span class="ui-icon" data-iconify="sliders"></span>
+                <span class="sound-v2-box-icon" data-iconify="volume"></span>
                 <div>
                   <strong>Perfil de Audio</strong>
                   <span>Cambia al instante entre sonido activo, solo vibración o silencio total.</span>
@@ -1933,7 +1924,7 @@
 
             <div class="sound-v2-haptic-row">
               <div class="sound-v2-haptic-info">
-                <span class="sound-v2-mini-icon" data-iconify="device-mobile"></span>
+                <span class="sound-v2-box-icon sm" data-iconify="activity"></span>
                 <div>
                   <strong>Vibrar al recibir llamadas y avisos</strong>
                   <span>Pulso háptico incluso cuando el volumen esté bajo.</span>
@@ -1946,10 +1937,9 @@
             </div>
           </div>
 
-          <!-- Bloque 2: Niveles de Volumen en filas limpias de ancho completo -->
           <div class="sound-v2-card">
             <div class="sound-v2-heading">
-              <span class="ui-icon" data-iconify="volume"></span>
+              <span class="sound-v2-box-icon" data-iconify="sliders"></span>
               <div>
                 <strong>Niveles de Volumen</strong>
                 <span>Sincronizados en tiempo real con las teclas laterales y el panel superior.</span>
@@ -1957,9 +1947,8 @@
             </div>
 
             <div class="sound-v2-sliders-list">
-              <!-- Multimedia -->
               <div class="sound-v2-track-row">
-                <span class="sound-v2-channel-icon" data-iconify="music"></span>
+                <span class="sound-v2-box-icon" data-iconify="volume-2"></span>
                 <div class="sound-v2-track-body">
                   <div class="sound-v2-track-meta">
                     <div>
@@ -1972,9 +1961,8 @@
                 </div>
               </div>
 
-              <!-- Llamadas -->
               <div class="sound-v2-track-row">
-                <span class="sound-v2-channel-icon" data-iconify="phone"></span>
+                <span class="sound-v2-box-icon" data-iconify="phone-incoming"></span>
                 <div class="sound-v2-track-body">
                   <div class="sound-v2-track-meta">
                     <div>
@@ -1987,9 +1975,8 @@
                 </div>
               </div>
 
-              <!-- Notificaciones -->
               <div class="sound-v2-track-row">
-                <span class="sound-v2-channel-icon" data-iconify="bell-ringing"></span>
+                <span class="sound-v2-box-icon" data-iconify="bell-z"></span>
                 <div class="sound-v2-track-body">
                   <div class="sound-v2-track-meta">
                     <div>
@@ -2004,32 +1991,91 @@
             </div>
           </div>
 
-          <!-- Bloque 3: Tonos del Sistema en 2 columnas -->
           <div class="sound-v2-tones-grid">
             <div class="sound-v2-tone-box">
               <div class="sound-v2-tone-top">
-                <span class="sound-v2-mini-icon" data-iconify="phone"></span>
+                <span class="sound-v2-box-icon sm" data-iconify="phone"></span>
                 <div>
                   <strong>Tono de llamada</strong>
                   <span>Melodía al recibir llamada</span>
                 </div>
               </div>
-              <select class="sound-select sound-v2-select" aria-label="Tono de llamada">
-                <option value="" disabled selected>Seleccionar melodía...</option>
-              </select>
+
+              <div class="custom-sound-select" data-custom-sound-select="ringtone">
+                <button type="button" class="custom-sound-trigger" aria-expanded="false">
+                  <span class="custom-sound-placeholder">Seleccionar melodía...</span>
+                  <span class="custom-sound-chevron" data-iconify="chevron-down"></span>
+                </button>
+                <div class="custom-sound-menu" role="listbox" hidden>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>iFruit Marimba</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>Vinewood Pulse</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>Del Perro Breeze</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>LSFD Dispatch</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>Retro Synth 88</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>Midnight Bell</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="sound-v2-tone-box">
               <div class="sound-v2-tone-top">
-                <span class="sound-v2-mini-icon" data-iconify="bell"></span>
+                <span class="sound-v2-box-icon sm" data-iconify="bell"></span>
                 <div>
                   <strong>Tono de notificación</strong>
                   <span>Aviso corto de mensajes</span>
                 </div>
               </div>
-              <select class="sound-select sound-v2-select" aria-label="Tono de notificación">
-                <option value="" disabled selected>Seleccionar aviso...</option>
-              </select>
+
+              <div class="custom-sound-select" data-custom-sound-select="notif">
+                <button type="button" class="custom-sound-trigger" aria-expanded="false">
+                  <span class="custom-sound-placeholder">Seleccionar aviso...</span>
+                  <span class="custom-sound-chevron" data-iconify="chevron-down"></span>
+                </button>
+                <div class="custom-sound-menu" role="listbox" hidden>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>Chime Ping</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>Glass Drop</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>Radar Tick</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>Soft Pop</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>Pager Chirp</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                  <div class="custom-sound-option is-locked" aria-disabled="true" title="Tono de ejemplo no seleccionable">
+                    <span>Subtle Tap</span>
+                    <small>EJEMPLO</small>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2038,47 +2084,72 @@
     notifications: {
       title: "Notificaciones",
       content: `
-        <div class="notifications-settings-container">
-            <div class="settings-section-banner" style="margin-bottom: 0;">
-                <div class="settings-section-banner-left">
-                    <span class="settings-section-banner-icon" data-iconify="bell-ringing"></span>
-                    <div>
-                        <h3 class="settings-submenu-title">Notificaciones</h3>
-                        <p class="settings-submenu-desc">Configura cómo y cuándo quieres recibir alertas en pantalla.</p>
-                    </div>
-                </div>
+        <div class="notif-v12-wrapper">
+          <div class="settings-section-banner" style="margin-bottom: 0;">
+            <div class="settings-section-banner-left">
+              <span class="settings-section-banner-icon" data-iconify="bell-ringing"></span>
+              <div>
+                <h3 class="settings-submenu-title">Notificaciones</h3>
+                <p class="settings-submenu-desc">Controla el estado global de alertas, vista previa y permisos por app.</p>
+              </div>
             </div>
-            <div class="settings-menu-group" style="margin-bottom: 0;">
-                <div class="setting-item" style="background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.08); border-radius:0 !important; padding: 12px 14px; box-shadow:none;">
-                    <span class="setting-icon" data-iconify="moon"></span>
-                    <div class="setting-text">
-                        <strong>No Molestar</strong>
-                        <span>Silencia todas las notificaciones del dispositivo.</span>
-                    </div>
-                    <label class="toggle-switch"><input type="checkbox" id="toggle-do-not-disturb" ${notificationSettings.doNotDisturb ? "checked" : ""}><span class="slider"></span></label>
-                </div>
-                <div class="setting-item" style="background:transparent; border:none; border-radius:0 !important; padding: 12px 14px; box-shadow:none;">
-                    <span class="setting-icon" data-iconify="lock"></span>
-                    <div class="setting-text">
-                        <strong>Vista previa en bloqueo</strong>
-                        <span>Mostrar notificaciones en la pantalla de bloqueo.</span>
-                    </div>
-                    <label class="toggle-switch"><input type="checkbox" id="toggle-lock-preview" ${notificationSettings.lockPreview ? "checked" : ""}><span class="slider"></span></label>
-                </div>
+            <span class="appearance-block-badge" id="notif-master-status">${notificationSettings.doNotDisturb ? "NO MOLESTAR" : "ALERTAS ACTIVAS"}</span>
+          </div>
+
+          <div class="notif-v12-global-grid">
+            <div class="notif-v12-rule-card">
+              <div class="notif-v12-rule-top">
+                <span class="sound-v2-box-icon sm" data-iconify="moon"></span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-do-not-disturb" ${notificationSettings.doNotDisturb ? "checked" : ""}>
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="notif-v12-rule-copy">
+                <strong>No Molestar</strong>
+                <span>Silencia y bloquea todas las notificaciones entrantes del dispositivo.</span>
+              </div>
             </div>
-            <div class="sound-section">
-                <div class="sound-section-header">
-                    <span class="ui-icon" data-iconify="layout-dashboard"></span>
-                    <div class="display-section-text" style="display:flex; flex-direction:row; justify-content:space-between; align-items:center; width:100%;">
-                        <div>
-                            <strong>Por aplicación</strong>
-                            <span>Elige qué apps pueden enviarte alertas.</span>
-                        </div>
-                        <span id="app-notif-counter" style="font-size: calc(11px * var(--text-scale));">0/0</span>
-                    </div>
-                </div>
-                <div class="settings-menu-group" id="app-notification-list" style="margin-bottom: 0;"></div>
+
+            <div class="notif-v12-rule-card">
+              <div class="notif-v12-rule-top">
+                <span class="sound-v2-box-icon sm" data-iconify="lock"></span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-lock-preview" ${notificationSettings.lockPreview ? "checked" : ""}>
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="notif-v12-rule-copy">
+                <strong>Vista previa en bloqueo</strong>
+                <span>Muestra el contenido de las notificaciones en la pantalla de bloqueo.</span>
+              </div>
             </div>
+          </div>
+
+          <div class="notif-v12-apps-module">
+            <div class="notif-v12-apps-head">
+              <div class="sound-v2-heading">
+                <span class="sound-v2-box-icon" data-iconify="layout-dashboard"></span>
+                <div>
+                  <strong>Por aplicación</strong>
+                  <span>Activa o silencia las alertas de cada aplicación instalada.</span>
+                </div>
+              </div>
+
+              <div class="notif-v12-apps-actions">
+                <span class="notif-v12-counter-pill" id="app-notif-counter">0/0</span>
+                <button type="button" class="notif-v12-bulk-btn" data-notif-bulk="all" title="Activar notificaciones en todas las apps">Todas</button>
+                <button type="button" class="notif-v12-bulk-btn" data-notif-bulk="none" title="Desactivar notificaciones en todas las apps">Ninguna</button>
+              </div>
+            </div>
+
+            <div class="notif-v12-filter-bar">
+              <span class="ui-icon" data-iconify="search"></span>
+              <input type="text" id="notif-app-filter" placeholder="Filtrar aplicación o categoría..." autocomplete="off" />
+            </div>
+
+            <div class="notif-v12-apps-grid" id="app-notification-list"></div>
+          </div>
         </div>
       `,
     },
@@ -2204,49 +2275,59 @@
     const counter = document.getElementById("app-notif-counter");
     if (!list || !counter) return;
 
-    // Aseguramos que appSettings siempre exista
     if (!notificationSettings.appSettings) {
       notificationSettings.appSettings = {};
     }
 
-    // OBTENER TODAS LAS APPS (Predeterminadas + Instaladas de la tienda)
-    // Excluimos las que no tienen sentido para notificaciones
+    const filterQuery = normalizeText(document.getElementById("notif-app-filter")?.value || "");
     const allAppsList = allApps().filter((app) => app.id !== "settings" && app.id !== "store");
 
     const total = allAppsList.length;
     let active = 0;
+    allAppsList.forEach((app) => {
+      if (notificationSettings.appSettings[app.id] !== false) active++;
+    });
 
-    list.innerHTML = allAppsList
-      .map((app) => {
-        // El estado REAL de la app se guarda en appSettings. Por defecto true.
-        const isReallyActive = notificationSettings.appSettings[app.id] !== false;
+    const visibleApps = allAppsList.filter((app) => {
+      if (!filterQuery) return true;
+      return (
+        normalizeText(app.name).includes(filterQuery) ||
+        normalizeText(app.cat || "").includes(filterQuery)
+      );
+    });
 
-        // Si el DND está activo, el toggle se ve APAGADO (false) y deshabilitado.
-        // Si no, se ve según su estado real.
-        const isVisuallyChecked = notificationSettings.doNotDisturb ? false : isReallyActive;
+    if (!visibleApps.length) {
+      list.innerHTML = `<div class="notif-v12-empty">No hay aplicaciones que coincidan con el filtro.</div>`;
+    } else {
+      list.innerHTML = visibleApps
+        .map((app) => {
+          const isReallyActive = notificationSettings.appSettings[app.id] !== false;
+          const isVisuallyChecked = notificationSettings.doNotDisturb ? false : isReallyActive;
 
-        // El contador de activas solo cuenta las que están activas de verdad
-        if (isReallyActive) active++;
-
-        return `
-      <div class="setting-item" style="padding: 12px 16px;">
-          <span class="app-icon" style="--a1:${app.c[0]}; --a2:${app.c[1]}; width: 36px; height: 36px; font-size: 20px;">
-              ${iconifySvg(app.icon)}
-          </span>
-          <div class="setting-text">
-              <strong>${esc(app.name)}</strong>
-              <span>${esc(app.cat || "Aplicación")}</span>
-          </div>
-          <label class="toggle-switch">
-              <input type="checkbox" class="app-notif-toggle" data-app-id="${app.id}" ${isVisuallyChecked ? "checked" : ""} ${notificationSettings.doNotDisturb ? "disabled" : ""}>
-              <span class="slider"></span>
-          </label>
-      </div>
-    `;
-      })
-      .join("");
+          return `
+        <div class="notif-v12-app-tile${notificationSettings.doNotDisturb ? " is-dnd-locked" : ""}">
+            <span class="app-icon notif-v12-app-icon" style="--a1:${app.c[0]}; --a2:${app.c[1]};">
+                ${iconifySvg(app.icon)}
+            </span>
+            <div class="notif-v12-app-info">
+                <strong>${esc(app.name)}</strong>
+                <span>${esc(app.cat || "Aplicación")}</span>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" class="app-notif-toggle" data-app-id="${app.id}" ${isVisuallyChecked ? "checked" : ""} ${notificationSettings.doNotDisturb ? "disabled" : ""}>
+                <span class="slider"></span>
+            </label>
+        </div>
+      `;
+        })
+        .join("");
+    }
 
     counter.textContent = `${active}/${total}`;
+    const masterBadge = document.getElementById("notif-master-status");
+    if (masterBadge) {
+      masterBadge.textContent = notificationSettings.doNotDisturb ? "NO MOLESTAR" : "ALERTAS ACTIVAS";
+    }
   }
 
   function renderSettings() {
@@ -2336,19 +2417,9 @@
           });
         }
 
-        // Asegurarnos de que el slider de brillo tenga el valor correcto
         const savedBrightness =
           savedSettings.brightness !== undefined ? savedSettings.brightness : 70;
-        const settingsSlider = document.getElementById("brightness-slider");
-        if (settingsSlider) {
-          settingsSlider.value = savedBrightness;
-          const lowIcon = document.querySelector(".brightness-icon-low");
-          const highIcon = document.querySelector(".brightness-icon-high");
-          if (lowIcon && highIcon) {
-            lowIcon.style.opacity = 0.1 + (savedBrightness / 100) * 0.9;
-            highIcon.style.opacity = 1 - (savedBrightness / 100) * 0.9;
-          }
-        }
+        applyBrightness(savedBrightness);
       }
 
       if (tabId === "phone") {
@@ -2569,6 +2640,15 @@
   settingsSearch.addEventListener("input", filterSettings);
 
   settingsContentPanel.addEventListener("input", (event) => {
+    if (event.target.id === "notif-app-filter") {
+      renderAppNotificationList();
+      return;
+    }
+    const liveBrightness = event.target.closest("#brightness-slider");
+    if (liveBrightness) {
+      applyBrightness(parseInt(liveBrightness.value, 10));
+      return;
+    }
     if (event.target.closest(".sound-range")) {
       const multi = parseInt(document.getElementById("range-multimedia")?.value || 100, 10);
       const llam = parseInt(document.getElementById("range-llamadas")?.value || 100, 10);
@@ -2815,48 +2895,48 @@
       return;
     }
 
-    const brightnessPresetBtn = event.target.closest("[data-brightness-preset]");
-    if (brightnessPresetBtn) {
-      const val = parseInt(brightnessPresetBtn.dataset.brightnessPreset, 10);
-      applyBrightness(val);
-
-      if (window.PhoneData && window.PhoneData.imei) {
-        if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
-        window.PhoneData.hardware.settings.brightness = val;
-
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
-      }
-      return;
-    }
-
     // ==========================================
     // LÓGICA DE BRILLO (Unificada)
     // ==========================================
-    const brightnessSlider = event.target.closest("#brightness-slider");
-    if (brightnessSlider) {
-      const val = parseInt(brightnessSlider.value, 10);
-      applyBrightness(val);
+    const customLockedOption = event.target.closest(".custom-sound-option.is-locked");
+    if (customLockedOption) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
 
-      if (window.PhoneData && window.PhoneData.imei) {
-        if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
-        window.PhoneData.hardware.settings.brightness = val;
+    const customTrigger = event.target.closest(".custom-sound-trigger");
+    if (customTrigger) {
+      const parentSelect = customTrigger.closest(".custom-sound-select");
+      const menu = parentSelect?.querySelector(".custom-sound-menu");
+      const willOpen = menu ? menu.hidden : false;
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+      document.querySelectorAll(".custom-sound-menu").forEach((m) => {
+        m.hidden = true;
+      });
+      document.querySelectorAll(".custom-sound-trigger").forEach((t) => {
+        t.setAttribute("aria-expanded", "false");
+        t.classList.remove("is-open");
+      });
+
+      if (menu && willOpen) {
+        menu.hidden = false;
+        customTrigger.setAttribute("aria-expanded", "true");
+        customTrigger.classList.add("is-open");
       }
       return;
     }
 
-    // ==========================================
-    // PERFIL DE AUDIO Y RESET DE VOLÚMENES
-    // ==========================================
+    if (!event.target.closest(".custom-sound-select")) {
+      document.querySelectorAll(".custom-sound-menu").forEach((m) => {
+        m.hidden = true;
+      });
+      document.querySelectorAll(".custom-sound-trigger").forEach((t) => {
+        t.setAttribute("aria-expanded", "false");
+        t.classList.remove("is-open");
+      });
+    }
+
     const profileBtn = event.target.closest("[data-sound-profile]");
     if (profileBtn) {
       const profile = profileBtn.dataset.soundProfile;
@@ -2892,6 +2972,70 @@
       return;
     }
 
+    const bulkBtn = event.target.closest("[data-notif-bulk]");
+    if (bulkBtn) {
+      if (notificationSettings.doNotDisturb) return;
+      const enableAll = bulkBtn.dataset.notifBulk === "all";
+      if (!notificationSettings.appSettings) notificationSettings.appSettings = {};
+      allApps()
+        .filter((app) => app.id !== "settings" && app.id !== "store")
+        .forEach((app) => {
+          notificationSettings.appSettings[app.id] = enableAll;
+        });
+
+      if (window.PhoneData && window.PhoneData.imei) {
+        if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
+        if (!window.PhoneData.hardware.settings.notifications)
+          window.PhoneData.hardware.settings.notifications = {};
+        window.PhoneData.hardware.settings.notifications.appSettings =
+          notificationSettings.appSettings;
+
+        nui("saveHardwareData", {
+          imei: window.PhoneData.imei,
+          settings: window.PhoneData.hardware.settings,
+          installed_apps: window.PhoneData.hardware.installed_apps || [],
+        });
+      }
+      renderAppNotificationList();
+      return;
+    }
+
+    const brightnessPresetBtn = event.target.closest("[data-brightness-preset]");
+    if (brightnessPresetBtn) {
+      const val = parseInt(brightnessPresetBtn.dataset.brightnessPreset, 10);
+      applyBrightness(val);
+
+      if (window.PhoneData && window.PhoneData.imei) {
+        if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
+        window.PhoneData.hardware.settings.brightness = val;
+
+        nui("saveHardwareData", {
+          imei: window.PhoneData.imei,
+          settings: window.PhoneData.hardware.settings,
+          installed_apps: window.PhoneData.hardware.installed_apps || [],
+        });
+      }
+      return;
+    }
+
+    const brightnessSlider = event.target.closest("#brightness-slider");
+    if (brightnessSlider) {
+      const val = parseInt(brightnessSlider.value, 10);
+      applyBrightness(val);
+
+      if (window.PhoneData && window.PhoneData.imei) {
+        if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
+        window.PhoneData.hardware.settings.brightness = val;
+
+        nui("saveHardwareData", {
+          imei: window.PhoneData.imei,
+          settings: window.PhoneData.hardware.settings,
+          installed_apps: window.PhoneData.hardware.installed_apps || [],
+        });
+      }
+      return;
+    }
+
     // ==========================================
     // LÓGICA DE SONIDOS (Ajustes)
     // ==========================================
@@ -2913,7 +3057,7 @@
     // ==========================================
     // BOTONES DE TAMAÑO (Pantalla y Texto)
     // ==========================================
-    const buttonGroup = event.target.closest(".display-segmented-bar, .display-button-group");
+    const buttonGroup = event.target.closest(".display-button-group, .display-scale-group, .display-text-group");
     if (buttonGroup) {
       const clickedBtn = event.target.closest(".display-option-btn");
       if (!clickedBtn) return;
@@ -8092,12 +8236,9 @@
       galleryApp?.querySelectorAll("[data-iconify]").forEach((el) => {
         el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
       });
-      document
-        .getElementById("gallery-fullscreen-overlay")
-        ?.querySelectorAll("[data-iconify]")
-        .forEach((el) => {
-          el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
-        });
+      document.getElementById("gallery-fullscreen-overlay")?.querySelectorAll("[data-iconify]").forEach((el) => {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      });
     }
   }
 
@@ -8120,32 +8261,12 @@
   }
 
   const MONTHS_SHORT_ES = [
-    "ENE",
-    "FEB",
-    "MAR",
-    "ABR",
-    "MAY",
-    "JUN",
-    "JUL",
-    "AGO",
-    "SEP",
-    "OCT",
-    "NOV",
-    "DIC",
+    "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
+    "JUL", "AGO", "SEP", "OCT", "NOV", "DIC",
   ];
   const MONTHS_FULL_ES = [
-    "ENERO",
-    "FEBRERO",
-    "MARZO",
-    "ABRIL",
-    "MAYO",
-    "JUNIO",
-    "JULIO",
-    "AGOSTO",
-    "SEPTIEMBRE",
-    "OCTUBRE",
-    "NOVIEMBRE",
-    "DICIEMBRE",
+    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
   ];
 
   function getGalleryBucket(rawDate) {
@@ -8352,8 +8473,7 @@
     fwd5Btn.innerHTML = `<span class="ui-icon" data-iconify="tabler:rewind-forward-5"></span>`;
     fwd5Btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const dur =
-        Number.isFinite(vid.duration) && vid.duration > 0 ? vid.duration : vid.currentTime + 5;
+      const dur = Number.isFinite(vid.duration) && vid.duration > 0 ? vid.duration : vid.currentTime + 5;
       vid.currentTime = Math.min(dur, vid.currentTime + 5);
     });
 
@@ -8456,7 +8576,9 @@
       volSlider.value = String(pct);
       volTooltip.textContent = String(pct);
       const iconName = pct === 0 ? "akar-icons:sound-off" : "akar-icons:sound-on";
-      muteBtn.innerHTML = window.iconifySvg ? window.iconifySvg(iconName, "iconify-svg") : "";
+      muteBtn.innerHTML = window.iconifySvg
+        ? window.iconifySvg(iconName, "iconify-svg")
+        : "";
     };
 
     muteBtn.addEventListener("click", (e) => {
@@ -8539,7 +8661,9 @@
       }
       syncTime();
       const iconName = paused ? "player-play" : "player-pause";
-      playBtn.innerHTML = window.iconifySvg ? window.iconifySvg(iconName, "iconify-svg") : "";
+      playBtn.innerHTML = window.iconifySvg
+        ? window.iconifySvg(iconName, "iconify-svg")
+        : "";
     };
 
     const togglePlay = (e) => {
@@ -8608,9 +8732,7 @@
       galleryViewerCarouselEl.appendChild(thumbBtn);
     });
 
-    const activeThumb = galleryViewerCarouselEl.querySelector(
-      ".gallery-carousel-thumb.active",
-    );
+    const activeThumb = galleryViewerCarouselEl.querySelector(".gallery-carousel-thumb.active");
     activeThumb?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }
 
@@ -9286,20 +9408,18 @@
           renderGallery();
         });
 
-        card
-          .querySelector(".gallery-folder-collab-toggle")
-          ?.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            const nextCollab = !isCollab;
-            const ok = await nui("setAlbumCollaborative", {
-              albumId: alb.id,
-              collaborative: nextCollab,
-            });
-            if (ok !== false) {
-              alb.is_collaborative = nextCollab ? 1 : 0;
-              renderGallery();
-            }
+        card.querySelector(".gallery-folder-collab-toggle")?.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const nextCollab = !isCollab;
+          const ok = await nui("setAlbumCollaborative", {
+            albumId: alb.id,
+            collaborative: nextCollab,
           });
+          if (ok !== false) {
+            alb.is_collaborative = nextCollab ? 1 : 0;
+            renderGallery();
+          }
+        });
 
         card.querySelector('[data-alb-act="share"]')?.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -9325,9 +9445,7 @@
       });
 
       galleryGroupsEl.appendChild(foldersGrid);
-      toolbar
-        .querySelector("#gallery-btn-create-album")
-        ?.addEventListener("click", () => openAlbumModal(null));
+      toolbar.querySelector("#gallery-btn-create-album")?.addEventListener("click", () => openAlbumModal(null));
       renderCameraIcons();
       return;
     }
@@ -10019,26 +10137,19 @@
     document.querySelectorAll("#gallery-album-colors .gallery-color-swatch").forEach((sw) => {
       sw.addEventListener("click", () => {
         selectedAlbumColor = sw.dataset.color || "#e5a93c";
-        document
-          .querySelectorAll("#gallery-album-colors .gallery-color-swatch")
-          .forEach((b) => {
-            b.classList.toggle("active", b === sw);
-          });
+        document.querySelectorAll("#gallery-album-colors .gallery-color-swatch").forEach((b) => {
+          b.classList.toggle("active", b === sw);
+        });
       });
     });
 
-    document
-      .getElementById("gallery-album-modal-close")
-      ?.addEventListener("click", closeAlbumModal);
-    document
-      .getElementById("gallery-album-modal-cancel")
-      ?.addEventListener("click", closeAlbumModal);
+    document.getElementById("gallery-album-modal-close")?.addEventListener("click", closeAlbumModal);
+    document.getElementById("gallery-album-modal-cancel")?.addEventListener("click", closeAlbumModal);
 
     document.getElementById("gallery-album-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const title = document.getElementById("gallery-album-title-input")?.value.trim() || "";
-      const description =
-        document.getElementById("gallery-album-desc-input")?.value.trim() || "";
+      const description = document.getElementById("gallery-album-desc-input")?.value.trim() || "";
       if (!title) return;
 
       if (editingAlbumId) {
@@ -10072,12 +10183,8 @@
       }
     });
 
-    document
-      .getElementById("gallery-share-album-close")
-      ?.addEventListener("click", closeShareAlbumModal);
-    document
-      .getElementById("gallery-share-album-cancel")
-      ?.addEventListener("click", closeShareAlbumModal);
+    document.getElementById("gallery-share-album-close")?.addEventListener("click", closeShareAlbumModal);
+    document.getElementById("gallery-share-album-cancel")?.addEventListener("click", closeShareAlbumModal);
 
     document.querySelectorAll("[data-share-mode]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -10088,36 +10195,33 @@
       });
     });
 
-    document
-      .getElementById("gallery-share-album-form")
-      ?.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const targetNumber =
-          document.getElementById("gallery-share-target-input")?.value.trim() || "";
-        if (!sharingAlbumId || !targetNumber) return;
+    document.getElementById("gallery-share-album-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const targetNumber = document.getElementById("gallery-share-target-input")?.value.trim() || "";
+      if (!sharingAlbumId || !targetNumber) return;
 
-        const res = await nui("shareGalleryAlbum", {
-          albumId: sharingAlbumId,
-          targetNumber,
-          mode: selectedShareMode,
-        });
-        if (res && res.ok) {
-          showNotification({
-            appName: "Galería",
-            icon: "check",
-            title: "Invitación enviada",
-            message: `Se envió la invitación del álbum a ${targetNumber}.`,
-          });
-          closeShareAlbumModal();
-        } else {
-          showNotification({
-            appName: "Galería",
-            icon: "alert-triangle",
-            title: "No se pudo compartir",
-            message: res?.message || "Comprueba el número de SIM del jugador.",
-          });
-        }
+      const res = await nui("shareGalleryAlbum", {
+        albumId: sharingAlbumId,
+        targetNumber,
+        mode: selectedShareMode,
       });
+      if (res && res.ok) {
+        showNotification({
+          appName: "Galería",
+          icon: "check",
+          title: "Invitación enviada",
+          message: `Se envió la invitación del álbum a ${targetNumber}.`,
+        });
+        closeShareAlbumModal();
+      } else {
+        showNotification({
+          appName: "Galería",
+          icon: "alert-triangle",
+          title: "No se pudo compartir",
+          message: res?.message || "Comprueba el número de SIM del jugador.",
+        });
+      }
+    });
 
     document.getElementById("gallery-invite-reject")?.addEventListener("click", async () => {
       if (pendingAlbumInvite) {
