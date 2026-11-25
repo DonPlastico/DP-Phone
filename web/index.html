@@ -95,7 +95,6 @@
                 </span>
               </button>
             </div>
-            <!-- Para móviles protegidos con contraseña (5-25 caracteres) en vez de PIN de 4 cifras -->
             <form id="lock-password-form" class="lock-password-form" hidden>
               <input
                 id="lock-password-input"
@@ -113,24 +112,28 @@
           </div>
         </section>
 
-        <!-- LLAMADA EN CURSO / ENTRANTE (por encima de todo, también de la pantalla de bloqueo) -->
+        <!-- LLAMADA EN CURSO / ENTRANTE -->
         <section id="call-screen" class="call-screen" hidden></section>
         <button id="call-pill" class="call-pill" type="button" hidden></button>
 
-        <!-- TOPBAR Y NOTIFICACIONES -->
-        <header id="desktop-statusbar" class="desktop-statusbar" hidden>
+        <!-- TOPBAR Y NOTIFICACIONES (2 PESTAÑAS EN EL PANEL DESPLEGABLE) -->
+        <header id="desktop-statusbar" class="desktop-statusbar nc-v2" hidden>
+          <!-- Barra superior: reloj, fecha, estado de red y batería -->
           <div class="desktop-status-left">
             <time id="desktop-clock" class="desktop-clock"></time>
+            <span class="nc-status-sep" aria-hidden="true">·</span>
             <time id="desktop-date" class="desktop-date"></time>
-            <span class="desktop-notifications" aria-label="Notificaciones" hidden> </span>
+            <span class="desktop-notifications" aria-label="Notificaciones" hidden></span>
           </div>
+
           <div class="desktop-status-right">
+            <span class="nc-os-badge" aria-hidden="true">IFRUIT OS</span>
             <span
               id="signal-indicator"
               class="signal-indicator"
               role="img"
               aria-label="Cobertura completa">
-              <span class="ui-icon" data-iconify="signal"> </span>
+              <span class="ui-icon" data-iconify="signal"></span>
             </span>
             <span
               class="battery-indicator ui-icon"
@@ -138,242 +141,417 @@
               role="img"
               aria-label="Batería completa"></span>
           </div>
-          <div class="notification-center-content" id="notification-center-content">
-            <section class="qs-panel-top" aria-label="Ajustes rápidos">
-              <div class="qs-tiles">
-                <button class="qs-tile" type="button" aria-pressed="false">
-                  <span class="qs-tile-icon">
-                    <svg
-                      class="nc-svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path d="M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7" />
-                      <path
-                        d="M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3" />
-                      <path d="M9.7 17l4.6 0" />
-                    </svg>
-                  </span>
-                  <span class="qs-tile-label">Linterna</span>
-                </button>
-                <button class="qs-tile" type="button" aria-pressed="false">
-                  <span class="qs-tile-icon">
-                    <svg
-                      class="nc-svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path
-                        d="M16 10h4a2 2 0 0 1 0 4h-4l-4 7h-3l2 -7h-4l-2 2h-3l2 -4l-2 -4h3l2 2h4l-2 -7h3z" />
-                    </svg>
-                  </span>
-                  <span class="qs-tile-label">Modo avión</span>
-                </button>
-                <button class="qs-tile" type="button" aria-pressed="true">
-                  <span class="qs-tile-icon">
-                    <svg
-                      class="nc-svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path d="M7 3l0 18" />
-                      <path d="M10 6l-3 -3l-3 3" />
-                      <path d="M20 18l-3 3l-3 -3" />
-                      <path d="M17 21l0 -18" />
-                    </svg>
-                  </span>
-                  <span class="qs-tile-label">Datos</span>
-                </button>
-                <button class="qs-tile" type="button" aria-pressed="false">
-                  <span class="qs-tile-icon" data-iconify="screenshot"></span>
-                  <span class="qs-tile-label">Captura</span>
-                </button>
-                <button
-                  class="qs-tile"
-                  type="button"
-                  aria-pressed="false"
-                  aria-label="Silencio">
-                  <span class="qs-tile-icon">
-                    <svg
-                      class="nc-svg icon-sound-on"
-                      style="display: none"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path d="M15 8a5 5 0 0 1 0 8" />
-                      <path d="M17.7 5a9 9 0 0 1 0 14" />
-                      <path
-                        d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
-                    </svg>
-                    <svg
-                      class="nc-svg icon-sound-off"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path
-                        d="M15 8a5 5 0 0 1 1.912 4.934m-1.377 2.602a5 5 0 0 1 -.535 .464" />
-                      <path
-                        d="M17.7 5a9 9 0 0 1 2.362 11.086m-1.676 2.299a9 9 0 0 1 -.686 .615" />
-                      <path
-                        d="M9.069 5.054l.431 -.554a.8 .8 0 0 1 1.5 .5v2m0 4v8a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l1.294 -1.664" />
-                      <path d="M3 3l18 18" />
-                    </svg>
-                  </span>
-                  <span class="qs-tile-label">Silencio</span>
-                </button>
-                <button class="qs-tile" type="button" aria-pressed="false">
-                  <span class="qs-tile-icon">
-                    <svg
-                      class="nc-svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path
-                        d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
-                    </svg>
-                  </span>
-                  <span class="qs-tile-label">No molestar</span>
-                </button>
-              </div>
-              <div class="qs-sliders-vertical">
-                <div class="qs-slider-vertical">
-                  <span class="qs-slider-icon-v">
-                    <!-- Icono Brillo -->
-                    <svg
-                      class="nc-svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
-                      <path
-                        d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" />
-                    </svg>
-                  </span>
-                  <input
-                    class="qs-range-vertical"
-                    id="header-brightness"
-                    type="range"
-                    min="0"
-                    max="100"
-                    value="70"
-                    aria-label="Brillo"
-                    style="--p: 0.7" />
+
+          <!-- Centro desplegable: 2 pestañas (Control y Sonido / Notificaciones) -->
+          <div
+            class="notification-center-content nc-v2-content"
+            id="notification-center-content">
+            <div class="nc-dual-tabs" role="tablist" aria-label="Secciones del panel superior">
+              <button
+                type="button"
+                class="nc-dual-tab active"
+                role="tab"
+                aria-selected="true"
+                data-nc-tab="controls">
+                <span class="ui-icon" data-iconify="sliders"></span>
+                <span>Control y Sonido</span>
+              </button>
+              <button
+                type="button"
+                class="nc-dual-tab"
+                role="tab"
+                aria-selected="false"
+                data-nc-tab="notifications">
+                <span class="ui-icon" data-iconify="bell"></span>
+                <span>Notificaciones</span>
+                <span class="nc-dual-tab-badge" id="nc-tab-badge">0</span>
+              </button>
+            </div>
+
+            <div class="nc-dual-pages">
+              <section
+                class="nc-dual-page qs-panel-top nc-v2-qs nc-v3-studio"
+                id="nc-page-controls"
+                role="tabpanel"
+                aria-label="Ajustes rápidos y sonido">
+                <!-- Columna 1: Interruptores rápidos -->
+                <div class="nc-v3-col nc-v3-col-tiles">
+                  <div class="nc-v3-box-head">
+                    <span class="ui-icon" data-iconify="sliders"></span>
+                    <div>
+                      <span class="nc-v3-eyebrow">ACCESO RÁPIDO</span>
+                      <strong>Interruptores</strong>
+                    </div>
+                  </div>
+                  <div class="qs-tiles nc-v2-tiles nc-v3-tiles">
+                    <button class="qs-tile nc-v2-tile" type="button" aria-pressed="false">
+                      <span class="qs-tile-icon">
+                        <svg
+                          class="nc-svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <path d="M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7" />
+                          <path
+                            d="M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3" />
+                          <path d="M9.7 17l4.6 0" />
+                        </svg>
+                      </span>
+                      <span class="qs-tile-label">Linterna</span>
+                    </button>
+                    <button class="qs-tile nc-v2-tile" type="button" aria-pressed="false">
+                      <span class="qs-tile-icon">
+                        <svg
+                          class="nc-svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <path
+                            d="M16 10h4a2 2 0 0 1 0 4h-4l-4 7h-3l2 -7h-4l-2 2h-3l2 -4l-2 -4h3l2 2h4l-2 -7h3z" />
+                        </svg>
+                      </span>
+                      <span class="qs-tile-label">Modo avión</span>
+                    </button>
+                    <button class="qs-tile nc-v2-tile" type="button" aria-pressed="true">
+                      <span class="qs-tile-icon">
+                        <svg
+                          class="nc-svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <path d="M7 3l0 18" />
+                          <path d="M10 6l-3 -3l-3 3" />
+                          <path d="M20 18l-3 3l-3 -3" />
+                          <path d="M17 21l0 -18" />
+                        </svg>
+                      </span>
+                      <span class="qs-tile-label">Datos</span>
+                    </button>
+                    <button class="qs-tile nc-v2-tile" type="button" aria-pressed="false">
+                      <span class="qs-tile-icon" data-iconify="screenshot"></span>
+                      <span class="qs-tile-label">Captura</span>
+                    </button>
+                    <button
+                      class="qs-tile nc-v2-tile"
+                      type="button"
+                      aria-pressed="false"
+                      aria-label="Silencio">
+                      <span class="qs-tile-icon">
+                        <svg
+                          class="nc-svg icon-sound-on"
+                          style="display: none"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <path d="M15 8a5 5 0 0 1 0 8" />
+                          <path d="M17.7 5a9 9 0 0 1 0 14" />
+                          <path
+                            d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
+                        </svg>
+                        <svg
+                          class="nc-svg icon-sound-off"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <path
+                            d="M15 8a5 5 0 0 1 1.912 4.934m-1.377 2.602a5 5 0 0 1 -.535 .464" />
+                          <path
+                            d="M17.7 5a9 9 0 0 1 2.362 11.086m-1.676 2.299a9 9 0 0 1 -.686 .615" />
+                          <path
+                            d="M9.069 5.054l.431 -.554a.8 .8 0 0 1 1.5 .5v2m0 4v8a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l1.294 -1.664" />
+                          <path d="M3 3l18 18" />
+                        </svg>
+                      </span>
+                      <span class="qs-tile-label">Silencio</span>
+                    </button>
+                    <button class="qs-tile nc-v2-tile" type="button" aria-pressed="false">
+                      <span class="qs-tile-icon">
+                        <svg
+                          class="nc-svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <path
+                            d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+                        </svg>
+                      </span>
+                      <span class="qs-tile-label">No molestar</span>
+                    </button>
+                  </div>
                 </div>
-                <div class="qs-slider-vertical">
-                  <span class="qs-slider-icon-v">
-                    <!-- Icono Multimedia -->
-                    <svg
-                      class="nc-svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path d="M15 8a5 5 0 0 1 0 8" />
-                      <path d="M17.7 5a9 9 0 0 1 0 14" />
-                      <path
-                        d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
-                    </svg>
-                  </span>
-                  <input
-                    class="qs-range-vertical"
-                    id="header-multimedia"
-                    type="range"
-                    min="0"
-                    max="200"
-                    value="100"
-                    aria-label="Multimedia"
-                    style="--p: 0.5" />
+
+                <!-- Columna 2: Brillo y volúmenes -->
+                <div class="nc-v3-col nc-v3-col-audio">
+                  <div class="nc-v3-box-head">
+                    <span class="ui-icon" data-iconify="volume"></span>
+                    <div>
+                      <span class="nc-v3-eyebrow">AUDIO Y PANEL</span>
+                      <strong>Sonido y Brillo</strong>
+                    </div>
+                  </div>
+                  <div class="qs-sliders-vertical nc-v2-sliders nc-v3-sliders">
+                    <div class="qs-slider-vertical nc-v2-slider nc-v3-slider">
+                      <span class="qs-slider-icon-v">
+                        <svg
+                          class="nc-svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+                          <path
+                            d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" />
+                        </svg>
+                      </span>
+                      <input
+                        class="qs-range-vertical"
+                        id="header-brightness"
+                        type="range"
+                        min="0"
+                        max="100"
+                        value="70"
+                        aria-label="Brillo"
+                        style="--p: 0.7" />
+                    </div>
+                    <div class="qs-slider-vertical nc-v2-slider nc-v3-slider">
+                      <span class="qs-slider-icon-v">
+                        <svg
+                          class="nc-svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <path d="M15 8a5 5 0 0 1 0 8" />
+                          <path d="M17.7 5a9 9 0 0 1 0 14" />
+                          <path
+                            d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5" />
+                        </svg>
+                      </span>
+                      <input
+                        class="qs-range-vertical"
+                        id="header-multimedia"
+                        type="range"
+                        min="0"
+                        max="200"
+                        value="100"
+                        aria-label="Multimedia"
+                        style="--p: 0.5" />
+                    </div>
+                    <div class="qs-slider-vertical nc-v2-slider nc-v3-slider">
+                      <span class="qs-slider-icon-v">
+                        <svg
+                          class="nc-svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <path
+                            d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2" />
+                        </svg>
+                      </span>
+                      <input
+                        class="qs-range-vertical"
+                        id="header-llamadas"
+                        type="range"
+                        min="0"
+                        max="200"
+                        value="100"
+                        aria-label="Llamadas"
+                        style="--p: 0.5" />
+                    </div>
+                    <div class="qs-slider-vertical nc-v2-slider nc-v3-slider">
+                      <span class="qs-slider-icon-v">
+                        <svg
+                          class="nc-svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round">
+                          <path
+                            d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+                          <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+                        </svg>
+                      </span>
+                      <input
+                        class="qs-range-vertical"
+                        id="header-notificaciones"
+                        type="range"
+                        min="0"
+                        max="200"
+                        value="100"
+                        aria-label="Notificaciones"
+                        style="--p: 0.5" />
+                    </div>
+                  </div>
                 </div>
-                <div class="qs-slider-vertical">
-                  <span class="qs-slider-icon-v">
-                    <!-- Icono Llamadas -->
-                    <svg
-                      class="nc-svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path
-                        d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5 -2.5l5 2v4a2 2 0 0 1 -2 2a16 16 0 0 1 -15 -15a2 2 0 0 1 2 -2" />
-                    </svg>
-                  </span>
-                  <input
-                    class="qs-range-vertical"
-                    id="header-llamadas"
-                    type="range"
-                    min="0"
-                    max="200"
-                    value="100"
-                    aria-label="Llamadas"
-                    style="--p: 0.5" />
+
+                <!-- Columna 3: Atajos rápidos a Ajustes y configuraciones -->
+                <div class="nc-v3-col nc-v3-col-extras">
+                  <div class="nc-v3-box-head">
+                    <span class="ui-icon" data-iconify="settings"></span>
+                    <div>
+                      <span class="nc-v3-eyebrow">ATAJOS DEL SISTEMA</span>
+                      <strong>Ajustes Rápidos</strong>
+                    </div>
+                  </div>
+
+                  <div class="nc-v3-shortcuts-grid">
+                    <button
+                      type="button"
+                      class="nc-v3-shortcut-btn"
+                      data-nc-shortcut="wallpaper">
+                      <span class="ui-icon" data-iconify="palette"></span>
+                      <span>Fundas y Fondo</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="nc-v3-shortcut-btn"
+                      data-nc-shortcut="display">
+                      <span class="ui-icon" data-iconify="brightness-up"></span>
+                      <span>Pantalla y Brillo</span>
+                    </button>
+                    <button type="button" class="nc-v3-shortcut-btn" data-nc-shortcut="sounds">
+                      <span class="ui-icon" data-iconify="volume"></span>
+                      <span>Sonidos</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="nc-v3-shortcut-btn"
+                      data-nc-shortcut="notifications">
+                      <span class="ui-icon" data-iconify="bell-ringing"></span>
+                      <span>Notificaciones</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="nc-v3-shortcut-btn"
+                      data-nc-shortcut="security">
+                      <span class="ui-icon" data-iconify="shield-lock"></span>
+                      <span>Seguridad</span>
+                    </button>
+                    <button type="button" class="nc-v3-shortcut-btn" data-nc-shortcut="phone">
+                      <span class="ui-icon" data-iconify="cpu"></span>
+                      <span>Dispositivo</span>
+                    </button>
+                  </div>
+
+                  <button type="button" class="nc-v3-all-settings-btn" data-nc-shortcut="home">
+                    <span class="ui-icon" data-iconify="sliders"></span>
+                    <span>Abrir Ajustes Completos</span>
+                    <span class="ui-icon" data-iconify="chevron-right"></span>
+                  </button>
                 </div>
-                <div class="qs-slider-vertical">
-                  <span class="qs-slider-icon-v">
-                    <!-- Icono Notificaciones -->
-                    <svg
-                      class="nc-svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round">
-                      <path
-                        d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
-                      <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
-                    </svg>
-                  </span>
-                  <input
-                    class="qs-range-vertical"
-                    id="header-notificaciones"
-                    type="range"
-                    min="0"
-                    max="200"
-                    value="100"
-                    aria-label="Notificaciones"
-                    style="--p: 0.5" />
+              </section>
+
+              <section
+                class="nc-dual-page nc-panel-bottom nc-v2-alerts nc-v4-inbox"
+                id="nc-page-notifications"
+                role="tabpanel"
+                aria-label="Notificaciones"
+                hidden>
+                <div class="nc-v4-workspace">
+                  <aside class="nc-v4-rail" aria-label="Canales de notificación">
+                    <div class="nc-v4-rail-head">
+                      <span class="nc-v2-eyebrow">BANDEJA DE AVISOS</span>
+                      <div class="nc-v4-rail-title-row">
+                        <h2 class="nc-heading">Notificaciones</h2>
+                        <span class="nc-v4-total-pill" id="nc-v4-total-pill">0</span>
+                      </div>
+                    </div>
+                    <div class="nc-v4-channels" id="nc-v4-channels"></div>
+                    <div class="nc-v4-rail-footer">
+                      <button
+                        class="nc-clear-btn nc-v2-clear-btn nc-v4-clear-all-btn"
+                        id="nc-clear-all"
+                        type="button"
+                        title="Limpiar todas las notificaciones">
+                        <span class="ui-icon" data-iconify="trash"></span>
+                        <span>Limpiar todo</span>
+                      </button>
+                    </div>
+                  </aside>
+
+                  <div class="nc-v4-stage">
+                    <div class="nc-v4-stage-topbar">
+                      <div class="nc-v4-stage-info">
+                        <span class="nc-v2-eyebrow" id="nc-v4-stage-eyebrow"
+                          >CANAL ACTIVO</span
+                        >
+                        <div class="nc-v4-stage-title-row">
+                          <span
+                            class="ui-icon"
+                            id="nc-v4-stage-icon"
+                            data-iconify="bell"></span>
+                          <strong id="nc-v4-stage-title">Todas las notificaciones</strong>
+                          <span class="nc-v4-stage-count" id="nc-v4-stage-count"
+                            >0 avisos</span
+                          >
+                        </div>
+                      </div>
+                      <div class="nc-v4-stage-actions">
+                        <div class="expandable-search nc-v4-search-box" id="nc-v4-search-wrap">
+                          <span class="ui-icon search-icon" data-iconify="search"></span>
+                          <input
+                            type="search"
+                            id="nc-v4-search-input"
+                            placeholder="Buscar aviso..."
+                            autocomplete="off" />
+                          <button
+                            type="button"
+                            class="clear-search-btn"
+                            id="nc-v4-search-clear"
+                            title="Limpiar búsqueda">
+                            <span class="ui-icon" data-iconify="x"></span>
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          class="nc-v4-clear-channel-btn"
+                          id="nc-v4-clear-channel"
+                          title="Limpiar canal seleccionado">
+                          <span class="ui-icon" data-iconify="trash"></span>
+                          <span>Limpiar canal</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="nc-list nc-v4-feed" id="nc-list">
+                      <div class="nc-empty">
+                        <span class="ui-icon" data-iconify="bell"></span>
+                        <p>No hay notificaciones nuevas.</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </section>
-            <div class="nc-divider"></div>
-            <section class="nc-panel-bottom" aria-label="Notificaciones">
-              <div class="nc-header">
-                <h2 class="nc-heading">Notificaciones</h2>
-                <button class="nc-clear-btn" id="nc-clear-all" title="Limpiar todo">
-                  <span class="ui-icon" data-iconify="trash"> </span>
-                </button>
-              </div>
-              <div class="nc-list" id="nc-list">
-                <p class="nc-desc">No hay notificaciones nuevas.</p>
-              </div>
-            </section>
+              </section>
+            </div>
           </div>
-          <span class="statusbar-home-indicator" aria-hidden="true"> </span>
+          <span class="statusbar-home-indicator nc-v2-handle" aria-hidden="true"></span>
         </header>
         <div
           id="notification-container"
@@ -390,16 +568,21 @@
           <div id="desktop-app-grid" class="desktop-app-grid" aria-label="Aplicaciones"></div>
         </section>
 
-        <!-- APP AJUSTES (REDESIGN MONOCROMO v2 · SIN BORDER-LEFT · RADIUS <= 5PX) -->
+        <!-- APP AJUSTES -->
         <section id="settings-app" class="settings-app" aria-label="Ajustes" hidden>
           <header class="settings-topbar">
             <div class="settings-topbar-brand">
-              <div class="settings-brand-badge" data-iconify="sliders" aria-hidden="true"></div>
+              <div
+                class="settings-brand-badge"
+                data-iconify="sliders"
+                aria-hidden="true"></div>
               <div class="settings-brand-copy">
                 <span class="settings-eyebrow">IFRUIT OS · SISTEMA</span>
                 <div class="settings-title-line">
                   <h2>Ajustes</h2>
-                  <span class="settings-active-pill" id="settings-current-category">Inicio</span>
+                  <span class="settings-active-pill" id="settings-current-category"
+                    >Inicio</span
+                  >
                 </div>
               </div>
             </div>
@@ -417,7 +600,9 @@
                 </div>
               </div>
 
-              <div class="expandable-search settings-search-box" id="settings-search-container">
+              <div
+                class="expandable-search settings-search-box"
+                id="settings-search-container">
                 <span class="ui-icon search-icon" data-iconify="search"></span>
                 <input
                   id="settings-search"
@@ -438,7 +623,6 @@
 
           <div class="settings-workspace">
             <aside class="settings-nav-rail">
-              <!-- Tarjeta de Perfil y Línea -->
               <article
                 class="settings-identity-card"
                 data-keywords="perfil usuario cuenta nombre id ciudadano citizen telefono sim">
@@ -474,7 +658,6 @@
                 </div>
               </article>
 
-              <!-- Lista Categorizada de Ajustes -->
               <div id="settings-list" class="settings-nav-groups">
                 <div class="settings-nav-group">
                   <span class="settings-group-label">ESTILO Y PANTALLA</span>
@@ -535,7 +718,7 @@
                     class="setting-item"
                     data-settings-tab="blockednumbers"
                     data-keywords="bloqueados numeros telefono llamadas spam">
-                    <span class="setting-icon" data-iconify="phone-off"></span>
+                    <span class="setting-icon" data-iconify="shield-x"></span>
                     <div class="setting-text">
                       <strong>Números Bloqueados</strong>
                       <span>Lista de números restringidos</span>
@@ -595,7 +778,9 @@
                   <div class="settings-home-banner-copy">
                     <span class="settings-eyebrow">RESUMEN DEL SISTEMA</span>
                     <h3>iFruit 2SE · iFruit OS v1.7</h3>
-                    <p>Selecciona un apartado en la columna izquierda o abre un acceso directo.</p>
+                    <p>
+                      Selecciona un apartado en la columna izquierda o abre un acceso directo.
+                    </p>
                   </div>
                 </div>
 
@@ -642,449 +827,682 @@
           <p id="settings-empty" class="store-empty" hidden>No se han encontrado ajustes.</p>
         </section>
 
-        <!-- APP DEL TIEMPO -->
-        <section id="weather-app" class="weather-app" hidden>
+        <!-- APP DEL TIEMPO (REDISEÑO COMPLETO METEO STUDIO · IFRUIT OS) -->
+        <section id="weather-app" class="weather-app weather-v2" aria-label="Tiempo" hidden>
           <div class="weather-bg" id="weather-bg"></div>
-          <div class="weather-content">
-            <header class="weather-header">
-              <div class="weather-location">
-                <span class="ui-icon" data-iconify="map-pin"> </span>
-                <span id="weather-location-text">Los Santos</span>
-              </div>
-              <span id="weather-season" class="weather-season">OTOÑO · 02:51 A.M.</span>
-            </header>
-            <div class="weather-main">
-              <div class="weather-icon-container" id="weather-icon-container">
-                <span
-                  class="ui-icon float-anim"
-                  data-iconify="moon"
-                  id="weather-main-icon"></span>
-              </div>
-              <h1 class="weather-temp" id="weather-temp">16°</h1>
-              <p class="weather-desc" id="weather-desc">Despejado</p>
-              <div class="weather-details">
-                <span>Sensación <strong id="weather-feels-like">17°</strong> </span>
-                <span>Máx <strong id="weather-max">20°</strong> </span>
-                <span>Mín <strong id="weather-min">12°</strong> </span>
-              </div>
-            </div>
-            <div class="weather-alert-card" id="weather-alert-card" hidden>
-              <div class="alert-icon-wrapper">
-                <span class="ui-icon pulse-red" data-iconify="alert-triangle"> </span>
-              </div>
-              <div class="alert-content">
-                <span class="alert-label">CLIMA SEVERO</span>
-                <h3 class="alert-title">Tormenta severa en camino</h3>
-                <div class="alert-timer" id="weather-alert-timer">00h 00m 00s</div>
-                <p class="alert-desc">
-                  Tormenta severa se aproxima a la ciudad. Se recomienda a todos los ciudadanos
-                  buscar refugio y mantenerse informados.
-                </p>
-              </div>
-            </div>
-            <div class="weather-highlights">
-              <div class="highlight-card">
-                <span class="ui-icon" data-iconify="wind"> </span>
-                <div class="highlight-info">
-                  <span class="highlight-label">Viento</span>
-                  <strong class="highlight-value" id="highlight-wind">14 km/h</strong>
-                </div>
-              </div>
-              <div class="highlight-card">
-                <span class="ui-icon" data-iconify="droplet"> </span>
-                <div class="highlight-info">
-                  <span class="highlight-label">Humedad</span>
-                  <strong class="highlight-value" id="highlight-humidity">52%</strong>
-                </div>
-              </div>
-              <div class="highlight-card">
-                <span class="ui-icon" data-iconify="gauge"> </span>
-                <div class="highlight-info">
-                  <span class="highlight-label">Presión</span>
-                  <strong class="highlight-value" id="highlight-pressure">757 mmHg</strong>
-                </div>
-              </div>
-              <div class="highlight-card">
-                <span class="ui-icon" data-iconify="eye"> </span>
-                <div class="highlight-info">
-                  <span class="highlight-label">Visibilidad</span>
-                  <strong class="highlight-value" id="highlight-visibility">10 km</strong>
-                </div>
-              </div>
-            </div>
-            <div class="weather-graph-card">
-              <div class="graph-header">
-                <span class="ui-icon" data-iconify="activity"> </span>
-                <span>PRÓXIMAS 12 HORAS</span>
-              </div>
-              <div class="graph-container" id="weather-graph-container"></div>
-            </div>
-            <div class="weather-weekly">
-              <div class="forecast-header">
-                <span class="ui-icon" data-iconify="calendar"> </span>
-                <span>PRÓXIMOS 7 DÍAS</span>
-              </div>
-              <div class="weekly-list" id="weather-weekly-list"></div>
-            </div>
-          </div>
-        </section>
+          <svg
+            class="wv2-scenic-mountains"
+            viewBox="0 0 1440 340"
+            preserveAspectRatio="none"
+            aria-hidden="true">
+            <path
+              class="wv2-mtn-far"
+              d="M0 245 L145 140 L295 215 L475 95 L665 205 L855 82 L1065 190 L1265 110 L1440 198 L1440 340 L0 340 Z" />
+            <path
+              class="wv2-mtn-mid"
+              d="M0 275 L195 178 L385 252 L595 138 L790 236 L1015 128 L1225 228 L1440 155 L1440 340 L0 340 Z" />
+            <path
+              class="wv2-mtn-front"
+              d="M0 302 L240 225 L480 284 L735 196 L985 274 L1235 208 L1440 264 L1440 340 L0 340 Z" />
+          </svg>
 
-        <!-- APP LICENCIAS -->
-        <section id="licenses-app" class="licenses-app" hidden>
-          <div class="licenses-content">
-            <div class="licenses-header-title">
-              <span class="eyebrow">TUS CARNETS</span>
-              <h2>LICENCIAS</h2>
-            </div>
-            <div class="licenses-grid">
-              <div class="license-card-item">
-                <div class="license-card-header">
-                  <span class="license-title">LA TIENES</span>
-                  <h3 class="license-main-title">LICENCIA DE COCHE</h3>
-                </div>
-                <div class="license-card-bottom">
-                  <div class="license-status-pill">
-                    <span class="ui-icon" data-iconify="car"></span>
-                    <span>En vigor</span>
-                  </div>
-                  <span class="license-code">Alessandro Vittorio • HPO28805</span>
-                </div>
-                <div class="license-logo-watermark">
-                  <span class="ui-icon" data-iconify="car"></span>
-                </div>
-              </div>
-              <div class="license-card-item">
-                <div class="license-card-header">
-                  <span class="license-title">LA TIENES</span>
-                  <h3 class="license-main-title">LICENCIA DE MOTO</h3>
-                </div>
-                <div class="license-card-bottom">
-                  <div class="license-status-pill">
-                    <span class="ui-icon" data-iconify="bike"></span>
-                    <span>En vigor</span>
-                  </div>
-                  <span class="license-code">Alessandro Vittorio • HPO28805</span>
-                </div>
-                <div class="license-logo-watermark">
-                  <span class="ui-icon" data-iconify="bike"></span>
-                </div>
-              </div>
-              <div class="license-card-item">
-                <div class="license-card-header">
-                  <span class="license-title">LA TIENES</span>
-                  <h3 class="license-main-title">LICENCIA DE PESCA</h3>
-                </div>
-                <div class="license-card-bottom">
-                  <div class="license-status-pill">
-                    <span class="ui-icon" data-iconify="fish"></span>
-                    <span>En vigor</span>
-                  </div>
-                  <span class="license-code">Alessandro Vittorio • HPO28805</span>
-                </div>
-                <div class="license-logo-watermark">
-                  <span class="ui-icon" data-iconify="fish"></span>
+          <header class="wv2-topbar">
+            <div class="wv2-brand">
+              <div class="wv2-brand-badge" data-iconify="cloud" aria-hidden="true"></div>
+              <div class="wv2-brand-copy">
+                <span class="wv2-eyebrow"
+                  >IFRUIT METEO · RED DE ESTACIONES DE SAN ANDREAS</span
+                >
+                <div class="wv2-title-row">
+                  <h2 id="weather-location-text">Los Santos</h2>
+                  <span class="wv2-chip" id="weather-condition-pill">EN VIVO</span>
+                  <span class="wv2-chip subtle" id="weather-season">OTOÑO · 02:51 A.M.</span>
                 </div>
               </div>
             </div>
-            <div class="licenses-layout-bottom">
-              <div class="licenses-sidebar">
-                <div
-                  class="licenses-header-title"
-                  style="margin-top: 16px; margin-bottom: 12px">
-                  <span class="eyebrow">TU EXPEDIENTE</span>
-                </div>
-                <button class="expediente-item active" id="btn-exp-puntos">
-                  <span class="ui-icon" data-iconify="id-badge"></span>
-                  <div class="expediente-text">
-                    <strong>Puntos del carnet</strong>
-                    <span>Ver saldo actual</span>
-                  </div>
-                  <span class="expediente-value highlight" id="license-points">8/12</span>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"></span>
-                </button>
-                <button class="expediente-item" id="btn-exp-dni">
-                  <span class="ui-icon" data-iconify="credit-card"></span>
-                  <div class="expediente-text">
-                    <strong>ID</strong>
-                    <span id="license-dni-status">Caducado</span>
-                  </div>
-                  <span class="expediente-value alert" id="license-expiry">13/10/2025</span>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"></span>
-                </button>
-                <button class="expediente-item" id="btn-exp-carnets">
-                  <span class="ui-icon" data-iconify="book"></span>
-                  <div class="expediente-text">
-                    <strong>Sacar otro carnet</strong>
-                    <span>Te faltan 4</span>
-                  </div>
-                  <span class="ui-icon chevron" data-iconify="chevron-right"></span>
-                </button>
-              </div>
-              <div class="licenses-detail-panel" id="licenses-detail-panel">
-                <div class="licenses-view" id="view-puntos">
-                  <div class="points-balance-card">
-                    <div class="points-balance-header">
-                      <span class="points-label">SALDO DE PUNTOS</span>
-                      <span class="points-value highlight" id="panel-points-value">8/12</span>
-                    </div>
-                    <div class="points-segmented-bar" id="panel-points-bar"></div>
-                    <p class="points-status-text" id="panel-points-status">
-                      Vas bien: te quedan 8.
-                    </p>
-                  </div>
-                  <div class="points-info-section">
-                    <div class="points-info-title">
-                      <span class="ui-icon" data-iconify="car"></span>
-                      <strong>QUÉ SON</strong>
-                    </div>
-                    <p>
-                      Son 12 y no van por carnet: el coche y la moto comparten el mismo saldo.
-                      Cada sanción de tráfico te quita los suyos, y sin puntos te retiran el
-                      carnet.
-                    </p>
-                  </div>
-                  <div class="points-info-section">
-                    <div class="points-info-title">
-                      <span class="ui-icon" data-iconify="info-circle"></span>
-                      <strong>CÓMO SE RECUPERAN</strong>
-                    </div>
-                    <p>En comisaría, pagando. Te los devuelven todos de una vez.</p>
-                  </div>
-                </div>
-                <div class="licenses-view" id="view-dni" hidden>
-                  <div class="points-balance-card alert-border">
-                    <div class="points-balance-header">
-                      <span class="points-label alert-text">CADUCÓ EL</span>
-                      <span
-                        class="points-value alert-text"
-                        id="panel-id-date"
-                        style="font-size: calc(24px * var(--text-scale))"
-                        >13/10/2026</span
-                      >
-                    </div>
-                    <p class="points-status-text alert-text" id="panel-id-status">
-                      Caducó hace X días.
-                    </p>
-                  </div>
-                  <div class="points-info-section">
-                    <div class="points-info-title">
-                      <span class="ui-icon" data-iconify="id-badge"></span>
-                      <strong>LO ÚNICO QUE CADUCA</strong>
-                    </div>
-                    <p>
-                      Los carnets no caducan; el DNI sí, cada tres meses. Llevarlo caducado no
-                      te impide enseñarlo, pero te pueden multar por ello.
-                    </p>
-                  </div>
-                  <div class="points-info-section">
-                    <div class="points-info-title">
-                      <span class="ui-icon" data-iconify="refresh"></span>
-                      <strong>CÓMO SE RENUEVA</strong>
-                    </div>
-                    <p>
-                      En comisaría. No hace falta que lo lleves encima para que te lo renueven.
-                    </p>
-                  </div>
-                </div>
-                <div class="licenses-view" id="view-carnets-list" hidden>
-                  <div class="points-info-title" style="margin-bottom: 16px">
-                    <span class="ui-icon" data-iconify="book"></span>
-                    <strong>OTROS CARNETS DISPONIBLES</strong>
-                  </div>
-                  <div class="carnets-menu-list accordion-style">
-                    <div class="carnet-item">
-                      <button class="carnet-item-header">
-                        <div class="carnet-item-left">
-                          <span class="ui-icon" data-iconify="car"></span>
-                          <div class="carnet-item-info">
-                            <strong>Licencia de camión</strong>
-                            <span>Teórico aprobado, falta práctico</span>
-                          </div>
-                        </div>
-                        <span class="carnet-price">$1.500</span>
-                        <span class="ui-icon chevron" data-iconify="chevron-down"></span>
-                      </button>
-                      <div class="carnet-item-body">
-                        <div class="carnet-cost-box">
-                          <div class="carnet-cost-row">
-                            <span>Examen teórico</span><span>$1.500</span>
-                          </div>
-                          <div class="carnet-cost-row">
-                            <span>Examen práctico</span><span>$1.500</span>
-                          </div>
-                          <p class="carnet-cost-warning">
-                            Pago requerido por intento. Evaluaciones independientes.
-                          </p>
-                        </div>
-                        <div class="carnet-next-steps">
-                          <div class="points-info-title">
-                            <span class="ui-icon" data-iconify="calendar"></span
-                            ><strong>POR DÓNDE SIGUES</strong>
-                          </div>
-                          <p>Teórico validado. Agenda y aprueba la prueba práctica.</p>
-                        </div>
-                        <button class="carnet-action-btn">
-                          <span class="ui-icon" data-iconify="map-pin"></span> LOCALIZAR CENTRO
-                          EXAMINADOR
-                        </button>
-                      </div>
-                    </div>
-                    <div class="carnet-item">
-                      <button class="carnet-item-header">
-                        <div class="carnet-item-left">
-                          <span class="ui-icon" data-iconify="map"></span>
-                          <div class="carnet-item-info">
-                            <strong>Licencia de barco</strong>
-                            <span>Empiezas por el teórico</span>
-                          </div>
-                        </div>
-                        <span class="carnet-price">$5.000</span>
-                        <span class="ui-icon chevron" data-iconify="chevron-down"></span>
-                      </button>
-                      <div class="carnet-item-body">
-                        <div class="carnet-cost-box">
-                          <div class="carnet-cost-row">
-                            <span>Examen teórico</span><span>$5.000</span>
-                          </div>
-                          <div class="carnet-cost-row">
-                            <span>Examen práctico</span><span>$5.000</span>
-                          </div>
-                          <p class="carnet-cost-warning">
-                            Pago requerido por intento. Evaluaciones independientes.
-                          </p>
-                        </div>
-                        <div class="carnet-next-steps">
-                          <div class="points-info-title">
-                            <span class="ui-icon" data-iconify="calendar"></span
-                            ><strong>POR DÓNDE SIGUES</strong>
-                          </div>
-                          <p>Supera el teórico para habilitar la prueba práctica.</p>
-                        </div>
-                        <button class="carnet-action-btn">
-                          <span class="ui-icon" data-iconify="map-pin"></span> LOCALIZAR CENTRO
-                          EXAMINADOR
-                        </button>
-                      </div>
-                    </div>
-                    <div class="carnet-item">
-                      <button class="carnet-item-header">
-                        <div class="carnet-item-left">
-                          <span class="ui-icon" data-iconify="crosshair"></span>
-                          <div class="carnet-item-info">
-                            <strong>Licencia de aviación</strong>
-                            <span>Empiezas por el teórico</span>
-                          </div>
-                        </div>
-                        <span class="carnet-price">$10.000</span>
-                        <span class="ui-icon chevron" data-iconify="chevron-down"></span>
-                      </button>
-                      <div class="carnet-item-body">
-                        <div class="carnet-cost-box">
-                          <div class="carnet-cost-row">
-                            <span>Examen teórico</span><span>$10.000</span>
-                          </div>
-                          <div class="carnet-cost-row">
-                            <span>Examen práctico</span><span>$10.000</span>
-                          </div>
-                        </div>
-                        <div class="carnet-warning-box">
-                          <span class="ui-icon" data-iconify="info-circle"></span>
-                          <div class="warning-content">
-                            <span class="warning-title">ADEMÁS DEL EXAMEN</span>
-                            <p class="warning-desc">
-                              Este carnet pide tener aprobado tu historial de personaje en la
-                              web. Sin ello no se aprueba, aunque pagues el examen.
-                            </p>
-                          </div>
-                        </div>
-                        <div class="carnet-next-steps">
-                          <div class="points-info-title">
-                            <span class="ui-icon" data-iconify="calendar"></span
-                            ><strong>POR DÓNDE SIGUES</strong>
-                          </div>
-                          <p>Empieza por el teórico. Con el aprobado se abre el práctico.</p>
-                        </div>
-                        <button class="carnet-action-btn">
-                          <span class="ui-icon" data-iconify="map-pin"></span> LOCALIZAR CENTRO
-                          EXAMINADOR
-                        </button>
-                      </div>
-                    </div>
-                    <div class="carnet-item">
-                      <button class="carnet-item-header">
-                        <div class="carnet-item-left">
-                          <span class="ui-icon" data-iconify="crosshair"></span>
-                          <div class="carnet-item-info">
-                            <strong>Licencia de caza</strong>
-                            <span>Empiezas por el teórico</span>
-                          </div>
-                        </div>
-                        <span class="carnet-price">$500</span>
-                        <span class="ui-icon chevron" data-iconify="chevron-down"></span>
-                      </button>
-                      <div class="carnet-item-body">
-                        <div class="carnet-cost-box">
-                          <div class="carnet-cost-row">
-                            <span>Examen teórico</span><span>$500</span>
-                          </div>
-                          <div class="carnet-cost-row">
-                            <span>Examen práctico</span><span>No tiene</span>
-                          </div>
-                        </div>
-                        <button class="carnet-action-btn">
-                          <span class="ui-icon" data-iconify="map-pin"></span> LOCALIZAR CENTRO
-                          EXAMINADOR
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <p
-                    class="points-status-text"
-                    style="margin-top: 16px; font-size: calc(11px * var(--text-scale))">
-                    Los precios son por examen. El teórico y práctico se abonan por separado, y
-                    suspender vuelve a cobrar.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        <!-- TIENDA iFRUIT -->
-        <section id="store-app" class="store-app" aria-label="iFruit Store" hidden>
-          <header class="store-header">
-            <div class="store-title">
-              <span class="store-logo" data-iconify="shopping-bag"> </span>
-              <div>
-                <span class="eyebrow">iFruit OS</span>
-                <h2>iFruit Store</h2>
+            <div class="wv2-topbar-controls">
+              <div
+                class="wv2-zone-switch"
+                id="weather-zone-switch"
+                role="tablist"
+                aria-label="Zona de la ciudad">
+                <button
+                  type="button"
+                  class="wv2-zone-btn active"
+                  data-weather-zone="Los Santos">
+                  Centro LS
+                </button>
+                <button type="button" class="wv2-zone-btn" data-weather-zone="Sandy Shores">
+                  Sandy Shores
+                </button>
+                <button type="button" class="wv2-zone-btn" data-weather-zone="Paleto Bay">
+                  Paleto Bay
+                </button>
               </div>
-            </div>
-            <div class="expandable-search" id="store-search-container">
-              <span class="ui-icon search-icon" data-iconify="search"></span>
-              <input
-                id="store-search"
-                type="text"
-                placeholder="Buscar aplicaciones"
-                autocomplete="off" />
               <button
                 type="button"
-                class="clear-search-btn"
-                tabindex="-1"
-                title="Borrar"
-                aria-label="Borrar búsqueda">
-                <span class="ui-icon" data-iconify="x"></span>
+                class="wv2-refresh-btn"
+                id="weather-refresh-btn"
+                title="Actualizar lectura">
+                <span class="ui-icon" data-iconify="refresh"></span>
+                <span>Actualizar</span>
               </button>
             </div>
           </header>
-          <div id="store-list" class="store-list" role="list"></div>
+
+          <div class="weather-content wv2-content">
+            <div
+              class="weather-alert-card wv2-alert-card wv2-tx-alert"
+              id="weather-alert-card"
+              hidden>
+              <div class="wv2-tx-alert-main">
+                <div class="wv2-tx-alert-head">
+                  <div class="alert-icon-wrapper wv2-tx-icon">
+                    <span class="ui-icon pulse-red" data-iconify="alert-triangle"></span>
+                  </div>
+                  <div class="wv2-tx-title-group">
+                    <div class="wv2-tx-badges">
+                      <span class="alert-label">AVISO METEOROLÓGICO · FRENTE DE TORMENTA</span>
+                      <span class="wv2-tx-badge-live" id="weather-alert-severity"
+                        >FRENTE ACTIVO</span
+                      >
+                    </div>
+                    <h3 class="alert-title" id="weather-alert-title">
+                      Temporal severo y corte eléctrico en la costa
+                    </h3>
+                  </div>
+                </div>
+
+                <p class="alert-desc" id="weather-alert-desc">
+                  Las estaciones costeras reportan un frente de tormenta intenso sobre el
+                  condado. Pon a resguardo tu vehículo y tu mercancía en un garaje o almacén y
+                  mantente a cubierto hasta que amaine.
+                </p>
+
+                <div class="wv2-tx-checklist">
+                  <div class="wv2-tx-check-item">
+                    <span class="ui-icon" data-iconify="car-garage"></span>
+                    <span>Vehículo a cubierto</span>
+                  </div>
+                  <div class="wv2-tx-check-item">
+                    <span class="ui-icon" data-iconify="shield-check"></span>
+                    <span>Carga asegurada</span>
+                  </div>
+                  <div class="wv2-tx-check-item">
+                    <span class="ui-icon" data-iconify="radar-2"></span>
+                    <span>Radar en seguimiento</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="wv2-tx-countdown-box">
+                <span class="wv2-tx-countdown-kicker">VENTANA ESTIMADA</span>
+                <div class="alert-timer wv2-tx-timer" id="weather-alert-timer">
+                  00h 00m 00s
+                </div>
+                <div class="wv2-tx-progress-track" aria-hidden="true">
+                  <span
+                    class="wv2-tx-progress-fill"
+                    id="weather-alert-progress"
+                    style="width: 100%"></span>
+                </div>
+                <div class="wv2-tx-meta-foot">
+                  <span>FRENTE</span>
+                  <strong id="weather-alert-status-label">EN APROXIMACIÓN</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="wv2-hero-grid">
+              <article class="wv2-hero-card">
+                <div class="wv2-hero-left">
+                  <div class="wv2-hero-meta-top">
+                    <span class="wv2-eyebrow">CONDICIÓN ACTUAL</span>
+                    <span class="wv2-daynight-tag" id="weather-daynight-tag">DIURNO</span>
+                  </div>
+                  <div class="wv2-hero-temp-line">
+                    <h1 class="weather-temp wv2-temp" id="weather-temp">26°</h1>
+                    <div class="wv2-hero-summary">
+                      <p class="weather-desc wv2-desc" id="weather-desc">Soleado</p>
+                      <div class="weather-details wv2-minmax">
+                        <span>Sensación <strong id="weather-feels-like">29°</strong></span>
+                        <span>·</span>
+                        <span>Máx <strong id="weather-max">30°</strong></span>
+                        <span>·</span>
+                        <span>Mín <strong id="weather-min">22°</strong></span>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="wv2-advisory-text" id="weather-advisory-text">
+                    Condiciones estables en superficie con buena visibilidad en autovías y
+                    costa.
+                  </p>
+                </div>
+
+                <div class="wv2-hero-right">
+                  <div class="weather-icon-container wv2-icon-box" id="weather-icon-container">
+                    <span
+                      class="ui-icon float-anim"
+                      data-iconify="sun"
+                      id="weather-main-icon"></span>
+                  </div>
+                  <div class="wv2-comfort-meter">
+                    <div class="wv2-comfort-head">
+                      <span>ÍNDICE DE CONFORT</span>
+                      <strong id="weather-comfort-val">84%</strong>
+                    </div>
+                    <div class="wv2-comfort-bar">
+                      <span id="weather-comfort-fill" style="width: 84%"></span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <aside class="wv2-solar-card">
+                <div class="wv2-card-kicker">
+                  <span class="ui-icon" data-iconify="sun-high"></span>
+                  <span>CICLO SOLAR Y ATMÓSFERA</span>
+                </div>
+                <div class="wv2-solar-rows">
+                  <div class="wv2-solar-row">
+                    <span>Amanecer estimado</span>
+                    <strong id="weather-sunrise">06:45</strong>
+                  </div>
+                  <div class="wv2-solar-row">
+                    <span>Atardecer estimado</span>
+                    <strong id="weather-sunset">19:30</strong>
+                  </div>
+                  <div class="wv2-solar-row">
+                    <span>Prob. precipitación</span>
+                    <strong id="weather-precip-prob">10%</strong>
+                  </div>
+                  <div class="wv2-solar-row">
+                    <span>Índice UV</span>
+                    <strong id="weather-uv-index">6 · Alto</strong>
+                  </div>
+                </div>
+              </aside>
+            </div>
+
+            <div class="weather-highlights wv2-highlights">
+              <div class="highlight-card wv2-kpi-card">
+                <div class="wv2-kpi-icon">
+                  <span class="ui-icon" data-iconify="wind"></span>
+                </div>
+                <div class="highlight-info">
+                  <span class="highlight-label">Viento</span>
+                  <strong class="highlight-value" id="highlight-wind">14 km/h</strong>
+                  <small class="wv2-kpi-sub" id="highlight-wind-dir">Racha moderada</small>
+                </div>
+              </div>
+              <div class="highlight-card wv2-kpi-card">
+                <div class="wv2-kpi-icon">
+                  <span class="ui-icon" data-iconify="droplet"></span>
+                </div>
+                <div class="highlight-info">
+                  <span class="highlight-label">Humedad</span>
+                  <strong class="highlight-value" id="highlight-humidity">52%</strong>
+                  <small class="wv2-kpi-sub" id="highlight-humidity-sub">Ambiente seco</small>
+                </div>
+              </div>
+              <div class="highlight-card wv2-kpi-card">
+                <div class="wv2-kpi-icon">
+                  <span class="ui-icon" data-iconify="gauge"></span>
+                </div>
+                <div class="highlight-info">
+                  <span class="highlight-label">Presión</span>
+                  <strong class="highlight-value" id="highlight-pressure">757 mmHg</strong>
+                  <small class="wv2-kpi-sub" id="highlight-pressure-sub">Estable</small>
+                </div>
+              </div>
+              <div class="highlight-card wv2-kpi-card">
+                <div class="wv2-kpi-icon">
+                  <span class="ui-icon" data-iconify="eye"></span>
+                </div>
+                <div class="highlight-info">
+                  <span class="highlight-label">Visibilidad</span>
+                  <strong class="highlight-value" id="highlight-visibility">10 km</strong>
+                  <small class="wv2-kpi-sub" id="highlight-visibility-sub">Despejada</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="wv2-bottom-grid">
+              <div class="weather-graph-card wv2-panel-card">
+                <div class="graph-header wv2-panel-head">
+                  <div class="wv2-panel-title">
+                    <span class="ui-icon" data-iconify="activity"></span>
+                    <span>PRÓXIMAS 12 HORAS</span>
+                  </div>
+                  <span class="wv2-panel-note">CURVA TÉRMICA</span>
+                </div>
+                <div class="graph-container wv2-graph-box" id="weather-graph-container"></div>
+              </div>
+
+              <div class="weather-weekly wv2-panel-card">
+                <div class="forecast-header wv2-panel-head">
+                  <div class="wv2-panel-title">
+                    <span class="ui-icon" data-iconify="calendar"></span>
+                    <span>PRÓXIMOS 7 DÍAS</span>
+                  </div>
+                  <span class="wv2-panel-note">TENDENCIA SEMANAL</span>
+                </div>
+                <div class="weekly-list wv2-weekly-grid" id="weather-weekly-list"></div>
+              </div>
+            </div>
+
+            <section class="wv2-stations-strip" aria-label="Estaciones y condiciones de ruta">
+              <div class="wv2-station-pill">
+                <span class="ui-icon" data-iconify="map-pin"></span>
+                <div class="wv2-station-copy">
+                  <strong>Del Perro &amp; Vespucci</strong>
+                  <span>Brisa marina · Oleaje moderado</span>
+                </div>
+                <span class="wv2-station-tag">COSTA</span>
+              </div>
+              <div class="wv2-station-pill">
+                <span class="ui-icon" data-iconify="compass"></span>
+                <div class="wv2-station-copy">
+                  <strong>Autovía Ruta 68 &amp; Senora</strong>
+                  <span>Calor seco · Ráfagas laterales</span>
+                </div>
+                <span class="wv2-station-tag">RUTA</span>
+              </div>
+              <div class="wv2-station-pill">
+                <span class="ui-icon" data-iconify="mountain"></span>
+                <div class="wv2-station-copy">
+                  <strong>Cumbre Mount Chiliad</strong>
+                  <span>Cota alta · Aire frío en ladera</span>
+                </div>
+                <span class="wv2-station-tag">MONTAÑA</span>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <!-- APP LICENCIAS (REDISEÑO v5 · CARTERA LIMPIA + MODALES DE INSPECCIÓN + POR SACAR POR UBICACIÓN) -->
+        <section id="licenses-app" class="licenses-app lic-v5" aria-label="Licencias" hidden>
+          <header class="lic-v5-topbar">
+            <div class="lic-v5-brand">
+              <div class="lic-v5-badge" data-iconify="id-badge" aria-hidden="true"></div>
+              <div class="lic-v5-brand-copy">
+                <span class="lic-v5-eyebrow">IFRUIT OS · REGISTRO CIVIL Y TRÁFICO</span>
+                <div class="lic-v5-title-row">
+                  <h2>Licencias</h2>
+                  <span class="lic-v5-holder" id="lic-holder-chip"
+                    >ALESSANDRO VITTORIO · HPO28805</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <nav class="lic-v5-tabs" role="tablist" aria-label="Secciones de Licencias">
+              <button
+                type="button"
+                class="lic-v5-tab active"
+                role="tab"
+                aria-selected="true"
+                data-lic-page="wallet">
+                <span class="ui-icon" data-iconify="id-badge"></span>
+                <span>Cartera y Expediente</span>
+                <span class="lic-v5-tab-badge" id="lic-wallet-tab-badge">2</span>
+              </button>
+              <button
+                type="button"
+                class="lic-v5-tab"
+                role="tab"
+                aria-selected="false"
+                data-lic-page="pending">
+                <span class="ui-icon" data-iconify="map-pin"></span>
+                <span>Por sacar</span>
+                <span class="lic-v5-tab-badge" id="lic-pending-tab-badge">7</span>
+              </button>
+            </nav>
+          </header>
+
+          <div class="lic-v5-body">
+            <!-- PÁGINA 1: SOLO LICENCIAS Y DOCUMENTOS QUE SÍ POSEES + EXPEDIENTE -->
+            <div class="lic-v5-page" id="lic-page-wallet">
+              <div class="lic-v5-section-bar">
+                <div class="lic-v5-section-title">
+                  <span class="lic-v5-sec-icon" data-iconify="id-badge"></span>
+                  <div>
+                    <span class="lic-v5-eyebrow">DOCUMENTACIÓN ACTIVA DEL CIUDADANO</span>
+                    <h3>Cartera y Expediente</h3>
+                  </div>
+                </div>
+
+                <div
+                  class="lic-v5-filter-group"
+                  role="group"
+                  aria-label="Filtrar documentación en cartera">
+                  <button
+                    type="button"
+                    class="lic-v5-filter-btn active"
+                    data-lic-wallet-filter="all">
+                    <span class="ui-icon" data-iconify="layout-dashboard"></span>
+                    <span>Todo</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="lic-v5-filter-btn"
+                    data-lic-wallet-filter="driving">
+                    <span class="ui-icon" data-iconify="car"></span>
+                    <span>Conducción</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="lic-v5-filter-btn"
+                    data-lic-wallet-filter="special">
+                    <span class="ui-icon" data-iconify="shield-check"></span>
+                    <span>Especiales e ID/Citizen</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="lic-v5-owned-grid" id="lic-owned-grid"></div>
+
+              <div class="lic-v5-info-banner">
+                <div class="lic-v5-info-banner-left">
+                  <span class="ui-icon" data-iconify="info-circle"></span>
+                  <div>
+                    <strong>Verificación policial y puntos individuales</strong>
+                    <p>
+                      Haz clic en cualquier licencia o documento de tu cartera para ver su ID
+                      oficial, estado en vigor, puntos restantes por carnet y ubicación de
+                      trámite.
+                    </p>
+                  </div>
+                </div>
+                <button type="button" class="lic-v5-link-btn" id="lic-go-pending-btn">
+                  <span class="ui-icon" data-iconify="map-pin"></span>
+                  <span>Ver dónde sacar el resto</span>
+                  <span class="ui-icon" data-iconify="chevron-right"></span>
+                </button>
+              </div>
+            </div>
+
+            <!-- PÁGINA 2: TODAS LAS LICENCIAS Y DOCUMENTOS PENDIENTES CON SU UBICACIÓN / NPC -->
+            <div class="lic-v5-page" id="lic-page-pending" hidden>
+              <div class="lic-v5-section-bar">
+                <div class="lic-v5-section-title">
+                  <span class="lic-v5-sec-icon" data-iconify="map-pin"></span>
+                  <div>
+                    <span class="lic-v5-eyebrow">TRÁMITES Y EXÁMENES POR UBICACIÓN</span>
+                    <h3>Licencias y documentos por sacar</h3>
+                  </div>
+                </div>
+                <span class="lic-v5-pill" id="lic-pending-count-pill">7 pendientes</span>
+              </div>
+
+              <div class="lic-v5-pending-grid" id="lic-pending-grid"></div>
+            </div>
+          </div>
+
+          <!-- MODAL DE INSPECCIÓN DE LICENCIA / DOCUMENTO EN CARTERA -->
+          <div class="lic-v5-modal-backdrop" id="lic-detail-modal" hidden>
+            <div
+              class="lic-v5-modal-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="lic-modal-title">
+              <header class="lic-v5-modal-header">
+                <div class="lic-v5-modal-head-left">
+                  <span class="lic-v5-modal-icon" id="lic-modal-icon"></span>
+                  <div>
+                    <span class="lic-v5-eyebrow" id="lic-modal-eyebrow"
+                      >EXPEDIENTE OFICIAL</span
+                    >
+                    <h3 id="lic-modal-title">Licencia</h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="lic-v5-modal-close"
+                  id="lic-modal-close"
+                  aria-label="Cerrar">
+                  <span class="ui-icon" data-iconify="x"></span>
+                </button>
+              </header>
+
+              <div class="lic-v5-modal-body" id="lic-modal-body"></div>
+
+              <footer class="lic-v5-modal-footer">
+                <button type="button" class="lic-v5-btn-secondary" id="lic-modal-share">
+                  <span class="ui-icon" data-iconify="share-forward"></span>
+                  <span>Compartir</span>
+                </button>
+                <button type="button" class="lic-v5-btn-secondary" id="lic-modal-copy-id">
+                  <span class="ui-icon" data-iconify="copy"></span>
+                  <span>Copiar ID</span>
+                </button>
+                <button type="button" class="lic-v5-btn-primary" id="lic-modal-done">
+                  <span class="ui-icon" data-iconify="check"></span>
+                  <span>Listo</span>
+                </button>
+              </footer>
+            </div>
+          </div>
+
+          <!-- MODAL DE GUÍA / UBICACIÓN PARA LICENCIAS POR SACAR -->
+          <div class="lic-v5-modal-backdrop" id="lic-guide-modal" hidden>
+            <div
+              class="lic-v5-modal-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="lic-guide-title">
+              <header class="lic-v5-modal-header">
+                <div class="lic-v5-modal-head-left">
+                  <span class="lic-v5-modal-icon" id="lic-guide-icon"></span>
+                  <div>
+                    <span class="lic-v5-eyebrow" id="lic-guide-eyebrow"
+                      >GUÍA DE OBTENCIÓN</span
+                    >
+                    <h3 id="lic-guide-title">Trámite</h3>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="lic-v5-modal-close"
+                  id="lic-guide-close"
+                  aria-label="Cerrar">
+                  <span class="ui-icon" data-iconify="x"></span>
+                </button>
+              </header>
+
+              <div class="lic-v5-modal-body" id="lic-guide-body"></div>
+
+              <footer class="lic-v5-modal-footer">
+                <button type="button" class="lic-v5-btn-secondary" id="lic-guide-share">
+                  <span class="ui-icon" data-iconify="share-forward"></span>
+                  <span>Compartir</span>
+                </button>
+                <button type="button" class="lic-v5-btn-secondary" id="lic-guide-gps-btn">
+                  <span class="ui-icon" data-iconify="map-pin"></span>
+                  <span>Marcar ubicación</span>
+                </button>
+                <button type="button" class="lic-v5-btn-primary" id="lic-guide-close-btn">
+                  <span class="ui-icon" data-iconify="check"></span>
+                  <span>Entendido</span>
+                </button>
+              </footer>
+            </div>
+          </div>
+        </section>
+
+        <!-- TIENDA iFRUIT v4 -->
+        <section id="store-app" class="store-app" aria-label="Tienda iFruit" hidden>
+          <header class="store-topbar">
+            <div class="store-topbar-brand">
+              <div
+                class="store-brand-badge"
+                data-iconify="shopping-bag"
+                aria-hidden="true"></div>
+              <div class="store-brand-copy">
+                <span class="store-eyebrow">IFRUIT OS · TIENDA</span>
+                <div class="store-title-line">
+                  <h2>Tienda iFruit</h2>
+                </div>
+              </div>
+            </div>
+
+            <nav
+              class="store-page-tabs"
+              role="tablist"
+              aria-label="Secciones de Tienda iFruit">
+              <button
+                type="button"
+                class="store-page-tab active"
+                role="tab"
+                aria-selected="true"
+                data-store-page="daily">
+                <span class="ui-icon" data-iconify="sparkles"></span>
+                <span>Recomendaciones</span>
+              </button>
+              <button
+                type="button"
+                class="store-page-tab"
+                role="tab"
+                aria-selected="false"
+                data-store-page="catalog">
+                <span class="ui-icon" data-iconify="layout-dashboard"></span>
+                <span>Catálogo</span>
+              </button>
+            </nav>
+
+            <div class="store-topbar-right">
+              <div class="expandable-search store-search-box" id="store-search-container">
+                <span class="ui-icon search-icon" data-iconify="search"></span>
+                <input
+                  id="store-search"
+                  type="text"
+                  placeholder="Buscar aplicaciones…"
+                  autocomplete="off" />
+                <button
+                  type="button"
+                  class="clear-search-btn"
+                  tabindex="-1"
+                  title="Borrar"
+                  aria-label="Borrar búsqueda">
+                  <span class="ui-icon" data-iconify="x"></span>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div class="store-scroll-body store-page-daily" id="store-page-daily">
+            <div class="store-daily-banner">
+              <div class="store-daily-banner-copy">
+                <span class="store-eyebrow">SELECCIÓN DIARIA · CAMBIA CADA 24H</span>
+                <div class="store-daily-banner-title">
+                  <h3>Hoy en la tienda iFruit</h3>
+                  <span class="store-daily-date-badge" id="store-daily-date">—</span>
+                </div>
+                <p>
+                  Cada día de vida real aparecen nuevas recomendaciones y packs temáticos
+                  listos para instalar.
+                </p>
+              </div>
+              <div class="store-daily-banner-right">
+                <span class="store-daily-countdown" id="store-daily-countdown"
+                  >Renueva en 24h 00m</span
+                >
+                <button type="button" class="store-pill" id="store-go-catalog-btn">
+                  Ver todo el catálogo
+                </button>
+              </div>
+            </div>
+
+            <div class="store-daily-spotlight-grid" id="store-daily-spotlight-grid"></div>
+            <div class="store-daily-packs-grid" id="store-daily-packs-grid"></div>
+          </div>
+
+          <div class="store-page-catalog" id="store-page-catalog" hidden>
+            <nav
+              class="store-categories-bar"
+              id="store-categories-bar"
+              aria-label="Categorías de aplicaciones"></nav>
+            <div class="store-scroll-body" id="store-scroll-body">
+              <div id="store-list" class="store-list" role="list"></div>
+              <p id="store-empty" class="store-empty" hidden>
+                No se han encontrado aplicaciones.
+              </p>
+            </div>
+          </div>
+
+          <div class="store-detail-backdrop" id="store-detail-modal" hidden>
+            <div
+              class="store-detail-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="store-detail-title">
+              <header class="store-detail-header">
+                <span class="store-eyebrow">Tienda iFruit · FICHA DE APLICACIÓN</span>
+                <button
+                  type="button"
+                  class="store-detail-close"
+                  id="store-detail-close"
+                  title="Cerrar"
+                  aria-label="Cerrar ficha">
+                  <span class="ui-icon" data-iconify="x"></span>
+                </button>
+              </header>
+
+              <div class="store-detail-scroll" id="store-detail-scroll">
+                <div class="store-detail-hero">
+                  <div id="store-detail-icon-wrap"></div>
+                  <div class="store-detail-hero-info">
+                    <div class="store-detail-title-row">
+                      <h3 id="store-detail-title">Aplicación</h3>
+                      <span class="store-tag-chip" id="store-detail-cat">Categoría</span>
+                    </div>
+                    <p class="store-detail-tagline" id="store-detail-tagline"></p>
+                    <div class="store-detail-cta-row" id="store-detail-cta-row"></div>
+                  </div>
+                </div>
+
+                <div class="store-detail-kpis" id="store-detail-kpis"></div>
+
+                <section class="store-detail-section">
+                  <div class="store-detail-sec-head">
+                    <span class="store-eyebrow">GALERÍA Y VISTA PREVIA</span>
+                    <h4>Capturas de pantalla</h4>
+                  </div>
+                  <div class="store-detail-carousel" id="store-detail-carousel"></div>
+                </section>
+
+                <section class="store-detail-section">
+                  <div class="store-detail-sec-head">
+                    <span class="store-eyebrow">VALORACIONES DE USUARIOS</span>
+                    <h4>Ratings y Reviews</h4>
+                  </div>
+                  <div class="store-detail-ratings-box" id="store-detail-ratings"></div>
+                </section>
+
+                <section class="store-detail-section">
+                  <div class="store-detail-sec-head">
+                    <span class="store-eyebrow">ACERCA DE ESTA APP</span>
+                    <h4>Descripción</h4>
+                  </div>
+                  <p class="store-detail-long-desc" id="store-detail-long-desc"></p>
+                </section>
+
+                <section class="store-detail-section">
+                  <div class="store-detail-sec-head">
+                    <span class="store-eyebrow">FICHA TÉCNICA</span>
+                    <h4>Información</h4>
+                  </div>
+                  <div class="store-detail-info-table" id="store-detail-info-table"></div>
+                </section>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- APP VÍBORA -->
         <section id="snake-app" class="snake-app" hidden>
-          <!-- NUEVA PANTALLA DE INICIO (MAP + RANKING) -->
           <div class="snake-logo-screen" id="snake-logo-screen">
-            <!-- COLUMNA IZQUIERDA: LOGO Y BOTONES -->
             <div class="snake-home-left">
               <div class="snake-logo-icon" data-iconify="emojione-monotone:snake"></div>
               <h1 class="snake-title">Víbora</h1>
@@ -1098,9 +1516,7 @@
               </div>
             </div>
 
-            <!-- COLUMNA DERECHA: RANKING (Deslizante) -->
             <div class="snake-home-right" id="snake-ranking-panel">
-              <!-- BOTÓN ÚNICO PARA ABRIR/CERRAR EL RANKING -->
               <button
                 id="snake-toggle-panel-btn"
                 class="snake-toggle-panel-btn"
@@ -1120,7 +1536,6 @@
             </div>
           </div>
 
-          <!-- PANTALLA DE OPCIONES REDISEÑADA -->
           <div class="snake-options-screen" id="snake-options-screen" hidden>
             <div class="snake-options-header">
               <button class="snake-btn-back" id="snake-btn-back-options">
@@ -1131,11 +1546,8 @@
 
             <div class="snake-options-scroll">
               <div class="snake-options-grid">
-                <!-- COLUMNA IZQUIERDA: JUGABILIDAD -->
                 <div class="snake-options-col">
-                  <!-- Dificultad -->
                   <div class="snake-option-group">
-                    <!-- Ejemplo de cómo debe quedar la estructura -->
                     <div class="snake-option-header">
                       <label>Dificultad / Velocidad</label>
                       <div class="snake-tooltip-trigger">
@@ -1153,7 +1565,6 @@
                     </div>
                   </div>
 
-                  <!-- Modo de Juego -->
                   <div class="snake-option-group">
                     <div class="snake-option-header">
                       <label>Modo de juego</label>
@@ -1172,9 +1583,7 @@
                   </div>
                 </div>
 
-                <!-- COLUMNA DERECHA: TAMAÑO Y COLORES -->
                 <div class="snake-options-col">
-                  <!-- Tamaño Tablero -->
                   <div class="snake-option-group">
                     <div class="snake-option-header">
                       <label>Tamaño del tablero</label>
@@ -1194,9 +1603,7 @@
                     </div>
                   </div>
 
-                  <!-- CONTENEDOR DE COLORES LADO A LADO -->
                   <div class="snake-colors-row">
-                    <!-- Color de la bola -->
                     <div class="snake-option-group">
                       <label>Color de la bola</label>
                       <div class="snake-color-group" id="snake-food-color-group">
@@ -1231,10 +1638,8 @@
                       </div>
                     </div>
 
-                    <!-- SEPARADOR -->
                     <div class="snake-color-separator">|</div>
 
-                    <!-- Color de la Serpiente -->
                     <div class="snake-option-group">
                       <label>Color de la Víbora</label>
                       <div class="snake-color-group" id="snake-snake-color-group">
@@ -1272,7 +1677,6 @@
                 </div>
               </div>
 
-              <!-- SECCIÓN DE DESBLOQUEABLES (ANCHO COMPLETO) -->
               <div class="snake-unlock-section">
                 <div class="snake-unlock-header">
                   <label>Aspectos de Temporada</label>
@@ -1280,12 +1684,10 @@
                     <span class="ui-icon" data-iconify="info-circle"></span>
                     <div class="snake-tooltip" style="width: 280px">
                       <h4 class="snake-tooltip-title">Recompensas de Temporada</h4>
-
                       <p class="snake-tooltip-text">
                         Se reparten a final de mes dependiendo de tu posición en el ranking
                         global:
                       </p>
-
                       <div class="snake-tooltip-list">
                         <div class="snake-tooltip-item">
                           <span class="snake-tooltip-badge top-1" title="TOP 1 y 2">
@@ -1313,7 +1715,6 @@
                   </div>
                 </div>
                 <div class="snake-unlock-grid">
-                  <!-- Generamos 50 items de ejemplo -->
                   <div class="snake-unlock-item locked">
                     <span class="ui-icon" data-iconify="lock"></span> Estela de Fuego
                   </div>
@@ -1475,7 +1876,6 @@
             </div>
           </div>
 
-          <!-- MODAL DE REGISTRO (Si no tiene cuenta) -->
           <div class="snake-modal-overlay" id="snake-register-modal" hidden>
             <div class="snake-modal">
               <div class="snake-modal-header">
@@ -1531,108 +1931,288 @@
           </div>
         </section>
 
-        <!-- APP NOTAS -->
-        <section id="notes-app" class="notes-app" hidden>
-          <!-- VISTA 1: Lista de Notas -->
-          <div id="notes-list-view" class="notes-view">
-            <header class="notes-header">
-              <div class="notes-title-row">
-                <h2>Notas</h2>
-                <button id="notes-btn-new" class="notes-btn-primary" title="Nueva nota">
-                  <span class="ui-icon" data-iconify="plus"></span>
+        <!-- APP NOTAS (STICKY NOTES CANVAS · SINERGIA IFRUIT OS) -->
+        <section id="notes-app" class="notes-app" aria-label="Notas" hidden>
+          <header class="notes-studio-header">
+            <div class="notes-studio-brand">
+              <div class="notes-brand-badge" data-iconify="notes" aria-hidden="true"></div>
+              <div class="notes-brand-copy">
+                <span class="notes-eyebrow">IFRUIT OS · LIENZO STICKY</span>
+                <div class="notes-title-line">
+                  <h2>Notas</h2>
+                  <span class="notes-count-chip" id="notes-count-chip">0 notas</span>
+                  <span class="notes-mode-chip" id="notes-canvas-mode-chip">LIBRE</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="notes-studio-actions">
+              <div class="expandable-search notes-search-box" id="notes-search-container">
+                <span class="ui-icon search-icon" data-iconify="search"></span>
+                <input
+                  id="notes-search-input"
+                  type="text"
+                  placeholder="Buscar notas…"
+                  autocomplete="off" />
+                <button
+                  type="button"
+                  class="clear-search-btn"
+                  tabindex="-1"
+                  title="Borrar"
+                  aria-label="Borrar búsqueda">
+                  <span class="ui-icon" data-iconify="x"></span>
                 </button>
               </div>
-              <div class="notes-search-bar">
-                <span class="ui-icon" data-iconify="search"></span>
+
+              <div
+                class="notes-color-filter-strip"
+                id="notes-color-filter-strip"
+                role="group"
+                aria-label="Filtrar por color">
+                <button
+                  type="button"
+                  class="notes-filter-swatch active"
+                  data-note-color-filter="all"
+                  title="Todos los colores">
+                  ALL
+                </button>
+                <button
+                  type="button"
+                  class="notes-filter-swatch"
+                  data-note-color-filter="#f2f2f5"
+                  style="background: #f2f2f5"
+                  title="Plata"></button>
+                <button
+                  type="button"
+                  class="notes-filter-swatch"
+                  data-note-color-filter="#f7e379"
+                  style="background: #f7e379"
+                  title="Ámbar"></button>
+                <button
+                  type="button"
+                  class="notes-filter-swatch"
+                  data-note-color-filter="#9be7c4"
+                  style="background: #9be7c4"
+                  title="Menta"></button>
+                <button
+                  type="button"
+                  class="notes-filter-swatch"
+                  data-note-color-filter="#9ec5ff"
+                  style="background: #9ec5ff"
+                  title="Cielo"></button>
+                <button
+                  type="button"
+                  class="notes-filter-swatch"
+                  data-note-color-filter="#f5a3b8"
+                  style="background: #f5a3b8"
+                  title="Coral"></button>
+                <button
+                  type="button"
+                  class="notes-filter-swatch"
+                  data-note-color-filter="#cfb4ff"
+                  style="background: #cfb4ff"
+                  title="Lila"></button>
+              </div>
+
+              <button
+                type="button"
+                class="notes-tool-chip"
+                id="notes-btn-auto-arrange"
+                title="Ordenar en cuadrícula">
+                <span class="ui-icon" data-iconify="layout-dashboard"></span>
+                <span>Ordenar</span>
+              </button>
+
+              <button
+                type="button"
+                class="notes-new-sticky-btn"
+                id="notes-btn-new"
+                title="Nueva sticky note">
+                <span class="ui-icon" data-iconify="plus"></span>
+                <span>Nueva nota</span>
+              </button>
+            </div>
+          </header>
+
+          <div class="notes-canvas-viewport" id="notes-canvas-viewport">
+            <div class="notes-sticky-board" id="notes-grid"></div>
+
+            <div class="notes-empty-board" id="notes-empty-state" hidden>
+              <div class="notes-empty-badge">
+                <span class="ui-icon" data-iconify="notes"></span>
+              </div>
+              <strong>Lienzo de notas vacío</strong>
+              <p>
+                Crea una sticky note, muévela donde quieras, apílala o redimensiónala
+                libremente.
+              </p>
+              <button type="button" class="notes-new-sticky-btn" id="notes-btn-empty-new">
+                <span class="ui-icon" data-iconify="plus"></span>
+                <span>Crear primera nota</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="notes-modal-backdrop" id="notes-editor-modal" hidden>
+            <div
+              class="notes-modal-card"
+              id="notes-editor-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="notes-modal-title-heading">
+              <header class="notes-modal-header">
+                <div class="notes-modal-title-wrap">
+                  <span class="notes-eyebrow">EDITOR STICKY · IFRUIT OS</span>
+                  <h3 id="notes-modal-title-heading">Editar nota</h3>
+                </div>
+                <div class="notes-modal-header-actions">
+                  <button
+                    type="button"
+                    class="notes-modal-icon-btn"
+                    id="notes-modal-pin"
+                    title="Anclar / Fijar nota">
+                    <span class="ui-icon" data-iconify="pin"></span>
+                  </button>
+                  <button
+                    type="button"
+                    class="notes-modal-icon-btn"
+                    id="notes-modal-expand"
+                    title="Expandir / Restaurar tamaño">
+                    <span class="ui-icon" data-iconify="maximize"></span>
+                  </button>
+                  <button
+                    type="button"
+                    class="notes-modal-icon-btn danger"
+                    id="notes-modal-delete"
+                    title="Eliminar nota">
+                    <span class="ui-icon" data-iconify="trash"></span>
+                  </button>
+                  <button
+                    type="button"
+                    class="notes-modal-icon-btn"
+                    id="notes-modal-close"
+                    title="Cerrar">
+                    <span class="ui-icon" data-iconify="x"></span>
+                  </button>
+                </div>
+              </header>
+
+              <div class="notes-toolbar notes-editor-toolbar" id="notes-toolbar">
+                <button type="button" data-command="bold" title="Negrita"><b>B</b></button>
+                <button type="button" data-command="italic" title="Cursiva"><i>I</i></button>
+                <button type="button" data-command="underline" title="Subrayado">
+                  <u>U</u>
+                </button>
+                <button type="button" data-command="strikeThrough" title="Tachado">
+                  <s>S</s>
+                </button>
+                <span class="notes-toolbar-sep" aria-hidden="true"></span>
+                <button
+                  type="button"
+                  data-command="formatBlock"
+                  data-value="h2"
+                  title="Título">
+                  H2
+                </button>
+                <button
+                  type="button"
+                  data-command="formatBlock"
+                  data-value="h3"
+                  title="Subtítulo">
+                  H3
+                </button>
+                <span class="notes-toolbar-sep" aria-hidden="true"></span>
+                <button type="button" data-command="insertUnorderedList" title="Lista">
+                  <span class="ui-icon" data-iconify="list"></span>
+                </button>
+                <button type="button" data-command="insertOrderedList" title="Lista numerada">
+                  <span class="ui-icon" data-iconify="list-numbers"></span>
+                </button>
+                <button
+                  type="button"
+                  data-command="formatBlock"
+                  data-value="blockquote"
+                  title="Cita">
+                  <span class="ui-icon" data-iconify="quote"></span>
+                </button>
+                <span class="notes-toolbar-sep" aria-hidden="true"></span>
+                <button type="button" data-command="createLink" title="Enlace">
+                  <span class="ui-icon" data-iconify="link"></span>
+                </button>
+              </div>
+
+              <div class="notes-modal-body">
                 <input
                   type="text"
-                  id="notes-search-input"
-                  placeholder="Buscar notas..."
+                  id="note-input-title"
+                  class="notes-modal-title-input"
+                  placeholder="Título de la nota…"
+                  maxlength="80"
                   autocomplete="off" />
+                <div
+                  id="note-input-content"
+                  class="notes-rich-editor"
+                  contenteditable="true"
+                  placeholder="Escribe aquí tu nota, checklist o recordatorio…"></div>
               </div>
-            </header>
 
-            <div class="notes-grid" id="notes-grid">
-              <!-- Aquí se inyectan las tarjetas -->
-              <div class="notes-empty" id="notes-empty-state">
-                <span class="ui-icon" data-iconify="notes"></span>
-                <p>No tienes notas aún.<br />¡Crea una nueva!</p>
-              </div>
+              <footer class="notes-modal-footer">
+                <div class="notes-color-palette" id="notes-color-palette">
+                  <button
+                    type="button"
+                    data-color="#f2f2f5"
+                    style="background: #f2f2f5"
+                    class="active"
+                    title="Plata"></button>
+                  <button
+                    type="button"
+                    data-color="#f7e379"
+                    style="background: #f7e379"
+                    title="Ámbar"></button>
+                  <button
+                    type="button"
+                    data-color="#9be7c4"
+                    style="background: #9be7c4"
+                    title="Menta"></button>
+                  <button
+                    type="button"
+                    data-color="#9ec5ff"
+                    style="background: #9ec5ff"
+                    title="Cielo"></button>
+                  <button
+                    type="button"
+                    data-color="#f5a3b8"
+                    style="background: #f5a3b8"
+                    title="Coral"></button>
+                  <button
+                    type="button"
+                    data-color="#cfb4ff"
+                    style="background: #cfb4ff"
+                    title="Lila"></button>
+                  <button
+                    type="button"
+                    data-color="#ffd29d"
+                    style="background: #ffd29d"
+                    title="Durazno"></button>
+                </div>
+
+                <div class="notes-modal-save-group">
+                  <button type="button" class="notes-btn-cancel" id="notes-btn-cancel">
+                    Cancelar
+                  </button>
+                  <button type="button" class="notes-save-btn" id="notes-btn-save">
+                    Guardar nota
+                  </button>
+                </div>
+              </footer>
             </div>
           </div>
 
-          <!-- VISTA 2: Editor de Nota -->
-          <div id="notes-editor-view" class="notes-view" hidden>
-            <header class="notes-editor-header">
-              <button class="notes-icon-btn" id="notes-btn-back" title="Volver">
-                <span class="ui-icon" data-iconify="chevron-left"></span>
-              </button>
-              <div class="notes-editor-actions">
-                <button class="notes-icon-btn" id="notes-btn-pin" title="Fijar nota">
-                  <span class="ui-icon" data-iconify="pin"></span>
-                </button>
-                <button class="notes-icon-btn" id="notes-btn-delete" title="Eliminar">
-                  <span class="ui-icon" data-iconify="trash"></span>
-                </button>
-                <button class="notes-save-btn" id="notes-btn-save">Guardar</button>
-              </div>
-            </header>
-
-            <!-- BARRA DE HERRAMIENTAS -->
-            <div class="notes-toolbar" id="notes-toolbar">
-              <button data-command="bold" title="Negrita"><b>B</b></button>
-              <button data-command="italic" title="Cursiva"><i>I</i></button>
-              <button data-command="underline" title="Subrayado"><u>U</u></button>
-              <button data-command="strikeThrough" title="Tachado"><s>S</s></button>
-              <div class="toolbar-divider"></div>
-              <button data-command="formatBlock" data-value="h2" title="Título">H2</button>
-              <button data-command="formatBlock" data-value="h3" title="Subtítulo">H3</button>
-              <div class="toolbar-divider"></div>
-              <button data-command="insertUnorderedList" title="Lista">
-                <span class="ui-icon" data-iconify="list"></span>
-              </button>
-              <button data-command="insertOrderedList" title="Lista numerada">
-                <span class="ui-icon" data-iconify="list-numbers"></span>
-              </button>
-              <button data-command="formatBlock" data-value="blockquote" title="Cita">
-                <span class="ui-icon" data-iconify="quote"></span>
-              </button>
-              <div class="toolbar-divider"></div>
-              <button data-command="createLink" title="Enlace">
-                <span class="ui-icon" data-iconify="link"></span>
-              </button>
-            </div>
-
-            <div class="notes-editor-body">
-              <input
-                type="text"
-                id="note-input-title"
-                placeholder="Título"
-                autocomplete="off" />
-              <!-- AQUÍ CAMBIAMOS EL TEXTAREA POR UN DIV EDITABLE -->
-              <div
-                id="note-input-content"
-                class="notes-rich-editor"
-                contenteditable="true"
-                placeholder="Escribe una nota..."></div>
-            </div>
-
-            <!-- Paleta de Colores -->
-            <div class="notes-color-palette" id="notes-color-palette">
-              <button data-color="#ffffff" style="background: #ffffff" class="active"></button>
-              <button data-color="#f28b82" style="background: #f28b82"></button>
-              <button data-color="#fbbc04" style="background: #fbbc04"></button>
-              <button data-color="#fff475" style="background: #fff475"></button>
-              <button data-color="#ccff90" style="background: #ccff90"></button>
-              <button data-color="#a7ffeb" style="background: #a7ffeb"></button>
-              <button data-color="#cbf0f8" style="background: #cbf0f8"></button>
-              <button data-color="#aecbfa" style="background: #aecbfa"></button>
-              <button data-color="#d7aefb" style="background: #d7aefb"></button>
-            </div>
-          </div>
+          <div id="notes-list-view" hidden></div>
+          <div id="notes-editor-view" hidden></div>
         </section>
 
-        <!-- APPS DE COMUNICACIÓN (el contenido lo genera script.js) -->
+        <!-- APPS DE COMUNICACIÓN -->
         <section id="contacts-app" class="comms-app" hidden></section>
         <section id="messages-app" class="comms-app" hidden></section>
         <section id="dialer-app" class="comms-app" hidden></section>
@@ -1640,7 +2220,6 @@
         <!-- APP CAMARA -->
         <section id="camera-app" class="camera-app" hidden>
           <div id="camera-view" class="camera-view">
-            <!-- Visor (las esquinas + cuadrícula opcional) -->
             <div class="camera-viewfinder">
               <div class="viewfinder-corner top-left"></div>
               <div class="viewfinder-corner top-right"></div>
@@ -1653,9 +2232,7 @@
                 aria-hidden="true"></div>
             </div>
 
-            <!-- Contenedor apilado inferior: se empujan hacia arriba entre sí con gap -->
             <div class="camera-bottom-stack" id="camera-bottom-stack">
-              <!-- Zoom: regla (aparece al hacer scroll) + botones 0.5x ... 20x encima del disparador -->
               <div class="camera-zoom" id="camera-zoom">
                 <div class="camera-zoom-dial" id="camera-zoom-dial" aria-hidden="true">
                   <div class="camera-zoom-dial-value" id="camera-zoom-dial-value">1x</div>
@@ -1667,7 +2244,6 @@
                 <div class="camera-zoom-chips" id="camera-zoom-chips"></div>
               </div>
 
-              <!-- Barra de progreso al guardar vídeo -->
               <div class="camera-save-progress" id="camera-save-progress" hidden>
                 <span class="camera-save-label" id="camera-save-label"
                   >Guardando vídeo...</span
@@ -1677,7 +2253,6 @@
                 </div>
               </div>
 
-              <!-- Controles de la Cámara -->
               <div class="camera-controls-wrapper">
                 <div class="camera-controls">
                   <div
@@ -1747,7 +2322,6 @@
                   </div>
                 </div>
 
-                <!-- Selector FOTO / VÍDEO debajo del botón de sacar foto -->
                 <div
                   class="camera-mode-switch"
                   id="camera-mode-switch"
@@ -1772,30 +2346,46 @@
             </div>
           </div>
 
-          <!-- Vista 2: Galería de Fotos -->
           <div id="camera-gallery-view" class="camera-gallery-view" hidden>
             <header class="camera-header">
               <h2>Galería</h2>
             </header>
 
-            <div class="camera-gallery-grid" id="camera-gallery-grid">
-              <!-- Aquí se inyectan las fotos -->
-            </div>
+            <div class="camera-gallery-grid" id="camera-gallery-grid"></div>
           </div>
         </section>
 
-
-        <!-- APP GALERÍA -->
+        <!-- APP GALERÍA REDISEÑADA (TRI-FOLD STUDIO · MOSAICO EDITORIAL + BUSCADOR + ORDEN + FILMS/FOTOS) -->
         <section id="gallery-app" class="gallery-app" aria-label="Galería" hidden>
           <header class="gallery-header">
             <div class="gallery-title-group">
+              <span class="gallery-eyebrow">IFRUIT OS · MULTIMEDIA STUDIO</span>
               <div class="gallery-title-row">
                 <h2>Galería</h2>
                 <span class="gallery-count-pill" id="gallery-total-count">0 elementos</span>
+                <span class="gallery-mode-chip" id="gallery-active-mode-chip">RECIENTES</span>
               </div>
             </div>
 
             <div class="gallery-header-actions">
+              <!-- Buscador rápido integrado con estilo monocromo -->
+              <div class="expandable-search gallery-search-box" id="gallery-search-container">
+                <span class="ui-icon search-icon" data-iconify="search"></span>
+                <input
+                  id="gallery-search"
+                  type="text"
+                  placeholder="Buscar fecha o tipo…"
+                  autocomplete="off" />
+                <button
+                  type="button"
+                  class="clear-search-btn"
+                  tabindex="-1"
+                  title="Borrar"
+                  aria-label="Borrar búsqueda">
+                  <span class="ui-icon" data-iconify="x"></span>
+                </button>
+              </div>
+
               <!-- Botones de filtro (Todo / Fotos / Vídeos / Favoritos) -->
               <div class="gallery-filter-switch" role="tablist" aria-label="Filtrar contenido">
                 <button
@@ -1841,19 +2431,22 @@
               </div>
 
               <!-- 2 botones de disposición: Cuadrícula uniforme vs Mosaico sin separación -->
-              <div class="gallery-layout-switch" role="group" aria-label="Estilo de cuadrícula">
+              <div
+                class="gallery-layout-switch"
+                role="group"
+                aria-label="Estilo de cuadrícula">
                 <button
                   type="button"
-                  class="gallery-layout-btn active"
+                  class="gallery-layout-btn"
                   data-gallery-layout="uniform"
                   title="Cuadrícula uniforme (todos iguales)">
                   <span class="ui-icon" data-iconify="bi:grid-3x3"></span>
                 </button>
                 <button
                   type="button"
-                  class="gallery-layout-btn"
+                  class="gallery-layout-btn active"
                   data-gallery-layout="mosaic"
-                  title="Mosaico (tamaños variados sin separación)">
+                  title="Mosaico editorial Tri-Fold">
                   <span class="ui-icon" data-iconify="layout-dashboard"></span>
                 </button>
               </div>
@@ -1864,7 +2457,7 @@
                   type="button"
                   class="gallery-view-btn active"
                   data-gallery-view="flat"
-                  title="Todas juntas (más reciente arriba)">
+                  title="Todas juntas">
                   <span class="ui-icon" data-iconify="photo"></span>
                 </button>
                 <button
@@ -1882,6 +2475,16 @@
                   <span class="ui-icon" data-iconify="folder"></span>
                 </button>
               </div>
+
+              <!-- Orden cronológico -->
+              <button
+                type="button"
+                class="gallery-sort-btn"
+                id="gallery-sort-toggle"
+                title="Cambiar orden cronológico">
+                <span class="ui-icon" data-iconify="refresh"></span>
+                <span id="gallery-sort-label">Recientes</span>
+              </button>
             </div>
           </header>
 
@@ -1895,8 +2498,12 @@
               </div>
             </div>
 
-            <!-- Selector rápido de fecha/mes a la derecha (solo visible en vista por fechas) -->
-            <aside class="gallery-date-scrubber" id="gallery-date-scrubber" hidden aria-label="Saltar a fecha">
+            <!-- Selector rápido de fecha/mes a la derecha -->
+            <aside
+              class="gallery-date-scrubber"
+              id="gallery-date-scrubber"
+              hidden
+              aria-label="Saltar a fecha">
               <div class="gallery-scrubber-list" id="gallery-scrubber-list"></div>
             </aside>
           </div>
@@ -1918,100 +2525,192 @@
                 </div>
               </div>
 
-              <!-- Botones superiores derechos de acción -->
-              <div class="gallery-viewer-actions" role="toolbar" aria-label="Acciones del elemento">
-                <button type="button" class="gallery-action-btn" id="gallery-btn-add-album" data-viewer-action="add-to-album" title="Añadir a álbum">
+              <div
+                class="gallery-viewer-actions"
+                role="toolbar"
+                aria-label="Acciones del elemento">
+                <button
+                  type="button"
+                  class="gallery-action-btn"
+                  id="gallery-btn-add-album"
+                  data-viewer-action="add-to-album"
+                  title="Añadir a álbum">
                   <span class="ui-icon" data-iconify="folder-plus"></span>
                 </button>
-                <button type="button" class="gallery-action-btn" data-viewer-action="share" title="Compartir">
+                <button
+                  type="button"
+                  class="gallery-action-btn"
+                  data-viewer-action="share"
+                  title="Compartir">
                   <span class="ui-icon" data-iconify="mdi:share-variant-outline"></span>
                 </button>
-                <button type="button" class="gallery-action-btn" data-viewer-action="edit" title="Editar">
+                <button
+                  type="button"
+                  class="gallery-action-btn"
+                  data-viewer-action="edit"
+                  title="Editar">
                   <span class="ui-icon" data-iconify="edit"></span>
                 </button>
-                <button type="button" class="gallery-action-btn" id="gallery-btn-wallpaper" data-viewer-action="wallpaper" title="Establecer fondo de pantalla">
+                <button
+                  type="button"
+                  class="gallery-action-btn"
+                  id="gallery-btn-wallpaper"
+                  data-viewer-action="wallpaper"
+                  title="Establecer fondo de pantalla">
                   <span class="ui-icon" data-iconify="photo"></span>
                 </button>
-                <button type="button" class="gallery-action-btn" id="gallery-btn-copy" data-viewer-action="copy" title="Copiar al portapapeles">
+                <button
+                  type="button"
+                  class="gallery-action-btn"
+                  id="gallery-btn-copy"
+                  data-viewer-action="copy"
+                  title="Copiar al portapapeles">
                   <span class="ui-icon" data-iconify="copy"></span>
                 </button>
-                <button type="button" class="gallery-action-btn" id="gallery-btn-favorite" data-viewer-action="favorite" title="Favoritos">
+                <button
+                  type="button"
+                  class="gallery-action-btn"
+                  id="gallery-btn-favorite"
+                  data-viewer-action="favorite"
+                  title="Favoritos">
                   <span class="ui-icon" data-iconify="heart"></span>
                 </button>
-                <button type="button" class="gallery-action-btn" data-viewer-action="info" title="Información">
+                <button
+                  type="button"
+                  class="gallery-action-btn"
+                  data-viewer-action="info"
+                  title="Información">
                   <span class="ui-icon" data-iconify="info-circle"></span>
                 </button>
-                <button type="button" class="gallery-action-btn danger" data-viewer-action="delete" title="Eliminar">
+                <button
+                  type="button"
+                  class="gallery-action-btn danger"
+                  data-viewer-action="delete"
+                  title="Eliminar">
                   <span class="ui-icon" data-iconify="trash"></span>
                 </button>
               </div>
             </header>
 
-            <!-- Minimodal para seleccionar a qué álbumes personales añadir el elemento -->
             <div class="gallery-add-album-popover" id="gallery-add-album-popover" hidden>
               <div class="gallery-popover-header">
                 <strong>Añadir a álbum</strong>
-                <button type="button" class="gallery-popover-close" id="gallery-add-album-close" title="Cerrar">
+                <button
+                  type="button"
+                  class="gallery-popover-close"
+                  id="gallery-add-album-close"
+                  title="Cerrar">
                   <span class="ui-icon" data-iconify="x"></span>
                 </button>
               </div>
               <div class="gallery-add-album-list" id="gallery-add-album-list"></div>
             </div>
 
-            <!-- Zona central (hacer clic fuera de la foto/vídeo cierra el visor) -->
             <div class="gallery-viewer-stage" id="gallery-viewer-stage"></div>
 
-            <!-- Carrusel inferior para cambiar rápidamente entre elementos -->
             <div class="gallery-viewer-carousel-wrap">
-              <div class="gallery-viewer-carousel" id="gallery-viewer-carousel" role="listbox" aria-label="Elementos de la galería"></div>
+              <div
+                class="gallery-viewer-carousel"
+                id="gallery-viewer-carousel"
+                role="listbox"
+                aria-label="Elementos de la galería"></div>
             </div>
           </div>
-
 
           <!-- Modal Crear / Editar Álbum -->
           <div class="gallery-modal-backdrop" id="gallery-album-modal" hidden>
             <div class="gallery-modal-card">
               <div class="gallery-modal-header">
                 <h3 id="gallery-album-modal-title">Nuevo álbum</h3>
-                <button type="button" class="gallery-popover-close" id="gallery-album-modal-close" title="Cerrar">
+                <button
+                  type="button"
+                  class="gallery-popover-close"
+                  id="gallery-album-modal-close"
+                  title="Cerrar">
                   <span class="ui-icon" data-iconify="x"></span>
                 </button>
               </div>
               <form class="gallery-album-form" id="gallery-album-form">
                 <label class="gallery-form-field">
                   <span>Título del álbum</span>
-                  <input type="text" id="gallery-album-title-input" maxlength="40" placeholder="Ej: Vacaciones, Ruta nocturna..." required />
+                  <input
+                    type="text"
+                    id="gallery-album-title-input"
+                    maxlength="40"
+                    placeholder="Ej: Vacaciones, Ruta nocturna..."
+                    required />
                 </label>
                 <label class="gallery-form-field">
                   <span>Descripción</span>
-                  <textarea id="gallery-album-desc-input" rows="2" maxlength="180" placeholder="Descripción corta del álbum..."></textarea>
+                  <textarea
+                    id="gallery-album-desc-input"
+                    rows="2"
+                    maxlength="180"
+                    placeholder="Descripción corta del álbum..."></textarea>
                 </label>
                 <div class="gallery-form-field">
                   <span>Color de carpeta</span>
                   <div class="gallery-color-swatches" id="gallery-album-colors">
-                    <button type="button" class="gallery-color-swatch active" data-color="#e5a93c" style="background:#e5a93c"></button>
-                    <button type="button" class="gallery-color-swatch" data-color="#4b8bf5" style="background:#4b8bf5"></button>
-                    <button type="button" class="gallery-color-swatch" data-color="#38b778" style="background:#38b778"></button>
-                    <button type="button" class="gallery-color-swatch" data-color="#e05260" style="background:#e05260"></button>
-                    <button type="button" class="gallery-color-swatch" data-color="#9b6dff" style="background:#9b6dff"></button>
-                    <button type="button" class="gallery-color-swatch" data-color="#2bb3c0" style="background:#2bb3c0"></button>
-                    <button type="button" class="gallery-color-swatch" data-color="#d0d0d0" style="background:#d0d0d0"></button>
+                    <button
+                      type="button"
+                      class="gallery-color-swatch active"
+                      data-color="#e5a93c"
+                      style="background: #e5a93c"></button>
+                    <button
+                      type="button"
+                      class="gallery-color-swatch"
+                      data-color="#4b8bf5"
+                      style="background: #4b8bf5"></button>
+                    <button
+                      type="button"
+                      class="gallery-color-swatch"
+                      data-color="#38b778"
+                      style="background: #38b778"></button>
+                    <button
+                      type="button"
+                      class="gallery-color-swatch"
+                      data-color="#e05260"
+                      style="background: #e05260"></button>
+                    <button
+                      type="button"
+                      class="gallery-color-swatch"
+                      data-color="#9b6dff"
+                      style="background: #9b6dff"></button>
+                    <button
+                      type="button"
+                      class="gallery-color-swatch"
+                      data-color="#2bb3c0"
+                      style="background: #2bb3c0"></button>
+                    <button
+                      type="button"
+                      class="gallery-color-swatch"
+                      data-color="#d0d0d0"
+                      style="background: #d0d0d0"></button>
                   </div>
                 </div>
                 <div class="gallery-modal-footer">
-                  <button type="button" class="gallery-btn-secondary" id="gallery-album-modal-cancel">Cancelar</button>
+                  <button
+                    type="button"
+                    class="gallery-btn-secondary"
+                    id="gallery-album-modal-cancel">
+                    Cancelar
+                  </button>
                   <button type="submit" class="gallery-btn-primary">Guardar álbum</button>
                 </div>
               </form>
             </div>
           </div>
 
-          <!-- Modal Compartir Álbum (Copia vs Colaborador) -->
+          <!-- Modal Compartir Álbum -->
           <div class="gallery-modal-backdrop" id="gallery-share-album-modal" hidden>
             <div class="gallery-modal-card">
               <div class="gallery-modal-header">
                 <h3>Compartir álbum</h3>
-                <button type="button" class="gallery-popover-close" id="gallery-share-album-close" title="Cerrar">
+                <button
+                  type="button"
+                  class="gallery-popover-close"
+                  id="gallery-share-album-close"
+                  title="Cerrar">
                   <span class="ui-icon" data-iconify="x"></span>
                 </button>
               </div>
@@ -2019,23 +2718,39 @@
                 <p class="gallery-share-subtitle" id="gallery-share-album-name"></p>
                 <label class="gallery-form-field">
                   <span>Número de SIM del jugador (XXX-XXXX-XXX)</span>
-                  <input type="text" id="gallery-share-target-input" maxlength="15" placeholder="Ej: 555-1234-567" required />
+                  <input
+                    type="text"
+                    id="gallery-share-target-input"
+                    maxlength="15"
+                    placeholder="Ej: 555-1234-567"
+                    required />
                 </label>
                 <div class="gallery-form-field">
                   <span>Modo de envío</span>
                   <div class="gallery-share-mode-grid">
-                    <button type="button" class="gallery-share-mode-btn active" data-share-mode="copy">
+                    <button
+                      type="button"
+                      class="gallery-share-mode-btn active"
+                      data-share-mode="copy">
                       <strong>Copia</strong>
                       <small>Le pasa las fotos y una carpeta copia</small>
                     </button>
-                    <button type="button" class="gallery-share-mode-btn" data-share-mode="collab">
+                    <button
+                      type="button"
+                      class="gallery-share-mode-btn"
+                      data-share-mode="collab">
                       <strong>Colaborador</strong>
                       <small>Las fotos que añada se descargan en la tuya</small>
                     </button>
                   </div>
                 </div>
                 <div class="gallery-modal-footer">
-                  <button type="button" class="gallery-btn-secondary" id="gallery-share-album-cancel">Cancelar</button>
+                  <button
+                    type="button"
+                    class="gallery-btn-secondary"
+                    id="gallery-share-album-cancel">
+                    Cancelar
+                  </button>
                   <button type="submit" class="gallery-btn-primary">Enviar álbum</button>
                 </div>
               </form>
@@ -2050,8 +2765,12 @@
               </div>
               <div class="gallery-invite-body" id="gallery-invite-body"></div>
               <div class="gallery-modal-footer">
-                <button type="button" class="gallery-btn-secondary" id="gallery-invite-reject">Rechazar</button>
-                <button type="button" class="gallery-btn-primary" id="gallery-invite-accept">Aceptar</button>
+                <button type="button" class="gallery-btn-secondary" id="gallery-invite-reject">
+                  Rechazar
+                </button>
+                <button type="button" class="gallery-btn-primary" id="gallery-invite-accept">
+                  Aceptar
+                </button>
               </div>
             </div>
           </div>
@@ -2083,7 +2802,6 @@
         <!-- PANTALLA DE CONFIGURACIÓN INICIAL (SETUP) -->
         <section id="setup-screen" class="setup-screen" hidden>
           <div class="setup-container">
-            <!-- FASE 1: IDIOMA -->
             <div class="setup-panel active" id="setup-panel-lang">
               <div class="setup-header">
                 <span class="setup-logo" data-iconify="language"></span>
@@ -2094,12 +2812,10 @@
                 </p>
               </div>
               <div class="setup-lang-list">
-                <!-- Solo español por ahora -->
                 <button class="setup-lang-btn active" data-lang="es">
                   <span>Español</span>
                   <span class="ui-icon" data-iconify="chevron-right"></span>
                 </button>
-                <!-- Placeholders para futuros idiomas (DESHABILITADOS) -->
                 <button class="setup-lang-btn disabled" disabled>
                   <span>English</span>
                 </button>
@@ -2112,7 +2828,6 @@
               </div>
             </div>
 
-            <!-- FASE 2: PIN -->
             <div class="setup-panel locked" id="setup-panel-pin">
               <div class="setup-header">
                 <span class="setup-logo" data-iconify="lock"></span>
@@ -2127,8 +2842,12 @@
                 <div class="pin-dots" id="setup-pin-dots">
                   <span></span><span></span><span></span><span></span>
                 </div>
-                <!-- WRAPPER PARA EL INPUT Y EL BOTÓN -->
-                <div class="password-input-wrapper" id="password-input-wrapper" hidden>
+                <form
+                  class="password-input-wrapper"
+                  id="password-input-wrapper"
+                  autocomplete="off"
+                  onsubmit="return false;"
+                  hidden>
                   <input
                     type="password"
                     id="setup-password-input"
@@ -2138,10 +2857,11 @@
                   <button
                     class="password-confirm-btn"
                     id="btn-confirm-password"
+                    type="button"
                     title="Confirmar contraseña">
                     <span class="ui-icon" data-iconify="check"></span>
                   </button>
-                </div>
+                </form>
               </div>
 
               <div class="numpad setup-numpad" id="setup-numpad">
@@ -2161,7 +2881,6 @@
                 </button>
               </div>
 
-              <!-- BOTONES DE TIPO DE PIN -->
               <div class="setup-pin-types">
                 <button class="setup-pin-type-btn active" data-type="4">
                   <span class="type-label">PIN de</span>
@@ -2177,7 +2896,6 @@
                 </button>
               </div>
 
-              <!-- PIE DEL PANEL -->
               <div class="setup-pin-footer">
                 <button class="setup-back-btn" data-target="lang">
                   <span class="ui-icon" data-iconify="chevron-left"></span> Volver atrás
@@ -2188,7 +2906,6 @@
               </div>
             </div>
 
-            <!-- FASE 3: CLOUD -->
             <div class="setup-panel locked" id="setup-panel-cloud">
               <div class="setup-header">
                 <span class="setup-logo cloud-logo" data-iconify="cloud"></span>
@@ -2196,7 +2913,7 @@
                 <p>Sincroniza tu vida en Los Santos</p>
               </div>
 
-              <div class="setup-cloud-form">
+              <form class="setup-cloud-form" autocomplete="off" onsubmit="return false;">
                 <h3>Registrar Cuenta</h3>
 
                 <div class="cloud-input-group">
@@ -2215,7 +2932,6 @@
                     autocomplete="off" />
                 </div>
 
-                <!-- NUEVO INPUT: REPETIR CONTRASEÑA -->
                 <div class="cloud-input-group">
                   <input
                     type="password"
@@ -2224,16 +2940,15 @@
                     autocomplete="off" />
                 </div>
 
-                <!-- BOTÓN PRINCIPAL -->
-                <button class="cloud-action-btn" id="cloud-login-btn">Acceder</button>
+                <button type="button" class="cloud-action-btn" id="cloud-login-btn">
+                  Acceder
+                </button>
 
-                <!-- NUEVO BOTÓN SECUNDARIO -->
-                <button class="setup-cloud-login-btn" id="cloud-goto-login">
+                <button type="button" class="setup-cloud-login-btn" id="cloud-goto-login">
                   Iniciar sesión
                 </button>
-              </div>
+              </form>
 
-              <!-- FOOTER CON LA RAYA (Replicando el estilo del PIN) -->
               <div
                 class="setup-pin-footer"
                 style="
@@ -2327,10 +3042,12 @@
       >
     </div>
 
-    <!-- Pantalla completa real del monitor (100vw x 100vh por encima de la tablet) -->
     <div class="gallery-fullscreen-overlay" id="gallery-fullscreen-overlay" hidden>
       <div class="gallery-fullscreen-stage" id="gallery-fullscreen-stage"></div>
-      <div class="gallery-fullscreen-hint" id="gallery-fullscreen-hint" aria-hidden="true"></div>
+      <div
+        class="gallery-fullscreen-hint"
+        id="gallery-fullscreen-hint"
+        aria-hidden="true"></div>
     </div>
 
     <script src="js/iconify.js"></script>

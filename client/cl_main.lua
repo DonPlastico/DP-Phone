@@ -954,17 +954,9 @@ exports('IsPhoneOpen', function()
     return isPhoneOpen
 end)
 
-local GALLERY_COMMS_CALLBACKS = {
-    'toggleGalleryFavorite',
-    'getGalleryAlbums',
-    'createGalleryAlbum',
-    'updateGalleryAlbum',
-    'deleteGalleryAlbum',
-    'setMediaInAlbum',
-    'setAlbumCollaborative',
-    'shareGalleryAlbum',
-    'respondGalleryAlbumInvite'
-}
+local GALLERY_COMMS_CALLBACKS = {'toggleGalleryFavorite', 'getGalleryAlbums', 'createGalleryAlbum',
+                                 'updateGalleryAlbum', 'deleteGalleryAlbum', 'setMediaInAlbum', 'setAlbumCollaborative',
+                                 'shareGalleryAlbum', 'respondGalleryAlbumInvite'}
 
 for _, cbName in ipairs(GALLERY_COMMS_CALLBACKS) do
     RegisterNUICallback(cbName, function(data, cb)

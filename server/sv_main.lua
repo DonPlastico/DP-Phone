@@ -384,7 +384,7 @@ CreateThread(function()
     ]])
 
     if not srvCfg('fivemanageAPIKey') or ServerConfig.fivemanageAPIKey == 'PON_AQUI_TU_NUEVA_API_KEY' then
-        print('^1[DP-Phone] Falta la API key de Fivemanage en server/sv_config.lua: la cámara no podrá subir fotos.^0')
+        print('^1[DP-Phone] Falta la API key de Fivemanage en config.lua: la cámara no podrá subir fotos.^0')
     end
 end)
 
@@ -1187,7 +1187,7 @@ lib.callback.register('dp-phone:server:getPhotoUploadUrl', function(source)
 
     local apiKey = srvCfg('fivemanageAPIKey')
     if not apiKey or apiKey == '' or apiKey == 'PON_AQUI_TU_NUEVA_API_KEY' then
-        print('^1[DP-Phone] No hay API key de Fivemanage en server/sv_config.lua.^0')
+        print('^1[DP-Phone] No hay API key de Fivemanage en config.lua.^0')
         return nil
     end
 
@@ -1259,7 +1259,7 @@ lib.callback.register('dp-phone:server:captureAndUploadPhoto', function(source)
 
     local apiKey = srvCfg('fivemanageAPIKey')
     if not apiKey or apiKey == '' or apiKey == 'PON_AQUI_TU_NUEVA_API_KEY' then
-        print('^1[DP-Phone] Falta fivemanageAPIKey en server/sv_config.lua.^0')
+        print('^1[DP-Phone] Falta fivemanageAPIKey en config.lua.^0')
         return {
             success = false
         }
@@ -1348,7 +1348,7 @@ lib.callback.register('dp-phone:server:startVideoCapture', function(source)
 
     local apiKey = srvCfg('fivemanageAPIKey')
     if not apiKey or apiKey == '' or apiKey == 'PON_AQUI_TU_NUEVA_API_KEY' then
-        print('^1[DP-Phone] Falta fivemanageAPIKey en server/sv_config.lua.^0')
+        print('^1[DP-Phone] Falta fivemanageAPIKey en config.lua.^0')
         return {
             ok = false,
             reason = 'no_api_key'
@@ -2250,8 +2250,9 @@ local function syncCollaboratorAddedMedia(adderImei, addedAlbumId, mediaRow)
     for _, lnk in ipairs(links) do
         local peerImei = (lnk.source_imei == adderImei and tonumber(lnk.source_album_id) == tonumber(addedAlbumId)) and
                              lnk.target_imei or lnk.source_imei
-        local peerAlbumId = (lnk.source_imei == adderImei and tonumber(lnk.source_album_id) == tonumber(addedAlbumId)) and
-                                tonumber(lnk.target_album_id) or tonumber(lnk.source_album_id)
+        local peerAlbumId =
+            (lnk.source_imei == adderImei and tonumber(lnk.source_album_id) == tonumber(addedAlbumId)) and
+                tonumber(lnk.target_album_id) or tonumber(lnk.source_album_id)
 
         local peerAlbum = MySQL.single.await('SELECT * FROM dp_phone_albums WHERE id = ? AND imei = ? LIMIT 1',
             {peerAlbumId, peerImei})
@@ -2420,8 +2421,8 @@ lib.callback.register('dp-phone:server:respondGalleryAlbumInvite', function(sour
     newAlbumId = tonumber(newAlbumId)
 
     for _, mr in ipairs(inv.mediaRows or {}) do
-        local copiedMediaId = MySQL.insert.await('INSERT INTO dp_phone_gallery (imei, image_url, is_favorite) VALUES (?, ?, 0)',
-            {targetImei, mr.image_url})
+        local copiedMediaId = MySQL.insert.await(
+            'INSERT INTO dp_phone_gallery (imei, image_url, is_favorite) VALUES (?, ?, 0)', {targetImei, mr.image_url})
         if copiedMediaId then
             MySQL.query.await('INSERT IGNORE INTO dp_phone_album_items (album_id, media_id) VALUES (?, ?)',
                 {newAlbumId, tonumber(copiedMediaId)})

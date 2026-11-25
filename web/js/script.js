@@ -57,7 +57,6 @@
   let currentPinInput = "";
   let isLocked = false;
   let lockMethod = "pin";
-  let pinAttempts = 0;
 
   // Variables para el teléfono
   const PHONE_STORAGE_KEY = "dpPhone.phoneSettings";
@@ -71,12 +70,6 @@
   let snakeGameMode = localStorage.getItem("snakeGameMode") || "wrap"; // "wrap" o "walls"
 
   // Helper seguro para acceder a settings del hardware
-  function getHardwareSettings() {
-    if (!window.PhoneData) return null;
-    if (!window.PhoneData.hardware) window.PhoneData.hardware = {};
-    if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
-    return window.PhoneData.hardware.settings;
-  }
 
   function savePhoneSettings() {
     localStorage.setItem(PHONE_STORAGE_KEY, JSON.stringify(phoneSettings));
@@ -437,7 +430,8 @@
 
     notificationAudio.play().catch((e) => {
       // Ignorar errores si el navegador bloquea el autoplay (común en navegadores)
-      console.log("Audio bloqueado por el navegador", e);
+      {
+      }
     });
   }
 
@@ -465,7 +459,7 @@
       "Redes Sociales": "social",
       Sistema: "settings",
       AirDrop: "settings",
-      "iFruit Store": "store",
+      "Tienda iFruit": "store",
     };
 
     let appId = appMap[category] || appNameMap[appName] || appName.toLowerCase();
@@ -486,15 +480,166 @@
     setTimeout(() => notif.remove(), 300);
   }
 
+  let activeNcFilterApp = "__all__";
+  let ncSearchQuery = "";
+
   function renderNotificationCenter() {
     const listEl = document.getElementById("nc-list");
+    const channelsEl = document.getElementById("nc-v4-channels");
+    const totalPillEl = document.getElementById("nc-v4-total-pill");
+    const stageEyebrowEl = document.getElementById("nc-v4-stage-eyebrow");
+    const stageTitleEl = document.getElementById("nc-v4-stage-title");
+    const stageIconEl = document.getElementById("nc-v4-stage-icon");
+    const stageCountEl = document.getElementById("nc-v4-stage-count");
+    const clearChannelBtn = document.getElementById("nc-v4-clear-channel");
+    const searchWrap = document.getElementById("nc-v4-search-wrap");
+    const searchInput = document.getElementById("nc-v4-search-input");
+    const searchClear = document.getElementById("nc-v4-search-clear");
+
     if (!listEl) return;
 
-    if (state.history.length === 0) {
+    const totalCount = state.history.length;
+    if (totalPillEl) totalPillEl.textContent = String(totalCount);
+
+    // Agrupar notificaciones por aplicación
+    const grouped = new Map();
+    state.history.forEach((notif) => {
+      const key = notif.appName || "Sistema";
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          appName: key,
+          icon: notif.icon || "bell",
+          items: [],
+        });
+      }
+      grouped.get(key).items.push(notif);
+    });
+
+    // Si la app filtrada ya no tiene notificaciones, volver a "__all__"
+    if (activeNcFilterApp !== "__all__" && !grouped.has(activeNcFilterApp)) {
+      activeNcFilterApp = "__all__";
+    }
+
+    // Renderizar rail izquierdo de canales
+    if (channelsEl) {
+      let railHtml = `
+        <button type="button" class="nc-v4-channel-btn ${activeNcFilterApp === "__all__" ? "active" : ""}" data-nc-filter="__all__">
+          <span class="nc-v4-channel-icon"><span class="ui-icon" data-iconify="bell"></span></span>
+          <span class="nc-v4-channel-text">
+            <strong>Todas las apps</strong>
+            <span>Vista unificada</span>
+          </span>
+          <span class="nc-v4-channel-count">${totalCount}</span>
+        </button>
+      `;
+
+      grouped.forEach((group) => {
+        const isActive = activeNcFilterApp === group.appName;
+        const latest = group.items[0];
+        const preview = latest ? esc(latest.title) : "";
+        railHtml += `
+          <button type="button" class="nc-v4-channel-btn ${isActive ? "active" : ""}" data-nc-filter="${esc(group.appName)}">
+            <span class="nc-v4-channel-icon"><span class="ui-icon" data-iconify="${esc(group.icon)}"></span></span>
+            <span class="nc-v4-channel-text">
+              <strong>${esc(group.appName)}</strong>
+              <span>${preview}</span>
+            </span>
+            <span class="nc-v4-channel-count">${group.items.length}</span>
+          </button>
+        `;
+      });
+
+      channelsEl.innerHTML = railHtml;
+      if (window.iconifySvg) {
+        channelsEl.querySelectorAll("[data-iconify]").forEach((el) => {
+          el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+        });
+      }
+
+      channelsEl.querySelectorAll("[data-nc-filter]").forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          activeNcFilterApp = btn.dataset.ncFilter || "__all__";
+          renderNotificationCenter();
+        };
+      });
+    }
+
+    // Configurar buscador (una sola vez)
+    if (searchInput && !searchInput.dataset.bound) {
+      searchInput.dataset.bound = "1";
+      searchInput.addEventListener("input", () => {
+        ncSearchQuery = searchInput.value.trim().toLowerCase();
+        if (searchWrap) searchWrap.classList.toggle("has-value", ncSearchQuery.length > 0);
+        renderNotificationCenter();
+      });
+      if (searchClear) {
+        searchClear.addEventListener("click", (e) => {
+          e.stopPropagation();
+          searchInput.value = "";
+          ncSearchQuery = "";
+          if (searchWrap) searchWrap.classList.remove("has-value");
+          renderNotificationCenter();
+        });
+      }
+    }
+
+    // Filtrar notificaciones para el panel derecho
+    let filteredItems =
+      activeNcFilterApp === "__all__"
+        ? state.history.slice()
+        : (grouped.get(activeNcFilterApp)?.items || []).slice();
+
+    if (ncSearchQuery) {
+      filteredItems = filteredItems.filter(
+        (n) =>
+          (n.title && n.title.toLowerCase().includes(ncSearchQuery)) ||
+          (n.message && n.message.toLowerCase().includes(ncSearchQuery)) ||
+          (n.appName && n.appName.toLowerCase().includes(ncSearchQuery)),
+      );
+    }
+
+    // Actualizar cabecera del stage derecho
+    const activeGroup =
+      activeNcFilterApp !== "__all__" ? grouped.get(activeNcFilterApp) : null;
+    if (stageEyebrowEl) {
+      stageEyebrowEl.textContent = activeGroup ? "APLICACIÓN SELECCIONADA" : "BANDEJA GENERAL";
+    }
+    if (stageTitleEl) {
+      stageTitleEl.textContent = activeGroup
+        ? activeGroup.appName
+        : "Todas las notificaciones";
+    }
+    if (stageIconEl && window.iconifySvg) {
+      stageIconEl.innerHTML = window.iconifySvg(
+        activeGroup ? activeGroup.icon : "bell",
+        "iconify-svg",
+      );
+    }
+    if (stageCountEl) {
+      const n = filteredItems.length;
+      stageCountEl.textContent = `${n} ${n === 1 ? "aviso" : "avisos"}`;
+    }
+    if (clearChannelBtn) {
+      clearChannelBtn.hidden = !activeGroup || activeGroup.items.length === 0;
+      clearChannelBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (!activeGroup) return;
+        const targetApp = activeGroup.appName;
+        state.history = state.history.filter((n) => (n.appName || "Sistema") !== targetApp);
+        hasUnreadNotifications = false;
+        activeNcFilterApp = "__all__";
+        renderNotificationCenter();
+        updateNotificationHeader();
+      };
+    }
+
+    if (filteredItems.length === 0) {
       listEl.innerHTML = `
-        <div class="nc-empty">
-          <span class="ui-icon" data-iconify="bell"></span>
-          <p>No hay notificaciones nuevas.</p>
+        <div class="nc-empty nc-v4-empty">
+          <div class="nc-v4-empty-badge"><span class="ui-icon" data-iconify="bell"></span></div>
+          <strong>${totalCount === 0 ? "Bandeja sin avisos" : "Sin resultados"}</strong>
+          <p>${totalCount === 0 ? "Cuando recibas mensajes, llamadas o alertas del sistema aparecerán aquí." : "No hay notificaciones que coincidan con el filtro actual."}</p>
         </div>
       `;
       if (window.iconifySvg) {
@@ -502,195 +647,128 @@
           el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
         });
       }
-      return;
-    }
-
-    const grouped = {};
-    state.history.forEach((notif) => {
-      if (!grouped[notif.appName]) grouped[notif.appName] = [];
-      grouped[notif.appName].push(notif);
-    });
-
-    let html = "";
-
-    for (const [appName, items] of Object.entries(grouped)) {
-      const firstItem = items[0];
-      const count = items.length;
-      const isStacked = count > 1;
-
-      const itemsHtml = items
-        .map(
-          (item) => `
-        <div class="nc-item" data-id="${item.id}">
-          <div class="nc-item-header">
-            <h4 class="nc-item-title">${esc(item.title)}</h4>
-            <span class="nc-item-time">${item.time}</span>
-          </div>
-          <div class="nc-item-body">
-            <p class="nc-item-msg">${esc(item.message)}</p>
-            ${item.avatar ? `<img src="${item.avatar}" class="nc-item-avatar" alt="Avatar" />` : ""}
-          </div>
-        </div>
-      `,
-        )
+    } else {
+      listEl.innerHTML = filteredItems
+        .map((item) => {
+          const showAppChip = activeNcFilterApp === "__all__";
+          return `
+            <article class="nc-item nc-v4-card" data-id="${item.id}">
+              <div class="nc-v4-card-icon">
+                <span class="ui-icon" data-iconify="${esc(item.icon || "bell")}"></span>
+              </div>
+              <div class="nc-v4-card-main">
+                <div class="nc-v4-card-top">
+                  ${showAppChip ? `<span class="nc-v4-app-tag">${esc(item.appName || "Sistema")}</span>` : ""}
+                  <h4 class="nc-item-title nc-v4-card-title">${esc(item.title)}</h4>
+                  <span class="nc-item-time nc-v4-card-time">${esc(item.time || "")}</span>
+                </div>
+                <p class="nc-item-msg nc-v4-card-msg">${esc(item.message)}</p>
+              </div>
+              ${item.avatar ? `<img src="${item.avatar}" class="nc-item-avatar nc-v4-card-avatar" alt="Avatar" />` : ""}
+              <button type="button" class="nc-v4-dismiss-btn" data-nc-dismiss="${item.id}" title="Eliminar aviso" aria-label="Eliminar aviso">
+                <span class="ui-icon" data-iconify="x"></span>
+              </button>
+            </article>
+          `;
+        })
         .join("");
 
-      html += `
-        <div class="nc-group${isStacked ? " nc-collapsible" : ""}" data-app="${esc(appName)}">
-          <div class="nc-group-header">
-            <span class="ui-icon" data-iconify="${firstItem.icon || "bell"}"></span>
-            <span>${esc(appName)}</span>
-            ${isStacked ? `<span class="nc-group-count">${count}</span>` : ""}
-          </div>
-          <div class="nc-group-items ${isStacked ? "stack" : ""}">
-            ${itemsHtml}
-          </div>
-        </div>
-      `;
-    }
-
-    listEl.innerHTML = html;
-
-    listEl.querySelectorAll(".nc-group-header [data-iconify]").forEach((el) => {
-      el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
-    });
-
-    const toggleGroup = (groupEl) => {
-      const itemsContainer = groupEl.querySelector(".nc-group-items");
-      if (!itemsContainer) return;
-
-      if (itemsContainer.classList.contains("stack")) {
-        itemsContainer.classList.remove("stack");
-        itemsContainer.classList.add("expanded");
-      } else if (itemsContainer.classList.contains("expanded")) {
-        itemsContainer.classList.remove("expanded");
-        if (itemsContainer.children.length > 1) {
-          itemsContainer.classList.add("stack");
-        }
+      if (window.iconifySvg) {
+        listEl.querySelectorAll("[data-iconify]").forEach((el) => {
+          el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+        });
       }
-      setTimeout(() => {
-        listEl.style.display = "none";
-        listEl.offsetHeight;
-        listEl.style.display = "";
-      }, 10);
-    };
 
-    const setupSwipe = (element, onDelete, type, onTap) => {
-      let startX = 0;
-      let startY = 0;
-      let currentX = 0;
-      let isDragging = false;
-      let isClick = true;
-      const DRAG_THRESHOLD = 8;
-
-      element.addEventListener("pointerdown", (e) => {
-        if (e.target.closest("button") || e.target.closest("a")) return;
-        if (type === "item") {
-          const itemsContainer = element.closest(".nc-group-items");
-          if (!itemsContainer || !itemsContainer.classList.contains("expanded")) return;
-        }
-        if (type === "group" && e.target.closest(".nc-item")) {
-          const itemsContainer = element.querySelector(".nc-group-items");
-          if (itemsContainer && itemsContainer.classList.contains("expanded")) return;
-        }
-
-        startX = e.clientX;
-        startY = e.clientY;
-        currentX = 0;
-        isDragging = true;
-        isClick = true;
-
-        if (!element.classList.contains("nc-group")) {
-          element.setPointerCapture(e.pointerId);
-        }
-      });
-
-      element.addEventListener("pointermove", (e) => {
-        if (!isDragging) return;
-        const deltaX = e.clientX - startX;
-        const deltaY = e.clientY - startY;
-        if (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD) {
-          isClick = false;
-          if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            element.classList.add("swiping");
-            currentX = deltaX;
-            element.style.transform = `translateX(${currentX}px)`;
+      // Botón rápido X para eliminar aviso
+      listEl.querySelectorAll("[data-nc-dismiss]").forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.ncDismiss);
+          const card = btn.closest(".nc-v4-card");
+          if (card) {
+            card.classList.add("swipe-out");
+            setTimeout(() => {
+              state.history = state.history.filter((n) => n.id !== id);
+              hasUnreadNotifications = false;
+              renderNotificationCenter();
+              updateNotificationHeader();
+            }, 180);
+          } else {
+            state.history = state.history.filter((n) => n.id !== id);
+            hasUnreadNotifications = false;
+            renderNotificationCenter();
+            updateNotificationHeader();
           }
-        }
+        };
       });
 
-      element.addEventListener("pointerup", (e) => {
-        if (!isDragging) return;
-        isDragging = false;
-        try {
-          element.releasePointerCapture(e.pointerId);
-        } catch (err) {}
+      // Deslizar horizontalmente para descartar cada tarjeta
+      listEl.querySelectorAll(".nc-v4-card").forEach((cardEl) => {
+        const id = Number(cardEl.dataset.id);
+        let startX = 0;
+        let startY = 0;
+        let currentX = 0;
+        let isDragging = false;
 
-        if (isClick) {
-          element.style.transform = "";
-          if (onTap) onTap();
-          return;
-        }
+        cardEl.addEventListener("pointerdown", (e) => {
+          if (e.target.closest("button") || e.target.closest("a")) return;
+          startX = e.clientX;
+          startY = e.clientY;
+          currentX = 0;
+          isDragging = true;
+          cardEl.setPointerCapture(e.pointerId);
+        });
 
-        element.classList.remove("swiping");
-        if (Math.abs(currentX) > 80) {
-          element.classList.add("swipe-out");
-          setTimeout(() => {
-            onDelete();
-          }, 300);
-        } else {
-          element.style.transition = "transform 0.2s ease-out";
-          element.style.transform = "";
-          setTimeout(() => (element.style.transition = ""), 200);
-        }
-        currentX = 0;
+        cardEl.addEventListener("pointermove", (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - startX;
+          const dy = e.clientY - startY;
+          if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+            cardEl.classList.add("swiping");
+            currentX = dx;
+            cardEl.style.transform = `translateX(${currentX}px)`;
+            cardEl.style.opacity = String(Math.max(0.25, 1 - Math.abs(currentX) / 220));
+          }
+        });
+
+        const endDrag = (e) => {
+          if (!isDragging) return;
+          isDragging = false;
+          try {
+            cardEl.releasePointerCapture(e.pointerId);
+          } catch (_) {}
+          cardEl.classList.remove("swiping");
+          if (Math.abs(currentX) > 85) {
+            cardEl.classList.add("swipe-out");
+            setTimeout(() => {
+              state.history = state.history.filter((n) => n.id !== id);
+              hasUnreadNotifications = false;
+              renderNotificationCenter();
+              updateNotificationHeader();
+            }, 200);
+          } else {
+            cardEl.style.transition = "transform 0.18s ease, opacity 0.18s ease";
+            cardEl.style.transform = "";
+            cardEl.style.opacity = "";
+            setTimeout(() => {
+              cardEl.style.transition = "";
+            }, 190);
+          }
+          currentX = 0;
+        };
+
+        cardEl.addEventListener("pointerup", endDrag);
+        cardEl.addEventListener("pointercancel", endDrag);
       });
-
-      element.addEventListener("pointercancel", (e) => {
-        isDragging = false;
-        try {
-          element.releasePointerCapture(e.pointerId);
-        } catch (err) {}
-        element.classList.remove("swiping");
-        element.style.transform = "";
-        currentX = 0;
-      });
-    };
-
-    listEl.querySelectorAll(".nc-item").forEach((itemEl) => {
-      const id = Number(itemEl.dataset.id);
-      setupSwipe(
-        itemEl,
-        () => {
-          state.history = state.history.filter((n) => n.id !== id);
-          hasUnreadNotifications = false;
-          renderNotificationCenter();
-          updateNotificationHeader();
-        },
-        "item",
-      );
-    });
-
-    listEl.querySelectorAll(".nc-group").forEach((groupEl) => {
-      const appName = groupEl.dataset.app;
-      setupSwipe(
-        groupEl,
-        () => {
-          state.history = state.history.filter((n) => n.appName !== appName);
-          hasUnreadNotifications = false;
-          renderNotificationCenter();
-          updateNotificationHeader();
-        },
-        "group",
-        () => toggleGroup(groupEl),
-      );
-    });
+    }
 
     const clearBtn = document.getElementById("nc-clear-all");
     if (clearBtn) {
-      clearBtn.onclick = () => {
+      clearBtn.onclick = (e) => {
+        e.stopPropagation();
         state.history = [];
         hasUnreadNotifications = false;
+        activeNcFilterApp = "__all__";
         renderNotificationCenter();
         updateNotificationHeader();
       };
@@ -742,6 +820,15 @@
     if (!response.ok) throw new Error(`NUI ${name}: ${response.status}`);
     const body = await response.text();
     return body ? JSON.parse(body) : null;
+  }
+
+  // Guarda en el servidor los ajustes y apps del hardware del móvil actual (antes copiado ~16 veces)
+  function persistHardware() {
+    return nui("saveHardwareData", {
+      imei: window.PhoneData.imei,
+      settings: window.PhoneData.hardware.settings,
+      installed_apps: window.PhoneData.hardware.installed_apps || [],
+    });
   }
 
   function updateDesktopClock() {
@@ -956,11 +1043,7 @@
           notificaciones: notif,
         };
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
     }, 2000);
   }
@@ -1154,7 +1237,7 @@
     if (window.snakeInterval) clearInterval(window.snakeInterval);
   }
 
-  // ---- iFruit Store: apps instaladas, cola de descargas y lista ----
+  // ---- Tienda iFruit: apps instaladas, cola de descargas y lista ----
   const storeScreen = document.querySelector("#store-app");
   const storeList = document.querySelector("#store-list");
   const storeSearch = document.querySelector("#store-search");
@@ -1205,67 +1288,552 @@
     ...Object.keys(store.activeDownloads).map(appById).filter(Boolean),
   ];
 
-  function getUsedStorageGB() {
-    let totalAppMB = 0;
-    desktopApps().forEach((app) => {
-      totalAppMB += app.size || 45;
-    });
-    const appsGB = totalAppMB / 1024;
-    const systemOSGB = 14.2;
-    return appsGB + systemOSGB;
-  }
-
   function storeState(id) {
     if (store.installed.includes(id)) return "installed";
     if (store.activeDownloads[id]) return "downloading";
     return "idle";
   }
 
+  store.category = store.category || "all";
+  store.page = store.page || "daily";
+
+  const STORE_CURATED_CATEGORIES = [
+    { id: "all", label: "Todo", cats: null },
+    { id: "installed", label: "Instaladas", cats: null },
+    { id: "daily", label: "Día a día", cats: ["Comunicación", "Productividad", "Utilidades"] },
+    { id: "street", label: "Calle y coches", cats: ["Vehículos", "Transporte", "Ciudad"] },
+    { id: "money", label: "Dinero y trámites", cats: ["Finanzas"] },
+    {
+      id: "fun",
+      label: "Ocio y media",
+      cats: ["Multimedia", "Entretenimiento", "Juegos", "Social"],
+    },
+    { id: "care", label: "Salud y trabajo", cats: ["Salud", "Trabajo"] },
+  ];
+
+  const DAILY_PACK_COLLECTIONS = [
+    {
+      id: "pack-city",
+      eyebrow: "COLECCIÓN DEL DÍA",
+      title: "Esenciales para moverte",
+      desc: "Las herramientas clave para el día a día en la ciudad.",
+      poolIds: [
+        "taxi",
+        "garage",
+        "roadside",
+        "bank",
+        "licenses",
+        "weather",
+        "messages",
+        "phone",
+      ],
+    },
+    {
+      id: "pack-night",
+      eyebrow: "SELECCIÓN DEL EQUIPO",
+      title: "Plan de tarde y ocio",
+      desc: "Música, juegos y quedadas para desconectar.",
+      poolIds: [
+        "music",
+        "events",
+        "snake",
+        "merge",
+        "trivia",
+        "social",
+        "dating",
+        "camera",
+        "gallery",
+      ],
+    },
+  ];
+
+  function getRealDaySeed(dateObj = new Date()) {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const d = String(dateObj.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function seededRandomFromString(seedStr) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < seedStr.length; i++) {
+      h ^= seedStr.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return () => {
+      h += 0x6d2b79f5;
+      let t = Math.imul(h ^ (h >>> 15), 1 | h);
+      t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function pickDeterministicSubset(pool, count, seedStr) {
+    const copy = pool.slice();
+    const rand = seededRandomFromString(seedStr);
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy.slice(0, Math.min(count, copy.length));
+  }
+
+  function setStorePage(pageName) {
+    store.page = pageName === "catalog" ? "catalog" : "daily";
+    const dailyPage = document.getElementById("store-page-daily");
+    const catalogPage = document.getElementById("store-page-catalog");
+    if (dailyPage) dailyPage.hidden = store.page !== "daily";
+    if (catalogPage) catalogPage.hidden = store.page !== "catalog";
+
+    storeScreen.querySelectorAll("[data-store-page]").forEach((btn) => {
+      const active = btn.dataset.storePage === store.page;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-selected", String(active));
+    });
+
+    if (store.page === "daily") {
+      renderDailyPage();
+    } else {
+      buildStoreList();
+    }
+  }
+
+  function storeActionHtml(id) {
+    const app = appById(id);
+    if (!app) return "";
+    const name = esc(app.name);
+    const status = storeState(id);
+    if (status === "idle") {
+      return `<button class="store-pill install-cta" type="button" data-store-action="download" data-app-id="${id}" aria-label="Descargar ${name}">${iconifySvg("download")}Descargar</button>`;
+    }
+    if (status === "downloading") {
+      const job = store.activeDownloads[id];
+      const p = job.progress;
+      const paused = job.paused;
+      return `<div class="store-progress${paused ? " paused" : ""}" role="progressbar" aria-label="Descargando ${name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p}"><span style="width:${p}%"></span></div><button class="store-btn small" type="button" data-store-action="toggle-pause" data-app-id="${id}" aria-label="${paused ? "Reanudar" : "Pausar"} ${name}" title="${paused ? "Reanudar" : "Pausar"}">${iconifySvg(paused ? "player-play" : "player-pause")}</button>`;
+    }
+    return `<button class="store-pill open" type="button" data-store-action="open" data-app-id="${id}" aria-label="Abrir ${name}">Abrir</button><button class="store-pill danger" type="button" data-store-action="uninstall" data-app-id="${id}" aria-label="Desinstalar ${name}">Desinstalar</button>`;
+  }
+
+  function renderDailyPage() {
+    const spotlightGrid = document.getElementById("store-daily-spotlight-grid");
+    const packsGrid = document.getElementById("store-daily-packs-grid");
+    const dateBadge = document.getElementById("store-daily-date");
+    const countdownEl = document.getElementById("store-daily-countdown");
+    if (!spotlightGrid || !packsGrid) return;
+
+    const now = new Date();
+    const dayKey = getRealDaySeed(now);
+    const catalog = storeApps();
+    const picks = pickDeterministicSubset(catalog, 3, `daily-spotlight:${dayKey}`);
+
+    const nextMidnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+      0,
+      0,
+      0,
+    );
+    const diffMs = Math.max(0, nextMidnight.getTime() - now.getTime());
+    const totalMins = Math.floor(diffMs / 60000);
+    const hoursLeft = Math.floor(totalMins / 60);
+    const minsLeft = totalMins % 60;
+
+    if (dateBadge) {
+      dateBadge.textContent = new Intl.DateTimeFormat("es-ES", {
+        day: "2-digit",
+        month: "short",
+      })
+        .format(now)
+        .toUpperCase();
+    }
+    if (countdownEl) {
+      countdownEl.textContent = `Renueva en ${hoursLeft}h ${String(minsLeft).padStart(2, "0")}m`;
+    }
+
+    const heroApp = picks[0];
+    const sideApps = picks.slice(1, 3);
+
+    let spotlightHtml = "";
+    if (heroApp) {
+      spotlightHtml += `
+        <article class="store-hero-card" data-store-card-id="${esc(heroApp.id)}">
+          <div class="store-hero-watermark" aria-hidden="true">${iconifySvg(heroApp.icon)}</div>
+          <div class="store-hero-top">
+            <span class="store-eyebrow">APP DEL DÍA</span>
+            <span class="store-tag-chip">${esc(heroApp.cat || "App")}</span>
+          </div>
+          <div class="store-hero-main">
+            <span class="app-icon" style="--a1:${heroApp.c[0]};--a2:${heroApp.c[1]}" aria-hidden="true">${iconifySvg(heroApp.icon)}</span>
+            <div class="store-hero-copy">
+              <strong>${esc(heroApp.name)}</strong>
+              <p>${esc(heroApp.desc || "")}</p>
+            </div>
+          </div>
+          <div class="store-hero-footer">
+            <span class="store-size-text">${esc(String(heroApp.size || 45))} MB</span>
+            <div class="store-action">${storeActionHtml(heroApp.id)}</div>
+          </div>
+        </article>`;
+    }
+
+    const sideLabels = ["RECOMENDADA DE HOY", "DESCUBRIMIENTO 24H"];
+    const sideCardsHtml = sideApps
+      .map(
+        (app, i) => `
+          <article class="store-side-card" data-store-card-id="${esc(app.id)}">
+            <span class="store-row-bg-glow" aria-hidden="true"></span>
+            <span class="store-side-watermark" aria-hidden="true">${iconifySvg(app.icon)}</span>
+            <div class="store-side-head">
+              <span class="store-eyebrow">${esc(sideLabels[i] || "RECOMENDADA")}</span>
+              <span class="store-tag-chip">${esc(app.cat || "App")}</span>
+            </div>
+            <div class="store-side-body">
+              <span class="app-icon" style="--a1:${app.c[0]};--a2:${app.c[1]}" aria-hidden="true">${iconifySvg(app.icon)}</span>
+              <div class="store-side-text">
+                <strong>${esc(app.name)}</strong>
+                <span>${esc(app.desc || "")}</span>
+              </div>
+            </div>
+            <div class="store-side-foot">
+              <span class="store-size-text">${esc(String(app.size || 45))} MB</span>
+              <div class="store-action">${storeActionHtml(app.id)}</div>
+            </div>
+          </article>`,
+      )
+      .join("");
+
+    spotlightGrid.innerHTML =
+      spotlightHtml + `<div class="store-side-picks">${sideCardsHtml}</div>`;
+
+    const orderedPacks =
+      now.getDate() % 2 === 0
+        ? DAILY_PACK_COLLECTIONS
+        : DAILY_PACK_COLLECTIONS.slice().reverse();
+
+    packsGrid.innerHTML = orderedPacks
+      .map((pack, pIdx) => {
+        const availablePool = pack.poolIds
+          .map((id) => appById(id))
+          .filter((a) => a && !a.default);
+        const items = pickDeterministicSubset(
+          availablePool.length >= 3 ? availablePool : catalog,
+          3,
+          `daily-pack:${dayKey}:${pack.id}:${pIdx}`,
+        );
+
+        const miniIconsHtml = items
+          .map((it) => `<span class="store-pack-mini-icon">${iconifySvg(it.icon)}</span>`)
+          .join("");
+
+        const rowsHtml = items
+          .map(
+            (it) => `
+              <div class="store-pack-item-row" data-store-card-id="${esc(it.id)}">
+                <span class="store-row-bg-glow" aria-hidden="true"></span>
+                <span class="store-pack-watermark" aria-hidden="true">${iconifySvg(it.icon)}</span>
+                <div class="store-pack-item-left">
+                  <span class="app-icon" style="--a1:${it.c[0]};--a2:${it.c[1]}" aria-hidden="true">${iconifySvg(it.icon)}</span>
+                  <div class="store-pack-item-copy">
+                    <strong>${esc(it.name)}</strong>
+                    <span>${esc(it.cat || "App")} · ${esc(String(it.size || 45))} MB</span>
+                  </div>
+                </div>
+                <div class="store-action">${storeActionHtml(it.id)}</div>
+              </div>`,
+          )
+          .join("");
+
+        return `
+          <article class="store-pack-card">
+            <div class="store-pack-top">
+              <div class="store-pack-title-group">
+                <span class="store-eyebrow">${esc(pack.eyebrow)}</span>
+                <h4>${esc(pack.title)}</h4>
+                <p>${esc(pack.desc)}</p>
+              </div>
+              <div class="store-pack-mini-icons" aria-hidden="true">${miniIconsHtml}</div>
+            </div>
+            <div class="store-pack-items">${rowsHtml}</div>
+          </article>`;
+      })
+      .join("");
+  }
+
+  function renderStoreCategories() {
+    const bar = document.getElementById("store-categories-bar");
+    if (!bar) return;
+
+    bar.innerHTML = STORE_CURATED_CATEGORIES.map((cat) => {
+      const active = store.category === cat.id ? " active" : "";
+      return `<button type="button" class="store-cat-btn${active}" data-store-cat="${esc(cat.id)}">${esc(cat.label)}</button>`;
+    }).join("");
+  }
+
   function storeRowHtml(app) {
-    return `<div class="store-row" role="listitem" data-app="${app.id}">
+    const sizeMb = app.size || 45;
+    return `<div class="store-row" role="listitem" data-app="${app.id}" data-store-card-id="${app.id}">
+      <span class="store-row-bg-glow" aria-hidden="true"></span>
+      <span class="store-row-watermark" aria-hidden="true">${iconifySvg(app.icon)}</span>
       <span class="app-icon" style="--a1:${app.c[0]};--a2:${app.c[1]}" aria-hidden="true">${iconifySvg(app.icon)}</span>
-      <div class="store-info" title="${esc(app.desc || "")}"><strong>${esc(app.name)}</strong><span class="store-cat">${esc(app.cat || "")}</span></div>
+      <div class="store-info" title="${esc(app.desc || "")}">
+        <strong>${esc(app.name)}</strong>
+        <div class="store-row-sub">
+          <span class="store-tag-chip">${esc(app.cat || "App")}</span>
+          <span class="store-size-text">${esc(String(sizeMb))} MB</span>
+        </div>
+        <span class="store-desc-line">${esc(app.desc || "")}</span>
+      </div>
       <div class="store-action"></div>
     </div>`;
   }
 
   function updateStoreRow(id) {
-    const row = storeList.querySelector(`.store-row[data-app="${id}"]`);
-    const app = appById(id);
-    if (!row || !app) return;
-    const name = esc(app.name);
-    const status = storeState(id);
-    let html = "";
-    if (status === "idle") {
-      html = `<button class="store-pill" type="button" data-store-action="download" data-app-id="${id}" aria-label="Descargar ${name}">${iconifySvg("download")}Descargar</button>`;
-    } else if (status === "downloading") {
-      const job = store.activeDownloads[id];
-      const p = job.progress;
-      const paused = job.paused;
-      html = `<div class="store-progress${paused ? " paused" : ""}" role="progressbar" aria-label="Descargando ${name}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${p}"><span style="width:${p}%"></span></div><button class="store-btn small" type="button" data-store-action="toggle-pause" data-app-id="${id}" aria-label="${paused ? "Reanudar" : "Pausar"} ${name}" title="${paused ? "Reanudar" : "Pausar"}">${iconifySvg(paused ? "player-play" : "player-pause")}</button>`;
-    } else {
-      html = `<button class="store-pill open" type="button" data-store-action="open" data-app-id="${id}" aria-label="Abrir ${name}">Abrir</button><button class="store-pill danger" type="button" data-store-action="uninstall" data-app-id="${id}" aria-label="Desinstalar ${name}">Desinstalar</button>`;
+    const actionHtml = storeActionHtml(id);
+    storeScreen
+      .querySelectorAll(`[data-store-card-id="${id}"] .store-action`)
+      .forEach((el) => {
+        el.innerHTML = actionHtml;
+      });
+    if (activeStoreDetailAppId === id) {
+      const detailCta = document.getElementById("store-detail-cta-row");
+      const app = appById(id);
+      if (detailCta && app) {
+        detailCta.innerHTML = app.default
+          ? `<span class="store-tag-chip">INCLUIDA DE SERIE</span>`
+          : actionHtml;
+      }
     }
-    row.querySelector(".store-action").innerHTML = html;
   }
 
   function updateStoreProgress(id, progress) {
-    const row = storeList.querySelector(`.store-row[data-app="${id}"]`);
-    if (!row) return;
-    const bar = row.querySelector(".store-progress");
-    if (!bar) return;
-    bar.setAttribute("aria-valuenow", String(progress));
-    bar.firstElementChild.style.width = `${progress}%`;
+    storeScreen
+      .querySelectorAll(`[data-store-card-id="${id}"] .store-progress`)
+      .forEach((bar) => {
+        bar.setAttribute("aria-valuenow", String(progress));
+        bar.firstElementChild.style.width = `${progress}%`;
+      });
+    const detailProg = document.querySelector(`#store-detail-cta-row .store-progress`);
+    if (detailProg && activeStoreDetailAppId === id) {
+      detailProg.setAttribute("aria-valuenow", String(progress));
+      detailProg.firstElementChild.style.width = `${progress}%`;
+    }
+  }
+
+  let activeStoreDetailAppId = null;
+
+  function buildAppStoreMetadata(app) {
+    const rand = seededRandomFromString(`app-meta:${app.id}`);
+    const ratingVal = (4.1 + rand() * 0.8).toFixed(1);
+    const totalRatings = Math.round(120 + rand() * 4800);
+    const installsCount = Math.round(totalRatings * (4.2 + rand() * 3.5));
+    const minAge = app.cat === "Trabajo" ? "16+" : app.id === "darkchat" ? "17+" : "4+";
+    const ageDesc =
+      minAge === "17+"
+        ? "Contenido adulto"
+        : minAge === "16+"
+          ? "Entorno laboral"
+          : "Para todos";
+    const devMap = {
+      Comunicación: "iFruit Comms",
+      Multimedia: "Vinewood Media",
+      Entretenimiento: "LS Events Corp",
+      Juegos: "Wildlight Arcade",
+      Productividad: "iFruit Tools",
+      Utilidades: "Los Santos Grid",
+      Finanzas: "Maze & Bawsaq Labs",
+      Vehículos: "CarLink Technologies",
+      Transporte: "Downtown Transit",
+      Ciudad: "LS Civic Services",
+      Salud: "SAED Digital",
+      Social: "Lifeinvader Group",
+      Trabajo: "LS Official Systems",
+    };
+    const developer = devMap[app.cat] || "iFruit Studio";
+
+    const w5 = Math.round(62 + rand() * 24);
+    const w4 = Math.round(10 + rand() * 16);
+    const w3 = Math.round(4 + rand() * 8);
+    const w2 = Math.round(1 + rand() * 4);
+    const w1 = Math.max(1, 100 - (w5 + w4 + w3 + w2));
+
+    const slides = [
+      {
+        tag: "VISTA GENERAL",
+        title: `${app.name} en iFruit OS`,
+        caption: app.desc || "Interfaz optimizada para modo móvil y Tri-Fold.",
+      },
+      {
+        tag: "FLUJO RÁPIDO",
+        title: `Gestión en ${app.cat || "tu día a día"}`,
+        caption: "Acceso directo desde el escritorio y sincronización instantánea.",
+      },
+      {
+        tag: "RENDIMIENTO",
+        title: `${app.size || 45} MB · Baja latencia`,
+        caption: "Diseñado con estética monocroma y bajo consumo de recursos.",
+      },
+    ];
+
+    const longDesc = `${app.desc || app.name}. ${app.name} está pensada para integrarse de forma natural con el resto de aplicaciones de iFruit OS, manteniendo un acceso rápido, lectura clara y respuesta inmediata tanto en formato vertical como en pantalla expandida.`;
+
+    return {
+      ratingVal,
+      totalRatings,
+      installsCount,
+      minAge,
+      ageDesc,
+      developer,
+      weights: [w5, w4, w3, w2, w1],
+      slides,
+      longDesc,
+    };
+  }
+
+  function renderStoreAppDetail(id) {
+    const modal = document.getElementById("store-detail-modal");
+    const app = appById(id);
+    if (!modal || !app) return;
+
+    const meta = buildAppStoreMetadata(app);
+    const iconWrap = document.getElementById("store-detail-icon-wrap");
+    const titleEl = document.getElementById("store-detail-title");
+    const catEl = document.getElementById("store-detail-cat");
+    const taglineEl = document.getElementById("store-detail-tagline");
+    const ctaRow = document.getElementById("store-detail-cta-row");
+    const kpisEl = document.getElementById("store-detail-kpis");
+    const carouselEl = document.getElementById("store-detail-carousel");
+    const ratingsEl = document.getElementById("store-detail-ratings");
+    const longDescEl = document.getElementById("store-detail-long-desc");
+    const infoTableEl = document.getElementById("store-detail-info-table");
+
+    if (iconWrap) {
+      iconWrap.innerHTML = `<span class="app-icon" style="--a1:${app.c[0]};--a2:${app.c[1]}" aria-hidden="true">${iconifySvg(app.icon)}</span>`;
+    }
+    if (titleEl) titleEl.textContent = app.name;
+    if (catEl) catEl.textContent = app.cat || "App";
+    if (taglineEl) taglineEl.textContent = app.desc || "";
+    if (ctaRow) {
+      ctaRow.innerHTML = app.default
+        ? `<span class="store-tag-chip">INCLUIDA DE SERIE</span>`
+        : storeActionHtml(app.id);
+    }
+
+    if (kpisEl) {
+      kpisEl.innerHTML = `
+        <div class="store-kpi-cell">
+          <span class="store-kpi-label">VALORACIÓN</span>
+          <span class="store-kpi-value">★ ${esc(meta.ratingVal)}</span>
+          <span class="store-kpi-sub">${esc(String(meta.totalRatings))} reseñas</span>
+        </div>
+        <div class="store-kpi-cell">
+          <span class="store-kpi-label">EDAD</span>
+          <span class="store-kpi-value">${esc(meta.minAge)}</span>
+          <span class="store-kpi-sub">${esc(meta.ageDesc)}</span>
+        </div>
+        <div class="store-kpi-cell">
+          <span class="store-kpi-label">CATEGORÍA</span>
+          <span class="store-kpi-value">${esc(app.cat || "App")}</span>
+          <span class="store-kpi-sub">iFruit OS</span>
+        </div>
+        <div class="store-kpi-cell">
+          <span class="store-kpi-label">INSTALADOS</span>
+          <span class="store-kpi-value">${esc(String(meta.installsCount))}</span>
+          <span class="store-kpi-sub">Usuarios activos</span>
+        </div>
+        <div class="store-kpi-cell">
+          <span class="store-kpi-label">TAMAÑO</span>
+          <span class="store-kpi-value">${esc(String(app.size || 45))}</span>
+          <span class="store-kpi-sub">MB</span>
+        </div>`;
+    }
+
+    if (carouselEl) {
+      carouselEl.innerHTML = meta.slides
+        .map(
+          (sl) => `
+            <article class="store-detail-slide">
+              <span class="store-detail-slide-tag">${esc(sl.tag)}</span>
+              <strong class="store-detail-slide-title">${esc(sl.title)}</strong>
+              <p class="store-detail-slide-caption">${esc(sl.caption)}</p>
+            </article>`,
+        )
+        .join("");
+    }
+
+    if (ratingsEl) {
+      const starLabels = ["★★★★★", "★★★★☆", "★★★☆☆", "★★☆☆☆", "★☆☆☆☆"];
+      const barsHtml = meta.weights
+        .map(
+          (pct, idx) => `
+            <div class="store-rating-bar-row">
+              <span class="store-rating-stars-lbl">${starLabels[idx]}</span>
+              <div class="store-rating-track">
+                <div class="store-rating-fill" style="width:${pct}%"></div>
+              </div>
+            </div>`,
+        )
+        .join("");
+
+      ratingsEl.innerHTML = `
+        <div class="store-rating-score-col">
+          <span class="store-rating-big">${esc(meta.ratingVal)}</span>
+          <span class="store-rating-outof">de 5 estrellas</span>
+          <span class="store-rating-count">${esc(String(meta.totalRatings))} valoraciones</span>
+        </div>
+        <div class="store-rating-bars">${barsHtml}</div>`;
+    }
+
+    if (longDescEl) longDescEl.textContent = meta.longDesc;
+
+    if (infoTableEl) {
+      infoTableEl.innerHTML = `
+        <div class="store-detail-info-row"><span>Creador</span><strong>${esc(meta.developer)}</strong></div>
+        <div class="store-detail-info-row"><span>Tamaño</span><strong>${esc(String(app.size || 45))} MB</strong></div>
+        <div class="store-detail-info-row"><span>Instalaciones</span><strong>${esc(String(meta.installsCount))} personas</strong></div>
+        <div class="store-detail-info-row"><span>Categoría</span><strong>${esc(app.cat || "App")}</strong></div>
+        <div class="store-detail-info-row"><span>Edad mínima</span><strong>${esc(meta.minAge)}</strong></div>
+        <div class="store-detail-info-row"><span>Compatibilidad</span><strong>iFruit 2SE · Móvil y Tri-Fold</strong></div>`;
+    }
+
+    modal.querySelectorAll("[data-iconify]").forEach((el) => {
+      if (window.iconifySvg) {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      }
+    });
+  }
+
+  function openStoreAppDetail(id) {
+    if (!appById(id)) return;
+    activeStoreDetailAppId = id;
+    renderStoreAppDetail(id);
+    const modal = document.getElementById("store-detail-modal");
+    if (modal) modal.hidden = false;
+  }
+
+  function closeStoreAppDetail() {
+    activeStoreDetailAppId = null;
+    const modal = document.getElementById("store-detail-modal");
+    if (modal) modal.hidden = true;
   }
 
   function buildStoreList() {
+    renderStoreCategories();
     const query = normalizeText(store.filter.trim());
-    const apps = storeApps().filter(
-      (app) =>
+    const catDef = STORE_CURATED_CATEGORIES.find((c) => c.id === store.category);
+
+    const apps = storeApps().filter((app) => {
+      if (store.category === "installed" && !store.installed.includes(app.id)) return false;
+      if (catDef && Array.isArray(catDef.cats) && !catDef.cats.includes(app.cat)) return false;
+      return (
         !query ||
         normalizeText(app.name).includes(query) ||
-        normalizeText(app.desc).includes(query),
-    );
+        normalizeText(app.desc).includes(query) ||
+        normalizeText(app.cat).includes(query)
+      );
+    });
+
     storeList.innerHTML = apps.length
       ? apps.map(storeRowHtml).join("")
       : '<p class="store-empty">No se han encontrado aplicaciones.</p>';
@@ -1313,7 +1881,7 @@
     renderDesktopApps(id);
     updateStoreRow(id);
     showNotification({
-      appName: "iFruit Store",
+      appName: "Tienda iFruit",
       icon: "download",
       title: "Instalación completada",
       message: `${appById(id).name} se ha instalado correctamente.`,
@@ -1387,14 +1955,21 @@
     saveUiState();
     storeSearch.value = "";
     store.filter = "";
-    buildStoreList();
+    store.category = "all";
+    if (window.iconifySvg) {
+      storeScreen.querySelectorAll("[data-iconify]").forEach((el) => {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      });
+    }
+    renderStoreCategories();
+    setStorePage("daily");
   }
 
   function openAppFromStore(id) {
     const handler = APP_HANDLERS[id];
     if (!handler) {
       return showNotification({
-        appName: "iFruit Store",
+        appName: "Tienda iFruit",
         icon: "alert-triangle",
         title: "Aplicación no disponible",
         message: "Esta aplicación aún no está lista para abrirse.",
@@ -1502,22 +2077,64 @@
 
   storeSearch.addEventListener("input", () => {
     store.filter = storeSearch.value;
-    buildStoreList();
+    if (store.filter.trim() && store.page !== "catalog") {
+      setStorePage("catalog");
+      return;
+    }
+    if (store.page === "catalog") {
+      buildStoreList();
+    } else {
+      renderDailyPage();
+    }
   });
 
-  storeList.addEventListener("click", (event) => {
+  storeScreen.addEventListener("click", (event) => {
+    const pageTab = event.target.closest("[data-store-page]");
+    if (pageTab) {
+      setStorePage(pageTab.dataset.storePage);
+      return;
+    }
+
+    if (event.target.closest("#store-go-catalog-btn")) {
+      setStorePage("catalog");
+      return;
+    }
+
+    const catBtn = event.target.closest("[data-store-cat]");
+    if (catBtn) {
+      store.category = catBtn.dataset.storeCat || "all";
+      buildStoreList();
+      return;
+    }
+
+    if (
+      event.target.closest("#store-detail-close") ||
+      event.target.id === "store-detail-modal"
+    ) {
+      closeStoreAppDetail();
+      return;
+    }
+
     const button = event.target.closest("[data-store-action]");
-    if (!button) return;
-    const id = button.dataset.appId;
-    if (button.dataset.storeAction === "download") {
-      button.classList.add("leaving");
-      setTimeout(() => queueDownload(id), 160);
-    } else if (button.dataset.storeAction === "open") {
-      openAppFromStore(id);
-    } else if (button.dataset.storeAction === "toggle-pause") {
-      toggleDownloadPause(id);
-    } else if (button.dataset.storeAction === "uninstall") {
-      uninstallApp(id);
+    if (button) {
+      const id = button.dataset.appId;
+      if (button.dataset.storeAction === "download") {
+        button.classList.add("leaving");
+        setTimeout(() => queueDownload(id), 160);
+      } else if (button.dataset.storeAction === "open") {
+        closeStoreAppDetail();
+        openAppFromStore(id);
+      } else if (button.dataset.storeAction === "toggle-pause") {
+        toggleDownloadPause(id);
+      } else if (button.dataset.storeAction === "uninstall") {
+        uninstallApp(id);
+      }
+      return;
+    }
+
+    const cardEl = event.target.closest("[data-store-card-id]");
+    if (cardEl && !event.target.closest(".store-detail-card")) {
+      openStoreAppDetail(cardEl.dataset.storeCardId);
     }
   });
 
@@ -1746,133 +2363,247 @@
     blockednumbers: {
       title: "Números Bloqueados",
       content: `
-        <div class="settings-col" style="height: 100%;">
-            <div class="settings-section-banner">
-                <div class="settings-section-banner-left">
-                    <span class="settings-section-banner-icon" data-iconify="phone-off"></span>
-                    <div>
-                        <h3 class="settings-submenu-title">Números Bloqueados</h3>
-                        <p class="settings-submenu-desc">Gestiona los números que no pueden llamarte ni contactarte.</p>
-                    </div>
-                </div>
+        <div class="blocked-v18-wrapper">
+          <div class="settings-section-banner" style="margin-bottom: 0;">
+            <div class="settings-section-banner-left">
+              <span class="settings-section-banner-icon" data-iconify="shield-x"></span>
+              <div>
+                <h3 class="settings-submenu-title">Números Bloqueados</h3>
+                <p class="settings-submenu-desc">Lista de números restringidos para llamadas y mensajes.</p>
+              </div>
             </div>
-            <div class="custom-wallpaper-input-wrapper" style="margin-bottom: 16px; width: 100%;">
-                <span class="ui-icon" data-iconify="phone"></span>
-                <input type="text" id="input-blocked-number" placeholder="Añadir número a la lista (XXX-XXXX-XXX)..." autocomplete="off" />
-                <button id="btn-add-blocked" title="Añadir número">
-                    <span class="ui-icon" data-iconify="plus"></span>
-                </button>
+            <span class="appearance-block-badge" id="blocked-count-badge">0 BLOQUEADOS</span>
+          </div>
+
+          <div class="blocked-v18-add-card">
+            <div class="custom-wallpaper-input-wrapper" style="width: 100%; max-width: none;">
+              <span class="ui-icon" data-iconify="shield-x"></span>
+              <input type="text" id="input-blocked-number" placeholder="Bloquear número o nombre (XXX-XXXX-XXX)..." autocomplete="off" />
+              <button id="btn-add-blocked" title="Bloquear número">
+                <span class="ui-icon" data-iconify="plus"></span>
+              </button>
             </div>
-            <div class="settings-menu-group" id="blocked-list-container"></div>
+          </div>
+
+          <div class="blocked-v18-list" id="blocked-list-container"></div>
         </div>
       `,
     },
     security: {
       title: "Seguridad",
       content: `
-        <div class="settings-section-banner">
+        <div class="sec-v22-wrapper">
+          <div class="settings-section-banner" style="margin-bottom: 0;">
             <div class="settings-section-banner-left">
-                <span class="settings-section-banner-icon" data-iconify="shield-lock"></span>
-                <div>
-                    <h3 class="settings-submenu-title">Contraseña, Huella y Face ID</h3>
-                    <p class="settings-submenu-desc">Protege el acceso físico a tu dispositivo y tus datos.</p>
-                </div>
-            </div>
-        </div>
-        <div class="security-pin-display">
-            <div class="setting-item" style="background:transparent; border:none; padding:0; box-shadow:none;">
-              <span class="setting-icon" data-iconify="key"></span>
-              <div class="setting-text"><strong>PIN actual</strong><span>El PIN protege el acceso a tu teléfono.</span></div>
-              <div class="pin-blur-box">
-                <span class="pin-hidden-text">••••</span>
-                <button class="eye-btn" id="toggle-pin-visibility"><span class="ui-icon" data-iconify="eye"></span></button>
+              <span class="settings-section-banner-icon" data-iconify="shield-lock"></span>
+              <div>
+                <h3 class="settings-submenu-title">Contraseña, Huella y Face ID</h3>
+                <p class="settings-submenu-desc">Protege el acceso físico a tu dispositivo, credenciales y biometría.</p>
               </div>
             </div>
-        </div>
-        <div class="settings-menu-group" style="margin-top: 16px;">
-            <button class="settings-menu-btn" id="btn-change-pin">
-                <span class="settings-menu-btn-left">
-                    <span class="ui-icon" data-iconify="lock"></span>
-                    <span>Cambiar PIN</span>
-                </span>
-                <span class="ui-icon chevron" data-iconify="chevron-right"></span>
-            </button>
-            <div class="setting-item" style="background:transparent; border:none; border-bottom:1px solid rgba(255,255,255,0.08); border-radius:0 !important; padding: 12px 16px; box-shadow:none;">
-              <span class="setting-icon" data-iconify="fingerprint"></span>
-              <div class="setting-text"><strong>Utilizar Huella</strong><span>Desbloqueo rápido mediante lector dactilar</span></div>
-              <label class="toggle-switch"><input type="checkbox" id="toggle-fingerprint"><span class="slider"></span></label>
+            <span class="appearance-block-badge" id="security-status-badge">PROTEGIDO</span>
+          </div>
+
+          <div class="sec-v22-top-grid">
+            <div class="sec-v22-card">
+              <div class="sec-v22-card-head">
+                <div class="sound-v2-heading">
+                  <span class="sound-v2-box-icon sm" data-iconify="key"></span>
+                  <div>
+                    <strong>PIN actual</strong>
+                    <span>Código o clave de desbloqueo</span>
+                  </div>
+                </div>
+                <div class="pin-blur-box">
+                  <span class="pin-hidden-text">••••</span>
+                  <button type="button" class="eye-btn" id="toggle-pin-visibility" title="Mostrar u ocultar PIN">
+                    <span class="ui-icon" data-iconify="eye"></span>
+                  </button>
+                </div>
+              </div>
+
+              <p class="sec-v22-copy">
+                Se solicita al encender o desbloquear el terminal cuando no se usa biometría.
+              </p>
+
+              <button type="button" class="sec-v22-action-btn" id="btn-change-pin">
+                <span class="ui-icon" data-iconify="lock"></span>
+                <span>Cambiar PIN</span>
+                <span class="ui-icon" data-iconify="chevron-right" style="margin-left:auto;"></span>
+              </button>
             </div>
-            <div class="setting-item" style="background:transparent; border:none; border-radius:0 !important; padding: 12px 16px; box-shadow:none;">
-              <span class="setting-icon" data-iconify="face-id"></span>
-              <div class="setting-text"><strong>Utilizar Face ID</strong><span>Reconocimiento facial al encender pantalla</span></div>
-              <label class="toggle-switch"><input type="checkbox" id="toggle-faceid"><span class="slider"></span></label>
+
+            <div class="sec-v22-card">
+              <div class="sec-v22-card-head">
+                <div class="sound-v2-heading">
+                  <span class="sound-v2-box-icon sm" data-iconify="shield-check"></span>
+                  <div>
+                    <strong>Control de Acceso</strong>
+                    <span>Estado del hardware y titularidad</span>
+                  </div>
+                </div>
+              </div>
+
+              <p class="sec-v22-copy" id="security-owner-summary">
+                El bloqueo biométrico requiere PIN configurado y titularidad del dispositivo.
+              </p>
+
+              <div class="sec-v22-meta-list">
+                <div class="sec-v22-meta-row">
+                  <span>Bloqueo en pantalla</span>
+                  <strong>Activo</strong>
+                </div>
+                <div class="sec-v22-meta-row">
+                  <span>Titularidad del SIM/IMEI</span>
+                  <strong id="security-owner-state">Verificada</strong>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div class="sec-v22-card">
+            <div class="sec-v22-card-head">
+              <div class="sound-v2-heading">
+                <span class="sound-v2-box-icon" data-iconify="fingerprint"></span>
+                <div>
+                  <strong>Biometría del Dispositivo</strong>
+                  <span>Métodos rápidos de desbloqueo vinculados a tu cuenta.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sec-v22-biometric-grid">
+              <div class="sec-v22-bio-tile">
+                <div class="sec-v22-bio-top">
+                  <span class="sound-v2-box-icon sm" data-iconify="fingerprint"></span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-fingerprint">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <div class="sec-v22-bio-copy">
+                  <strong>Utilizar Huella</strong>
+                  <span>Desbloqueo rápido mediante lector dactilar.</span>
+                </div>
+                <span class="sec-v22-bio-tag" id="fingerprint-status-tag">DISPONIBLE</span>
+              </div>
+
+              <div class="sec-v22-bio-tile">
+                <div class="sec-v22-bio-top">
+                  <span class="sound-v2-box-icon sm" data-iconify="face-id"></span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-faceid">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <div class="sec-v22-bio-copy">
+                  <strong>Utilizar Face ID</strong>
+                  <span>Reconocimiento facial al encender pantalla.</span>
+                </div>
+                <span class="sec-v22-bio-tag" id="faceid-status-tag">DISPONIBLE</span>
+              </div>
+            </div>
+          </div>
         </div>
       `,
     },
     privacy: {
-      title: "Privacidad",
+      title: "Privacidad y Datos",
       content: `
-        <div class="settings-section-banner">
+        <div class="priv-v23-wrapper">
+          <div class="settings-section-banner" style="margin-bottom: 0;">
             <div class="settings-section-banner-left">
-                <span class="settings-section-banner-icon" data-iconify="eye-off"></span>
-                <div>
-                    <h3 class="settings-submenu-title">Privacidad y Restablecimiento</h3>
-                    <p class="settings-submenu-desc">Gestiona la visibilidad de tu identidad y el borrado del terminal.</p>
-                </div>
+              <span class="settings-section-banner-icon" data-iconify="eye-off"></span>
+              <div>
+                <h3 class="settings-submenu-title">Privacidad y Restablecimiento</h3>
+                <p class="settings-submenu-desc">Gestiona la visibilidad de tu identidad, lectura y borrado del terminal.</p>
+              </div>
             </div>
-        </div>
-        <div class="privacy-list">
-            <div class="privacy-row">
-                <div class="privacy-row-info">
-                    <span class="privacy-row-icon" data-iconify="phone"></span>
-                    <div class="privacy-row-text">
-                        <strong>Número visible</strong>
-                        <span>Si está desactivado, saldrás como número privado/desconocido.</span>
-                    </div>
-                </div>
-                <label class="toggle-switch"><input type="checkbox" id="toggle-number-visible" checked /><span class="slider"></span></label>
+            <span class="appearance-block-badge">PRIVACIDAD</span>
+          </div>
+
+          <div class="priv-v23-grid">
+            <div class="priv-v23-card">
+              <div class="priv-v23-card-top">
+                <span class="sound-v2-box-icon sm" data-iconify="phone"></span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-number-visible" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="priv-v23-copy">
+                <strong>Número visible</strong>
+                <span>Si está desactivado, saldrás como número privado o desconocido.</span>
+              </div>
             </div>
-            <div class="privacy-row">
-                <div class="privacy-row-info">
-                    <span class="privacy-row-icon" data-iconify="checks"></span>
-                    <div class="privacy-row-text">
-                        <strong>Confirmación de lectura</strong>
-                        <span>Si está activo, verás el doble check azul cuando lean tus mensajes.</span>
-                    </div>
-                </div>
-                <label class="toggle-switch"><input type="checkbox" id="toggle-read-receipts" checked /><span class="slider"></span></label>
+
+            <div class="priv-v23-card">
+              <div class="priv-v23-card-top">
+                <span class="sound-v2-box-icon sm" data-iconify="checks"></span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-read-receipts" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="priv-v23-copy">
+                <strong>Confirmación de lectura</strong>
+                <span>Muestra el doble check cuando lean tus mensajes enviados.</span>
+              </div>
             </div>
-            <div class="privacy-row">
-                <div class="privacy-row-info">
-                    <span class="privacy-row-icon" data-iconify="shield-check"></span>
-                    <div class="privacy-row-text">
-                        <strong>Modo Privacidad</strong>
-                        <span>Desenfocar contenido sensible en pantalla.</span>
-                    </div>
-                </div>
-                <label class="toggle-switch"><input type="checkbox" id="toggle-privacy-mode" checked /><span class="slider"></span></label>
+
+            <div class="priv-v23-card">
+              <div class="priv-v23-card-top">
+                <span class="sound-v2-box-icon sm" data-iconify="shield-check"></span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-privacy-mode" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="priv-v23-copy">
+                <strong>Modo Privacidad</strong>
+                <span>Desenfoca contenido sensible en pantalla en entornos públicos.</span>
+              </div>
             </div>
-        </div>
-        <div class="privacy-bottom-grid">
+
+            <div class="priv-v23-card">
+              <div class="priv-v23-card-top">
+                <span class="sound-v2-box-icon sm" data-iconify="eye-off"></span>
+                <span class="display-form-badge">DATOS LOCALES</span>
+              </div>
+              <div class="priv-v23-copy">
+                <strong>Control del Terminal</strong>
+                <span>Los ajustes de identidad aplican al instante en llamadas y chats.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="priv-v23-danger-grid">
             <div class="danger-zone">
-                <div class="danger-zone-header">
-                    <span class="ui-icon" data-iconify="trash"></span>
-                    <span>Limpiar Historial</span>
-                </div>
-                <p class="danger-zone-desc">Elimina de forma permanente todas tus llamadas, mensajes y fotos guardadas en este terminal.</p>
-                <button class="danger-btn" id="btn-wipe-terminal"><span class="ui-icon" data-iconify="trash"></span><span>BORRAR HISTORIAL</span></button>
-                <p class="settings-warning-text"><strong>ACCIÓN IRREVERSIBLE:</strong> Esta acción no se puede deshacer.</p>
+              <div class="danger-zone-header">
+                <span class="ui-icon" data-iconify="trash"></span>
+                <span>Limpiar Historial</span>
+              </div>
+              <p class="danger-zone-desc">Elimina de forma permanente todas tus llamadas, mensajes y fotos guardadas en este terminal.</p>
+              <button type="button" class="danger-btn" id="btn-wipe-terminal">
+                <span class="ui-icon" data-iconify="trash"></span>
+                <span>BORRAR HISTORIAL</span>
+              </button>
+              <p class="settings-warning-text"><strong>ACCIÓN IRREVERSIBLE:</strong> Esta acción no se puede deshacer.</p>
             </div>
+
             <div class="danger-zone">
-                <div class="danger-zone-header">
-                    <span class="ui-icon" data-iconify="alert-triangle"></span>
-                    <span>Formatear Dispositivo</span>
-                </div>
-                <p class="danger-zone-desc">Restablece el sistema operativo iFruit OS a sus valores de fábrica y elimina todo el contenido.</p>
-                <button class="danger-btn" id="btn-format-device"><span class="ui-icon" data-iconify="alert-triangle"></span><span>FORMATEAR MÓVIL</span></button>
-                <p class="settings-warning-text"><strong>ADVERTENCIA CRÍTICA:</strong> Perderás <strong>absolutamente todos</strong> tus datos.</p>
+              <div class="danger-zone-header">
+                <span class="ui-icon" data-iconify="alert-triangle"></span>
+                <span>Formatear Dispositivo</span>
+              </div>
+              <p class="danger-zone-desc">Restablece el sistema operativo iFruit OS a sus valores de fábrica y elimina todo el contenido.</p>
+              <button type="button" class="danger-btn" id="btn-format-device">
+                <span class="ui-icon" data-iconify="alert-triangle"></span>
+                <span>FORMATEAR MÓVIL</span>
+              </button>
+              <p class="settings-warning-text"><strong>ADVERTENCIA CRÍTICA:</strong> Perderás <strong>absolutamente todos</strong> tus datos.</p>
             </div>
+          </div>
         </div>
       `,
     },
@@ -2156,115 +2887,133 @@
     phone: {
       title: "Información del Dispositivo",
       content: `
-        <div class="settings-grid-2col" style="height: 100%;">
-            <div class="settings-col">
-                <div class="device-info-wrapper">
-                    <div class="device-info-header">
-                        <img src="images/ifruit-logo.webp" alt="iFruit Logo" class="device-info-logo" />
-                        <span class="device-version-label">VERSIÓN DEL SISTEMA</span>
-                        <h4 class="device-version-title">iFruit OS v1.7</h4>
-                    </div>
-                    
-                    <div class="device-info-stats">
-                        <div class="device-stat-box">
-                            <div class="device-stat-header">
-                                <span class="ui-icon" data-iconify="device-tablet"></span>
-                                <span>DISPOSITIVO</span>
-                            </div>
-                            <strong>iFruit 2SE TRI-FOLD</strong>
-                        </div>
-                        <div class="device-stat-box">
-                            <div class="device-stat-header">
-                                <span class="ui-icon" data-iconify="database"></span>
-                                <span>ALMACENAMIENTO</span>
-                            </div>
-                            <strong id="device-total-storage-text">— GB / 512 GB</strong>
-                            <div class="device-progress-bar"><span id="device-total-storage-bar" style="width: 0%"></span></div>
-                        </div>
-                    </div>
-
-                    <div class="device-info-list">
-                        <div class="device-info-row">
-                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="hash"></span><span>NÚMERO DE SERIE</span></span>
-                            <strong id="device-imei-display">—</strong>
-                        </div>
-                        
-                        <div class="device-info-row">
-                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="sim-card"></span><span>ESTADO DE LA SIM</span></span>
-                            <strong id="device-sim-status-display">—</strong>
-                        </div>
-
-                        <div class="device-info-row">
-                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="cpu"></span><span>PROCESADOR</span></span>
-                            <strong>PROLABS G-Octa Bionic</strong>
-                        </div>
-                        <div class="device-info-row">
-                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="database"></span><span>ALMACENAMIENTO</span></span>
-                            <strong>512 GB (UFS 4.1)</strong>
-                        </div>
-                        <div class="device-info-row">
-                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="layers"></span><span>MEMORIA RAM</span></span>
-                            <strong>16 GB + 4 GB</strong>
-                        </div>
-                        <div class="device-info-row">
-                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="battery-charging"></span><span>BATERÍA</span></span>
-                            <strong>4800 mAh Li-Polymer</strong>
-                        </div>
-                        <div class="device-info-row">
-                            <span class="device-info-row-label"><span class="ui-icon" data-iconify="info-circle"></span><span>HARDWARE ID</span></span>
-                            <strong>iFruit-2SE</strong>
-                        </div>
-                    </div>
-                </div>
+        <div class="devinfo-v24-wrapper">
+          <div class="settings-section-banner" style="margin-bottom: 0;">
+            <div class="settings-section-banner-left">
+              <span class="settings-section-banner-icon" data-iconify="cpu"></span>
+              <div>
+                <h3 class="settings-submenu-title">Información del Dispositivo</h3>
+                <p class="settings-submenu-desc">Especificaciones técnicas, identidad de serie y reparto de almacenamiento.</p>
+              </div>
             </div>
-            
-            <div class="settings-col">
-                <div class="storage-panel-card">
-                    <div>
-                        <div class="storage-header">
-                            <span>ESPACIO TOTAL</span>
-                            <span id="storage-total-gb">— GB</span>
-                        </div>
-                        <div class="storage-main">
-                            <h2 id="storage-used-gb">— GB</h2>
-                            <span id="storage-free-gb">— GB libres</span>
-                        </div>
-                        <div class="storage-multi-bar">
-                            <div class="storage-segment system" id="storage-seg-system" style="width: 0%"></div>
-                            <div class="storage-segment photos" id="storage-seg-photos" style="width: 0%"></div>
-                            <div class="storage-segment messages" id="storage-seg-messages" style="width: 0%"></div>
-                            <div class="storage-segment apps" id="storage-seg-apps" style="width: 0%"></div>
-                        </div>
-                        <div class="storage-category-header">DESGLOSE POR CATEGORÍA</div>
-                        <div class="storage-list">
-                            <div class="storage-list-item">
-                                <span class="ui-icon" data-iconify="device-desktop"></span>
-                                <span class="storage-list-label">Sistema</span>
-                                <span class="storage-list-value" id="storage-val-system">— GB</span>
-                            </div>
-                            <div class="storage-list-item">
-                                <span class="ui-icon" data-iconify="photo"></span>
-                                <span class="storage-list-label">Fotos</span>
-                                <span class="storage-list-value" id="storage-val-photos">— GB</span>
-                            </div>
-                            <div class="storage-list-item">
-                                <span class="ui-icon" data-iconify="message"></span>
-                                <span class="storage-list-label">Mensajes</span>
-                                <span class="storage-list-value" id="storage-val-messages">— GB</span>
-                            </div>
-                            <div class="storage-list-item">
-                                <span class="ui-icon" data-iconify="layout-dashboard"></span>
-                                <span class="storage-list-label">Apps</span>
-                                <span class="storage-list-value" id="storage-val-apps">— GB</span>
-                            </div>
-                        </div>
-                    </div>
-                    <button class="storage-free-btn" id="btn-free-space">
-                        <span class="ui-icon" data-iconify="trash"></span>
-                        LIBERAR ESPACIO
-                    </button>
+            <span class="appearance-block-badge">2SE TRI-FOLD</span>
+          </div>
+
+          <div class="settings-grid-2col" style="gap: 14px;">
+            <div class="settings-col" style="gap: 12px;">
+              <div class="devinfo-v24-hero">
+                <div class="devinfo-v24-logo-frame">
+                  <img src="images/ifruit-logo.webp" alt="iFruit Logo" class="device-info-logo" style="margin-bottom:0;" />
                 </div>
+                <div class="devinfo-v24-hero-copy">
+                  <span class="device-version-label">VERSIÓN DEL SISTEMA</span>
+                  <h4 class="device-version-title">iFruit OS v1.7</h4>
+                  <span class="devinfo-v24-build-chip">BUILD 2026.11 · TRI-FOLD CORE</span>
+                </div>
+              </div>
+
+              <div class="device-info-stats" style="gap: 10px;">
+                <div class="device-stat-box devinfo-v24-stat">
+                  <div class="device-stat-header">
+                    <span class="ui-icon" data-iconify="device-tablet"></span>
+                    <span>DISPOSITIVO</span>
+                  </div>
+                  <strong>iFruit 2SE TRI-FOLD</strong>
+                </div>
+                <div class="device-stat-box devinfo-v24-stat">
+                  <div class="device-stat-header">
+                    <span class="ui-icon" data-iconify="database"></span>
+                    <span>ALMACENAMIENTO</span>
+                  </div>
+                  <strong id="device-total-storage-text">— GB / 512 GB</strong>
+                  <div class="device-progress-bar"><span id="device-total-storage-bar" style="width: 0%"></span></div>
+                </div>
+              </div>
+
+              <div class="device-info-list devinfo-v24-spec-list">
+                <div class="device-info-row">
+                  <span class="device-info-row-label"><span class="ui-icon" data-iconify="hash"></span><span>NÚMERO DE SERIE</span></span>
+                  <strong id="device-imei-display">—</strong>
+                </div>
+                <div class="device-info-row">
+                  <span class="device-info-row-label"><span class="ui-icon" data-iconify="sim-card"></span><span>ESTADO DE LA SIM</span></span>
+                  <strong id="device-sim-status-display">—</strong>
+                </div>
+                <div class="device-info-row">
+                  <span class="device-info-row-label"><span class="ui-icon" data-iconify="cpu"></span><span>PROCESADOR</span></span>
+                  <strong>PROLABS G-Octa Bionic</strong>
+                </div>
+                <div class="device-info-row">
+                  <span class="device-info-row-label"><span class="ui-icon" data-iconify="database"></span><span>ALMACENAMIENTO</span></span>
+                  <strong>512 GB (UFS 4.1)</strong>
+                </div>
+                <div class="device-info-row">
+                  <span class="device-info-row-label"><span class="ui-icon" data-iconify="layers"></span><span>MEMORIA RAM</span></span>
+                  <strong>16 GB + 4 GB</strong>
+                </div>
+                <div class="device-info-row">
+                  <span class="device-info-row-label"><span class="ui-icon" data-iconify="battery-charging"></span><span>BATERÍA</span></span>
+                  <strong>4800 mAh Li-Polymer</strong>
+                </div>
+                <div class="device-info-row">
+                  <span class="device-info-row-label"><span class="ui-icon" data-iconify="info-circle"></span><span>HARDWARE ID</span></span>
+                  <strong>iFruit-2SE</strong>
+                </div>
+              </div>
             </div>
+
+            <div class="settings-col">
+              <div class="storage-panel-card devinfo-v24-storage">
+                <div>
+                  <div class="storage-header">
+                    <span>ESPACIO TOTAL</span>
+                    <span id="storage-total-gb">— GB</span>
+                  </div>
+                  <div class="storage-main">
+                    <h2 id="storage-used-gb">— GB</h2>
+                    <span id="storage-free-gb">— GB libres</span>
+                  </div>
+                  <div class="storage-multi-bar">
+                    <div class="storage-segment system" id="storage-seg-system" style="width: 0%"></div>
+                    <div class="storage-segment photos" id="storage-seg-photos" style="width: 0%"></div>
+                    <div class="storage-segment messages" id="storage-seg-messages" style="width: 0%"></div>
+                    <div class="storage-segment apps" id="storage-seg-apps" style="width: 0%"></div>
+                  </div>
+                  <div class="storage-category-header">DESGLOSE POR CATEGORÍA</div>
+                  <div class="storage-list">
+                    <div class="storage-list-item devinfo-v24-cat-row">
+                      <span class="devinfo-v24-dot d-sys"></span>
+                      <span class="ui-icon" data-iconify="device-desktop"></span>
+                      <span class="storage-list-label">Sistema</span>
+                      <span class="storage-list-value" id="storage-val-system">— GB</span>
+                    </div>
+                    <div class="storage-list-item devinfo-v24-cat-row">
+                      <span class="devinfo-v24-dot d-pho"></span>
+                      <span class="ui-icon" data-iconify="photo"></span>
+                      <span class="storage-list-label">Fotos</span>
+                      <span class="storage-list-value" id="storage-val-photos">— GB</span>
+                    </div>
+                    <div class="storage-list-item devinfo-v24-cat-row">
+                      <span class="devinfo-v24-dot d-msg"></span>
+                      <span class="ui-icon" data-iconify="message"></span>
+                      <span class="storage-list-label">Mensajes</span>
+                      <span class="storage-list-value" id="storage-val-messages">— GB</span>
+                    </div>
+                    <div class="storage-list-item devinfo-v24-cat-row">
+                      <span class="devinfo-v24-dot d-app"></span>
+                      <span class="ui-icon" data-iconify="layout-dashboard"></span>
+                      <span class="storage-list-label">Apps</span>
+                      <span class="storage-list-value" id="storage-val-apps">— GB</span>
+                    </div>
+                  </div>
+                </div>
+                <button class="storage-free-btn devinfo-v24-free-btn" id="btn-free-space">
+                  <span class="ui-icon" data-iconify="trash"></span>
+                  LIBERAR ESPACIO
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       `,
     },
@@ -2279,7 +3028,9 @@
       notificationSettings.appSettings = {};
     }
 
-    const filterQuery = normalizeText(document.getElementById("notif-app-filter")?.value || "");
+    const filterQuery = normalizeText(
+      document.getElementById("notif-app-filter")?.value || "",
+    );
     const allAppsList = allApps().filter((app) => app.id !== "settings" && app.id !== "store");
 
     const total = allAppsList.length;
@@ -2326,7 +3077,9 @@
     counter.textContent = `${active}/${total}`;
     const masterBadge = document.getElementById("notif-master-status");
     if (masterBadge) {
-      masterBadge.textContent = notificationSettings.doNotDisturb ? "NO MOLESTAR" : "ALERTAS ACTIVAS";
+      masterBadge.textContent = notificationSettings.doNotDisturb
+        ? "NO MOLESTAR"
+        : "ALERTAS ACTIVAS";
     }
   }
 
@@ -2453,7 +3206,10 @@
 
         const setSeg = (id, val) => {
           const el = document.getElementById(id);
-          if (el) el.style.width = `${(val / totalCapacityGB) * 100}%`;
+          if (!el) return;
+          const pct = (val / totalCapacityGB) * 100;
+          el.style.display = val > 0 ? "block" : "none";
+          el.style.width = `${pct}%`;
         };
         setSeg("storage-seg-system", systemGB);
         setSeg("storage-seg-photos", photosGB);
@@ -2529,7 +3285,6 @@
       }
 
       if (tabId === "sim") {
-        const simData = window.PhoneData?.sim_data || {};
         const numEl = document.getElementById("sim-current-number");
         if (numEl) numEl.textContent = window.PhoneData?.sim_number || "Sin SIM insertada";
       }
@@ -2652,7 +3407,10 @@
     if (event.target.closest(".sound-range")) {
       const multi = parseInt(document.getElementById("range-multimedia")?.value || 100, 10);
       const llam = parseInt(document.getElementById("range-llamadas")?.value || 100, 10);
-      const notif = parseInt(document.getElementById("range-notificaciones")?.value || 100, 10);
+      const notif = parseInt(
+        document.getElementById("range-notificaciones")?.value || 100,
+        10,
+      );
       applyAudioSettings(multi, llam, notif);
     }
   });
@@ -2726,11 +3484,7 @@
           window.PhoneData.hardware.settings.notifications = {};
         window.PhoneData.hardware.settings.notifications.doNotDisturb = isDND;
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
 
       // Volver a renderizar la lista para reflejar el estado (deshabilitar toggles si DND está activo)
@@ -2752,11 +3506,7 @@
         if (!window.PhoneData.hardware.settings.notifications)
           window.PhoneData.hardware.settings.notifications = {};
         window.PhoneData.hardware.settings.notifications.lockPreview = isLockPreview;
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
       return;
     }
@@ -2785,11 +3535,7 @@
         window.PhoneData.hardware.settings.notifications.appSettings =
           notificationSettings.appSettings;
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
 
       // Actualizar contador
@@ -2830,9 +3576,6 @@
 
       if (isSilent) {
         // Guardar valores actuales en memoria (local) antes de poner a 0
-        const currentMulti = document.getElementById("range-multimedia").value;
-        const currentLlam = document.getElementById("range-llamadas").value;
-        const currentNotif = document.getElementById("range-notificaciones").value;
 
         document
           .querySelectorAll(".sound-range, .qs-range-vertical:not(#header-brightness)")
@@ -2852,11 +3595,7 @@
             notificaciones: 0,
           };
           window.PhoneData.hardware.settings.silentMode = true;
-          nui("saveHardwareData", {
-            imei: window.PhoneData.imei,
-            settings: window.PhoneData.hardware.settings,
-            installed_apps: window.PhoneData.hardware.installed_apps || [],
-          });
+          persistHardware();
         }
       } else {
         // Recuperar valores anteriores
@@ -2885,11 +3624,7 @@
             notificaciones: prevNotif,
           };
           window.PhoneData.hardware.settings.silentMode = false;
-          nui("saveHardwareData", {
-            imei: window.PhoneData.imei,
-            settings: window.PhoneData.hardware.settings,
-            installed_apps: window.PhoneData.hardware.installed_apps || [],
-          });
+          persistHardware();
         }
       }
       return;
@@ -2990,11 +3725,7 @@
         window.PhoneData.hardware.settings.notifications.appSettings =
           notificationSettings.appSettings;
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
       renderAppNotificationList();
       return;
@@ -3009,11 +3740,7 @@
         if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
         window.PhoneData.hardware.settings.brightness = val;
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
       return;
     }
@@ -3027,11 +3754,7 @@
         if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
         window.PhoneData.hardware.settings.brightness = val;
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
       return;
     }
@@ -3057,7 +3780,9 @@
     // ==========================================
     // BOTONES DE TAMAÑO (Pantalla y Texto)
     // ==========================================
-    const buttonGroup = event.target.closest(".display-button-group, .display-scale-group, .display-text-group");
+    const buttonGroup = event.target.closest(
+      ".display-button-group, .display-scale-group, .display-text-group",
+    );
     if (buttonGroup) {
       const clickedBtn = event.target.closest(".display-option-btn");
       if (!clickedBtn) return;
@@ -3090,11 +3815,7 @@
           applyTextSize(value);
         }
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
       return;
     }
@@ -3138,11 +3859,7 @@
 
         window.PhoneData.hardware.settings.phoneSettings[settingKey] = isChecked;
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
       return;
     }
@@ -3342,11 +4059,7 @@
 
       window.PhoneData.hardware.settings.phoneCase = caseId;
 
-      nui("saveHardwareData", {
-        imei: window.PhoneData.imei,
-        settings: window.PhoneData.hardware.settings,
-        installed_apps: window.PhoneData.hardware.installed_apps || [],
-      });
+      persistHardware();
 
       // Avisar a LUA para que cambie el modelo físico de la mano
       nui("updatePhoneProp", { caseId: caseId });
@@ -3403,11 +4116,7 @@
 
         window.PhoneData.hardware.settings.wallpaper = wallpaperData;
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
 
       // Cargar configuración de notificaciones (CON GUARDAS)
@@ -3471,11 +4180,7 @@
 
         window.PhoneData.hardware.settings.wallpaper = wallpaperData;
 
-        nui("saveHardwareData", {
-          imei: window.PhoneData.imei,
-          settings: window.PhoneData.hardware.settings,
-          installed_apps: window.PhoneData.hardware.installed_apps || [],
-        });
+        persistHardware();
       }
 
       renderWallpaperGrid();
@@ -3520,7 +4225,8 @@
   }
 
   function saveSecuritySettings() {
-    const { pin, ...rest } = securitySettings; // nunca se guarda el PIN en el navegador
+    const rest = { ...securitySettings }; // nunca se guarda el PIN en el navegador
+    delete rest.pin;
     localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(rest));
   }
 
@@ -3679,7 +4385,6 @@
       return true;
     }
 
-    pinAttempts++;
     if (result && result.reason === "locked") {
       lockError(`Demasiados intentos. Espera ${result.wait} segundos.`);
     } else if (result && result.reason === "wrong") {
@@ -3760,41 +4465,172 @@
   // Ajustes > Seguridad: los interruptores reflejan lo guardado en ESTE móvil
   function syncSecurityToggles() {
     const hw = phoneHw();
+    const hasPin = hw.has_pin === true || devMode;
+    const isOwner = hw.is_owner !== false;
     const canUse = hw.has_pin === true && hw.is_owner === true;
+
+    const statusBadge = document.getElementById("security-status-badge");
+    if (statusBadge) {
+      statusBadge.textContent = hasPin ? "PROTEGIDO" : "SIN PIN";
+    }
+
+    const ownerState = document.getElementById("security-owner-state");
+    if (ownerState) {
+      ownerState.textContent = isOwner ? "Propietario" : "Invitado";
+    }
+
+    const summary = document.getElementById("security-owner-summary");
+    if (summary) {
+      summary.textContent = canUse
+        ? "Biometría habilitada para el propietario de este dispositivo."
+        : "Activa un PIN y sé el propietario del terminal para usar huella o Face ID.";
+    }
+
     [
-      ["toggle-fingerprint", "fingerprint"],
-      ["toggle-faceid", "faceid"],
-    ].forEach(([id, key]) => {
+      ["toggle-fingerprint", "fingerprint", "fingerprint-status-tag"],
+      ["toggle-faceid", "faceid", "faceid-status-tag"],
+    ].forEach(([id, key, tagId]) => {
       const input = document.getElementById(id);
-      if (!input) return;
-      input.checked = hw[key] === true;
-      input.disabled = !canUse;
-      input.closest(".setting-item")?.classList.toggle("is-disabled", !canUse);
+      const tag = document.getElementById(tagId);
+      if (input) {
+        input.checked = hw[key] === true;
+        input.disabled = !canUse && !devMode;
+        input
+          .closest(".sec-v22-bio-tile")
+          ?.classList.toggle("is-disabled", !canUse && !devMode);
+      }
+      if (tag) {
+        tag.textContent = input?.checked
+          ? "ACTIVO"
+          : canUse || devMode
+            ? "DISPONIBLE"
+            : "BLOQUEADO";
+      }
     });
+  }
+
+  const SAMPLE_BLOCKED_ENTRIES = [
+    {
+      number: "555-0192-481",
+      contactName: "Marco Rossi",
+      thingSvg: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 29h34l-3-7-9-2-5-6H17l-4 7-6 3z"/><circle cx="15" cy="30" r="3.5"/><circle cx="33" cy="30" r="3.5"/><path d="M5 35h38"/></svg>`,
+      isSavedContact: true,
+    },
+    {
+      number: "555-0843-119",
+      contactName: null,
+      thingSvg: null,
+      isSavedContact: false,
+    },
+    {
+      number: "555-0327-904",
+      contactName: "Elena Vance",
+      thingSvg: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="16"/><circle cx="24" cy="24" r="10" stroke-opacity="0.45"/><circle cx="24" cy="24" r="4"/><circle cx="24" cy="24" r="1.2" fill="currentColor"/></svg>`,
+      isSavedContact: true,
+    },
+    {
+      number: "555-0671-228",
+      contactName: null,
+      thingSvg: null,
+      isSavedContact: false,
+    },
+    {
+      number: "555-0915-732",
+      contactName: "Taller Benny's",
+      thingSvg: `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 40V22l8-4v22"/><path d="M18 40V12h12v28"/><path d="M32 40V25l8-3v18"/><path d="M22 18h4M22 24h4M22 30h4"/></svg>`,
+      isSavedContact: true,
+    },
+    {
+      number: "555-0458-610",
+      contactName: null,
+      thingSvg: null,
+      isSavedContact: false,
+    },
+  ];
+
+  function ensureSampleBlockedSeeded() {
+    if (!Array.isArray(phoneSettings.blocked)) {
+      phoneSettings.blocked = [];
+    }
+    if (!phoneSettings.blockedMeta || typeof phoneSettings.blockedMeta !== "object") {
+      phoneSettings.blockedMeta = {};
+    }
+    if (phoneSettings.blocked.length === 0) {
+      SAMPLE_BLOCKED_ENTRIES.forEach((item) => {
+        phoneSettings.blocked.push(item.number);
+        phoneSettings.blockedMeta[item.number] = {
+          contactName: item.contactName,
+          avatar: item.avatar || null,
+          thingSvg: item.thingSvg || null,
+        };
+      });
+      savePhoneSettings();
+    }
   }
 
   function renderBlockedList() {
     const container = document.getElementById("blocked-list-container");
     if (!container) return;
 
+    ensureSampleBlockedSeeded();
+
+    const badge = document.getElementById("blocked-count-badge");
+    if (badge) {
+      badge.textContent = `${phoneSettings.blocked.length} BLOQUEADOS`;
+    }
+
     if (phoneSettings.blocked.length === 0) {
       container.innerHTML = `
-        <div class="settings-placeholder" style="height: 200px;">
-            <span class="ui-icon" data-iconify="shield-star"></span>
-            <p>No tienes números bloqueados.</p>
+        <div class="blocked-v18-empty">
+          <div class="blocked-v18-empty-icon">
+            <span class="ui-icon" data-iconify="shield-x"></span>
+          </div>
+          <strong>No tienes números bloqueados</strong>
+          <span>Los números que añadas aquí no podrán llamarte ni enviarte mensajes.</span>
         </div>`;
     } else {
       container.innerHTML = phoneSettings.blocked
-        .map(
-          (num) => `
-            <div class="setting-item" style="background:transparent; border:none; padding: 14px 16px; border-bottom: 1px solid var(--border);">
-              <div class="setting-text"><strong>${esc(num)}</strong></div>
-              <button class="icon-button danger" style="width: 32px; height: 32px; border-radius: 8px;" data-remove-blocked="${esc(num)}" title="Desbloquear">
-                <span class="ui-icon" data-iconify="trash"></span>
+        .map((num) => {
+          const meta = phoneSettings.blockedMeta?.[num] || {};
+          const savedName = meta.contactName || null;
+          const thingSvg = meta.thingSvg || null;
+          const photoUrl = meta.avatar || null;
+          const primaryLabel = savedName || num;
+          const secondaryLabel = savedName
+            ? `${num} · Contacto guardado`
+            : "Número no guardado";
+          const initialsText = savedName
+            ? savedName
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((p) => p[0] || "")
+                .join("")
+                .toUpperCase()
+            : "#";
+
+          let photoFrameHtml;
+          if (thingSvg) {
+            photoFrameHtml = `<div class="blocked-v18-photo-box is-art">${thingSvg}</div>`;
+          } else if (photoUrl) {
+            photoFrameHtml = `<div class="blocked-v18-photo-box"><img src="${esc(photoUrl)}" alt="${esc(primaryLabel)}" /></div>`;
+          } else {
+            photoFrameHtml = `<div class="blocked-v18-photo-box is-placeholder"><span>${esc(initialsText)}</span></div>`;
+          }
+
+          return `
+            <div class="blocked-v18-card">
+              ${photoFrameHtml}
+              <div class="blocked-v18-info">
+                <strong>${esc(primaryLabel)}</strong>
+                <span>${esc(secondaryLabel)}</span>
+              </div>
+              <button type="button" class="blocked-v18-unblock-btn" data-remove-blocked="${esc(num)}">
+                <span class="ui-icon" data-iconify="x"></span>
+                <span>Desbloquear</span>
               </button>
             </div>
-          `,
-        )
+          `;
+        })
         .join("");
     }
     container.querySelectorAll("[data-iconify]").forEach((el) => {
@@ -3802,44 +4638,113 @@
     });
   }
 
-  function generateWeatherData() {
+  const STORM_PRESET_DURATIONS_SEC = [300, 600, 900, 1800]; // 5m, 10m, 15m, 30m (+ custom)
+  window.txAdminStormTotalSec = window.txAdminStormTotalSec || null;
+
+  function inferStormBucketDurationSec(remainingSec) {
+    for (const preset of STORM_PRESET_DURATIONS_SEC) {
+      if (remainingSec <= preset) return preset;
+    }
+    return Math.max(remainingSec, 1800);
+  }
+
+  function getStormProgressTotalSec(remainingSec) {
+    if (typeof window.txAdminStormTotalSec === "number" && window.txAdminStormTotalSec > 0) {
+      if (remainingSec > window.txAdminStormTotalSec) {
+        window.txAdminStormTotalSec = inferStormBucketDurationSec(remainingSec);
+      }
+      return window.txAdminStormTotalSec;
+    }
+    const inferred = inferStormBucketDurationSec(remainingSec);
+    window.txAdminStormTotalSec = inferred;
+    return inferred;
+  }
+
+  let activeWeatherZone = "Los Santos";
+
+  const WEATHER_ZONE_OFFSETS = {
+    "Los Santos": {
+      tempDelta: 0,
+      windDelta: 0,
+      humidityDelta: 0,
+      advisory:
+        "Condiciones estables en superficie con buena visibilidad en autovías y costa.",
+    },
+    "Sandy Shores": {
+      tempDelta: 4,
+      windDelta: 8,
+      humidityDelta: -14,
+      advisory: "Brisa cálida del desierto de Grand Senora con ráfagas secas en pista.",
+    },
+    "Paleto Bay": {
+      tempDelta: -2,
+      windDelta: 4,
+      humidityDelta: 12,
+      advisory: "Aire fresco del norte junto a Mount Chiliad y la bahía.",
+    },
+  };
+
+  function generateWeatherData(forceZone = activeWeatherZone) {
+    activeWeatherZone = WEATHER_ZONE_OFFSETS[forceZone] ? forceZone : "Los Santos";
+    const zoneCfg = WEATHER_ZONE_OFFSETS[activeWeatherZone];
     const now = new Date();
     const hour = now.getHours();
     const isNight = hour < 6 || hour >= 20;
-    const baseTemp = isNight ? 12 + Math.random() * 5 : 22 + Math.random() * 6;
+    const rawBase = isNight ? 12 + Math.random() * 5 : 22 + Math.random() * 6;
+    const baseTemp = rawBase + zoneCfg.tempDelta;
     const daysOfWeek = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
     const weekly = [];
     for (let i = 0; i < 7; i++) {
       const nextDate = new Date(now);
       nextDate.setDate(now.getDate() + i);
+      const dayTemp = Math.round(baseTemp + (Math.random() * 8 - 4));
       weekly.push({
         dayName: i === 0 ? "Hoy" : daysOfWeek[nextDate.getDay()],
-        temp: Math.round(baseTemp + (Math.random() * 8 - 4)),
-        icon: Math.random() > 0.5 ? "sun" : "moon",
+        temp: dayTemp,
+        icon: isNight && i === 0 ? "moon" : dayTemp >= 20 ? "sun" : "cloud",
       });
     }
 
+    const humidity = Math.min(
+      95,
+      Math.max(18, Math.round(45 + Math.random() * 35 + zoneCfg.humidityDelta)),
+    );
+    const wind = Math.max(4, Math.round(8 + Math.random() * 22 + zoneCfg.windDelta));
+    const pressure = Math.round(750 + Math.random() * 15);
+    const visibility = Math.max(3, Math.round(6 + Math.random() * 12));
+    const comfort = Math.min(
+      99,
+      Math.max(42, Math.round(92 - Math.abs(22 - baseTemp) * 2.1 - wind * 0.35)),
+    );
+
     weatherDataCache = {
       timestamp: now.getTime(),
-      baseTemp: baseTemp,
-      isNight: isNight,
+      zone: activeWeatherZone,
+      baseTemp,
+      isNight,
       temp: Math.round(baseTemp),
       maxTemp: Math.round(baseTemp + 4),
       minTemp: Math.round(baseTemp - 4),
-      feelsLike: Math.round(baseTemp + (isNight ? -1 : 3)),
+      feelsLike: Math.round(baseTemp + (isNight ? -1 : 2)),
       desc: isNight ? "Despejado" : "Soleado",
-      wind: Math.round(5 + Math.random() * 25),
-      humidity: Math.round(40 + Math.random() * 40),
-      pressure: Math.round(750 + Math.random() * 15),
-      visibility: Math.round(5 + Math.random() * 15),
-      weekly: weekly,
+      advisory: zoneCfg.advisory,
+      comfort,
+      precipProb: isNight ? 5 : 12,
+      uvIndex: isNight ? "0 · Nulo" : "6 · Alto",
+      sunrise: "06:45",
+      sunset: "19:30",
+      wind,
+      humidity,
+      pressure,
+      visibility,
+      weekly,
     };
   }
 
   function renderWeatherApp() {
     const now = new Date();
     if (!weatherDataCache || now.getTime() - weatherDataCache.timestamp > 1800000) {
-      generateWeatherData();
+      generateWeatherData(activeWeatherZone);
     }
     const data = weatherDataCache;
     const app = document.getElementById("weather-app");
@@ -3847,6 +4752,29 @@
 
     app.classList.toggle("is-night", data.isNight);
     app.classList.toggle("is-day", !data.isNight);
+
+    const locText = document.getElementById("weather-location-text");
+    if (locText) locText.textContent = data.zone || "Los Santos";
+
+    const dayNightTag = document.getElementById("weather-daynight-tag");
+    if (dayNightTag) dayNightTag.textContent = data.isNight ? "NOCTURNO" : "DIURNO";
+
+    const advisoryEl = document.getElementById("weather-advisory-text");
+    if (advisoryEl && data.advisory) advisoryEl.textContent = data.advisory;
+
+    const comfortVal = document.getElementById("weather-comfort-val");
+    const comfortFill = document.getElementById("weather-comfort-fill");
+    if (comfortVal) comfortVal.textContent = `${data.comfort ?? 84}%`;
+    if (comfortFill) comfortFill.style.width = `${data.comfort ?? 84}%`;
+
+    const setElText = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+    setElText("weather-sunrise", data.sunrise || "06:45");
+    setElText("weather-sunset", data.sunset || "19:30");
+    setElText("weather-precip-prob", `${data.precipProb ?? 10}%`);
+    setElText("weather-uv-index", data.uvIndex || "6 · Alto");
 
     const month = now.getMonth();
     let season = "INVIERNO";
@@ -3877,10 +4805,22 @@
     document.getElementById("highlight-pressure").textContent = `${data.pressure} mmHg`;
     document.getElementById("highlight-visibility").textContent = `${data.visibility} km`;
 
-    if (!app.dataset.lastGraphHour || app.dataset.lastGraphHour !== String(now.getHours())) {
-      drawWeatherGraph(now.getHours(), data.isNight, data.baseTemp);
-      app.dataset.lastGraphHour = String(now.getHours());
-    }
+    setElText("highlight-wind-dir", data.wind > 20 ? "Racha intensa" : "Brisa moderada");
+    setElText(
+      "highlight-humidity-sub",
+      data.humidity > 70 ? "Humedad elevada" : "Ambiente equilibrado",
+    );
+    setElText(
+      "highlight-pressure-sub",
+      data.pressure >= 756 ? "Alta presión" : "Presión normal",
+    );
+    setElText(
+      "highlight-visibility-sub",
+      data.visibility >= 10 ? "Horizonte limpio" : "Visibilidad reducida",
+    );
+
+    drawWeatherGraph(now.getHours(), data.isNight, data.baseTemp);
+    app.dataset.lastGraphHour = String(now.getHours());
 
     const weeklyList = document.getElementById("weather-weekly-list");
     let weeklyHtml = "";
@@ -3903,12 +4843,27 @@
       alertCard.hidden = false;
       app.classList.add("is-storm");
       const diffMs = txAdminRestartTime - Date.now();
-      const diffSec = Math.floor(diffMs / 1000);
+      const diffSec = Math.max(0, Math.floor(diffMs / 1000));
       const h = Math.floor(diffSec / 3600);
       const m = Math.floor((diffSec % 3600) / 60);
       const s = diffSec % 60;
-      document.getElementById("weather-alert-timer").textContent =
-        `${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+      const timerEl = document.getElementById("weather-alert-timer");
+      if (timerEl) {
+        timerEl.textContent = `${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`;
+      }
+      const badgeEl = document.getElementById("weather-alert-severity");
+      const statusEl = document.getElementById("weather-alert-status-label");
+      const barEl = document.getElementById("weather-alert-progress");
+      const isCritical = diffSec <= 300;
+      if (badgeEl) badgeEl.textContent = isCritical ? "IMPACTO INMINENTE" : "FRENTE DETECTADO";
+      if (statusEl) statusEl.textContent = isCritical ? "EN ZONA" : "EN APROXIMACIÓN";
+      if (barEl) {
+        const totalSec = getStormProgressTotalSec(diffSec);
+        const progressRatio =
+          totalSec > 0 ? Math.max(0, Math.min(1, 1 - diffSec / totalSec)) : 0;
+        const pct = Math.max(2, Math.min(100, Math.round(progressRatio * 100)));
+        barEl.style.width = `${pct}%`;
+      }
     } else {
       alertCard.hidden = true;
       app.classList.remove("is-storm");
@@ -3970,9 +4925,653 @@
     weatherScreen.hidden = false;
     homeButton.hidden = false;
 
+    if (window.iconifySvg) {
+      weatherScreen.querySelectorAll("[data-iconify]").forEach((el) => {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      });
+    }
+
+    if (!weatherScreen.dataset.wv2Bound) {
+      weatherScreen.dataset.wv2Bound = "1";
+      weatherScreen.querySelectorAll("[data-weather-zone]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const z = btn.dataset.weatherZone || "Los Santos";
+          weatherScreen.querySelectorAll("[data-weather-zone]").forEach((b) => {
+            b.classList.toggle("active", b === btn);
+          });
+          generateWeatherData(z);
+          renderWeatherApp();
+        });
+      });
+      weatherScreen.querySelector("#weather-refresh-btn")?.addEventListener("click", () => {
+        generateWeatherData(activeWeatherZone);
+        renderWeatherApp();
+        showNotification({
+          appName: "Tiempo",
+          icon: "cloud",
+          title: "Lectura actualizada",
+          message: `Datos meteorológicos de ${activeWeatherZone} actualizados.`,
+          duration: 2500,
+        });
+      });
+    }
+
     renderWeatherApp();
     if (weatherInterval) clearInterval(weatherInterval);
     weatherInterval = setInterval(renderWeatherApp, 1000);
+  }
+
+  // ================= APP LICENCIAS v7 (ID/CITIZEN + RECEPCIONISTA/CENTROS DE ROL + MODALES) =================
+  const LICENSES_CATALOG = [
+    {
+      id: "car",
+      name: "Licencia de coche",
+      shortTag: "PERMISO B",
+      category: "Conducción",
+      group: "driving",
+      simple: false,
+      icon: "car",
+      pointsKey: "car",
+      obtainLocation: "Autoescuela / Centro de Examen Vial (Mission Row)",
+      obtainNpc: "Recepcionista / Examinador Vial",
+      obtainSteps: ["Examen teórico vial", "Prueba práctica de conducción"],
+      costLabel: "Incluida al llegar",
+      issuedDate: "Al llegar a la ciudad",
+      expiryLabel: "Sin caducidad (sujeto a puntos)",
+      restrictions: "Turismos y vehículos ligeros hasta 3.500 kg.",
+      notes:
+        "Si pierdes todos los puntos de este carnet, queda suspendido hasta regularizarlo en comisaría.",
+    },
+    {
+      id: "moto",
+      name: "Licencia de moto",
+      shortTag: "PERMISO A",
+      category: "Conducción",
+      group: "driving",
+      simple: false,
+      icon: "bike",
+      pointsKey: "moto",
+      obtainLocation: "Autoescuela / Centro de Examen Vial (Mission Row)",
+      obtainNpc: "Recepcionista / Examinador Vial",
+      obtainSteps: ["Examen teórico vial", "Prueba práctica en moto"],
+      costLabel: "Incluida al llegar",
+      issuedDate: "Al llegar a la ciudad",
+      expiryLabel: "Sin caducidad (sujeto a puntos)",
+      restrictions: "Motocicletas y ciclomotores de dos ruedas.",
+      notes: "Cuenta con su propio saldo de puntos individual para comprobaciones de tráfico.",
+    },
+    {
+      id: "truck",
+      name: "Licencia de camión",
+      shortTag: "PERMISO C",
+      category: "Conducción",
+      group: "driving",
+      simple: false,
+      icon: "bus",
+      pointsKey: "truck",
+      obtainLocation: "Centro de Examen Vial / Logística (La Mesa)",
+      obtainNpc: "Recepcionista / Examinador de Transporte",
+      obtainSteps: ["Examen teórico de transporte", "Prueba práctica de camión"],
+      costLabel: "$1.500",
+      issuedDate: "Pendiente de examen",
+      expiryLabel: "Sin caducidad (sujeto a puntos)",
+      restrictions: "Camiones rígidos y vehículos de carga pesada.",
+      notes:
+        "Acude a hablar con el recepcionista del centro de examen para realizar teórico y práctico.",
+    },
+    {
+      id: "id_card",
+      name: "ID / Citizen",
+      shortTag: "IDENTIFICACIÓN CIVIL",
+      category: "Identidad",
+      group: "special",
+      simple: false,
+      icon: "id-badge",
+      pointsKey: null,
+      obtainLocation: "Comisaría — Mostrador de Recepción",
+      obtainNpc: "Recepcionista de Comisaría",
+      obtainSteps: ["Hablar con el recepcionista en comisaría", "Expedición de ID / Citizen"],
+      costLabel: "Trámite en comisaría",
+      issuedDate: "Emitido en comisaría",
+      expiryLabel: "Vigencia civil activa",
+      restrictions: "Acredita tu ID / Citizen ante agentes, bancos y trámites.",
+      notes:
+        "Al llegar a la ciudad no dispones de ID / Citizen; habla con el recepcionista de comisaría para solicitarlo.",
+    },
+    {
+      id: "weapons",
+      name: "Licencia de armas",
+      shortTag: "TENENCIA Y PORTE",
+      category: "Defensa",
+      group: "special",
+      simple: false,
+      icon: "shield-check",
+      pointsKey: null,
+      obtainLocation: "Comisaría / Campo de Tiro",
+      obtainNpc: "Recepcionista / Oficial de Tramitación",
+      obtainSteps: ["Evaluación teórica y normativa", "Prueba práctica de manejo"],
+      costLabel: "Sujeta a trámite",
+      issuedDate: "Pendiente de trámite",
+      expiryLabel: "Sujeta a comprobación policial",
+      restrictions: "Tenencia y porte según categoría autorizada y historial.",
+      notes: "Permite a los agentes comprobar el ID de licencia y su vigencia en controles.",
+    },
+    {
+      id: "boat",
+      name: "Licencia de barco",
+      shortTag: "PERMISO NÁUTICO",
+      category: "Náutica",
+      group: "special",
+      simple: false,
+      icon: "lifebuoy",
+      pointsKey: null,
+      obtainLocation: "Puerto / Embarcadero",
+      obtainNpc: "Recepcionista / Examinador Náutico",
+      obtainSteps: ["Examen teórico náutico", "Prueba práctica en agua"],
+      costLabel: "$5.000",
+      issuedDate: "Pendiente de examen",
+      expiryLabel: "En vigor tras aprobar",
+      restrictions: "Embarcaciones recreativas y navegación costera.",
+      notes:
+        "Habla con el responsable en el puerto/embarcadero para superar teórico y práctico.",
+    },
+    {
+      id: "aviation",
+      name: "Licencia de aviación",
+      shortTag: "PERMISO AÉREO",
+      category: "Aviación",
+      group: "special",
+      simple: false,
+      icon: "compass",
+      pointsKey: null,
+      obtainLocation: "Aeródromo / Hangar de Instrucción",
+      obtainNpc: "Recepcionista / Instructor de Vuelo",
+      obtainSteps: ["Examen teórico aeronáutico", "Prueba práctica de vuelo"],
+      costLabel: "$10.000",
+      issuedDate: "Pendiente de examen",
+      expiryLabel: "En vigor tras aprobar",
+      restrictions: "Aeronaves ligeras y espacio aéreo autorizado.",
+      notes: "Requiere superar el teórico y la prueba práctica en el aeródromo.",
+    },
+    {
+      id: "hunting",
+      name: "Licencia de caza",
+      shortTag: "CAZA EN ZONA HABILITADA",
+      category: "Campo y Monte",
+      group: "special",
+      simple: true,
+      icon: "crosshair",
+      pointsKey: null,
+      obtainLocation: "Puesto de Caza / Guarda Forestal",
+      obtainNpc: "Recepcionista / Encargado del Puesto",
+      obtainSteps: ["Solicitar en el puesto de caza"],
+      costLabel: "$500",
+      issuedDate: "Simple",
+      expiryLabel: "En vigor",
+      restrictions: "Zonas de caza habilitadas.",
+      notes: "Licencia simple de caza.",
+    },
+    {
+      id: "fishing",
+      name: "Licencia de pesca",
+      shortTag: "PESCA RECREATIVA",
+      category: "Pesca",
+      group: "special",
+      simple: true,
+      icon: "fish",
+      pointsKey: null,
+      obtainLocation: "Puesto / Muelle de Pesca",
+      obtainNpc: "Recepcionista / Encargado del Muelle",
+      obtainSteps: ["Solicitar en el puesto de pesca"],
+      costLabel: "Trámite en muelle",
+      issuedDate: "Simple",
+      expiryLabel: "En vigor",
+      restrictions: "Zonas de pesca habilitadas.",
+      notes: "Licencia simple de pesca.",
+    },
+  ];
+
+  let licActivePage = "wallet";
+  let licWalletFilter = "all";
+  let licInspectedOwnedId = null;
+  let licInspectedPendingId = null;
+
+  function getLicensesState() {
+    const data = state.personalData || {};
+    const defaultOwned = ["car", "moto"];
+    const rawOwned = Array.isArray(data.ownedLicenses)
+      ? data.ownedLicenses
+      : Array.isArray(data.licenses)
+        ? data.licenses
+        : defaultOwned;
+
+    const validIds = new Set(LICENSES_CATALOG.map((item) => item.id));
+    const owned = Array.from(
+      new Set(
+        rawOwned
+          .map((x) => (String(x) === "dni" ? "id_card" : String(x)))
+          .filter((id) => validIds.has(id)),
+      ),
+    );
+    if (!owned.length && !Array.isArray(data.ownedLicenses)) {
+      owned.push("car", "moto");
+    }
+
+    const baseShared =
+      typeof data.points === "number" && Number.isFinite(data.points)
+        ? Math.max(0, Math.min(12, Math.round(data.points)))
+        : 12;
+
+    const indiv = data.licensePoints || {};
+    const getPts = (k) => {
+      if (typeof indiv[k] === "number" && Number.isFinite(indiv[k])) {
+        return Math.max(0, Math.min(12, Math.round(indiv[k])));
+      }
+      return baseShared;
+    };
+
+    const citizenId = data.citizenid || data.citizenId || "HPO28805";
+    const fullName = `${data.firstname || "Alessandro"} ${data.lastname || "Vittorio"}`.trim();
+
+    const makeLicId = (licId) => {
+      const prefix =
+        {
+          car: "LIC-B",
+          moto: "LIC-A",
+          truck: "LIC-C",
+          id_card: "CIT",
+          weapons: "LIC-ARM",
+          boat: "LIC-NAV",
+          aviation: "LIC-AIR",
+          hunting: "LIC-CAZ",
+          fishing: "LIC-PES",
+        }[licId] || "LIC";
+      return `${prefix}-${citizenId.slice(-5)}-${licId.slice(0, 2).toUpperCase()}26`;
+    };
+
+    return {
+      fullName,
+      citizenId,
+      ownedSet: new Set(owned),
+      pointsByCarnet: {
+        car: getPts("car"),
+        moto: getPts("moto"),
+        truck: getPts("truck"),
+      },
+      makeLicId,
+    };
+  }
+
+  function renderPointsSegmentsHtml(pts, total = 12) {
+    const safePts = Math.max(0, Math.min(total, pts));
+    const cells = [];
+    for (let i = 0; i < total; i++) {
+      let cls = "lic-v5-pts-bar-cell";
+      if (i < safePts) {
+        cls += " is-on";
+        if (safePts <= 3) cls += " is-crit";
+        else if (safePts <= 6) cls += " is-warn";
+      }
+      cells.push(`<span class="${cls}"></span>`);
+    }
+    return `<div class="lic-v5-pts-bars">${cells.join("")}</div>`;
+  }
+
+  function renderOwnedLicensesGrid(licState) {
+    const grid = document.getElementById("lic-owned-grid");
+    if (!grid) return;
+
+    const ownedItems = LICENSES_CATALOG.filter((item) => {
+      if (!licState.ownedSet.has(item.id)) return false;
+      if (licWalletFilter === "driving") return item.group === "driving";
+      if (licWalletFilter === "special") return item.group !== "driving";
+      return true;
+    });
+
+    if (!ownedItems.length) {
+      grid.innerHTML = `
+        <div class="gallery-empty" style="grid-column: 1 / -1;">
+          <span class="ui-icon" data-iconify="id-badge"></span>
+          <p>No tienes licencias de este filtro en tu cartera todavía.</p>
+        </div>`;
+      renderCameraIcons();
+      return;
+    }
+
+    grid.innerHTML = ownedItems
+      .map((item) => {
+        const licId = licState.makeLicId(item.id);
+        const pts = item.pointsKey ? licState.pointsByCarnet[item.pointsKey] : null;
+        const isSuspended = item.pointsKey && pts <= 0;
+        const statusText = isSuspended ? "SUSPENDIDA" : "EN VIGOR";
+
+        if (item.simple) {
+          return `
+            <article class="lic-v5-card" data-lic-owned-id="${esc(item.id)}">
+              <span class="lic-v5-card-watermark" aria-hidden="true">${iconifySvg(item.icon)}</span>
+              <div class="lic-v5-card-head">
+                <div class="lic-v5-card-identity">
+                  <span class="lic-v5-card-icon">${iconifySvg(item.icon)}</span>
+                  <div class="lic-v5-card-title-wrap">
+                    <span class="lic-v5-eyebrow">${esc(item.shortTag)}</span>
+                    <h4>${esc(item.name)}</h4>
+                  </div>
+                </div>
+                <span class="lic-v5-status-chip">${esc(statusText)}</span>
+              </div>
+              <div class="lic-v5-card-meta-box">
+                <div class="lic-v5-meta-line">
+                  <span><span class="ui-icon" data-iconify="hash"></span>ID Licencia</span>
+                  <strong>${esc(licId)}</strong>
+                </div>
+                <div class="lic-v5-meta-line">
+                  <span><span class="ui-icon" data-iconify="map-pin"></span>Ámbito</span>
+                  <strong>${esc(item.category)}</strong>
+                </div>
+              </div>
+              <div class="lic-v5-card-foot">
+                <span class="lic-v5-card-id-code">${esc(licState.fullName)}</span>
+                <span class="lic-v5-card-cta">Ver ficha <span class="ui-icon" data-iconify="chevron-right"></span></span>
+              </div>
+            </article>`;
+        }
+
+        const ptsBlock = item.pointsKey
+          ? `
+            <div class="lic-v5-pts-mini">
+              <div class="lic-v5-pts-mini-head">
+                <span>PUNTOS DE ESTE CARNET</span>
+                <strong>${pts}/12 pts</strong>
+              </div>
+              ${renderPointsSegmentsHtml(pts, 12)}
+            </div>`
+          : `
+            <div class="lic-v5-card-meta-box">
+              <div class="lic-v5-meta-line">
+                <span><span class="ui-icon" data-iconify="shield-check"></span>Titular</span>
+                <strong>${esc(licState.fullName)}</strong>
+              </div>
+              <div class="lic-v5-meta-line">
+                <span><span class="ui-icon" data-iconify="hash"></span>Citizen</span>
+                <strong>${esc(licState.citizenId)}</strong>
+              </div>
+            </div>`;
+
+        return `
+          <article class="lic-v5-card" data-lic-owned-id="${esc(item.id)}">
+            <span class="lic-v5-card-watermark" aria-hidden="true">${iconifySvg(item.icon)}</span>
+            <div class="lic-v5-card-head">
+              <div class="lic-v5-card-identity">
+                <span class="lic-v5-card-icon">${iconifySvg(item.icon)}</span>
+                <div class="lic-v5-card-title-wrap">
+                  <span class="lic-v5-eyebrow">${esc(item.shortTag)}</span>
+                  <h4>${esc(item.name)}</h4>
+                </div>
+              </div>
+              <span class="lic-v5-status-chip${isSuspended ? " is-alert" : ""}">${esc(statusText)}</span>
+            </div>
+
+            <div class="lic-v5-card-meta-box">
+              <div class="lic-v5-meta-line">
+                <span><span class="ui-icon" data-iconify="hash"></span>ID Comprobación</span>
+                <strong>${esc(licId)}</strong>
+              </div>
+              <div class="lic-v5-meta-line">
+                <span><span class="ui-icon" data-iconify="check"></span>Vigencia</span>
+                <strong>${esc(statusText)}</strong>
+              </div>
+            </div>
+
+            ${ptsBlock}
+
+            <div class="lic-v5-card-foot">
+              <span class="lic-v5-card-id-code">CITIZEN · ${esc(licState.citizenId)}</span>
+              <span class="lic-v5-card-cta">Detalles <span class="ui-icon" data-iconify="chevron-right"></span></span>
+            </div>
+          </article>`;
+      })
+      .join("");
+
+    renderCameraIcons();
+  }
+
+  function renderPendingLicensesGrid(licState) {
+    const grid = document.getElementById("lic-pending-grid");
+    const pillEl = document.getElementById("lic-pending-count-pill");
+    const tabBadge = document.getElementById("lic-pending-tab-badge");
+    const topPending = document.getElementById("lic-topbar-pending");
+
+    const pendingItems = LICENSES_CATALOG.filter((item) => !licState.ownedSet.has(item.id));
+    if (pillEl) pillEl.textContent = `${pendingItems.length} pendientes`;
+    if (tabBadge) tabBadge.textContent = String(pendingItems.length);
+    if (topPending) topPending.textContent = String(pendingItems.length);
+
+    if (!grid) return;
+
+    if (!pendingItems.length) {
+      grid.innerHTML = `
+        <div class="gallery-empty" style="grid-column: 1 / -1;">
+          <span class="ui-icon" data-iconify="check"></span>
+          <p>Ya dispones de todas las licencias y documentos en tu cartera.</p>
+        </div>`;
+      renderCameraIcons();
+      return;
+    }
+
+    grid.innerHTML = pendingItems
+      .map((item) => {
+        const stepsHtml = item.simple
+          ? `
+            <div class="lic-v5-step">
+              <span class="ui-icon" data-iconify="info-circle"></span>
+              <span>Trámite directo en punto autorizado</span>
+            </div>`
+          : item.obtainSteps
+              .map(
+                (st) => `
+                  <div class="lic-v5-step">
+                    <span class="ui-icon" data-iconify="check"></span>
+                    <span>${esc(st)} · Pendiente</span>
+                  </div>`,
+              )
+              .join("");
+
+        return `
+          <article class="lic-v5-pending-card" data-lic-pending-id="${esc(item.id)}">
+            <div class="lic-v5-pending-top">
+              <span class="lic-v5-cat">${esc(item.category)}</span>
+              <span class="lic-v5-price">${esc(item.costLabel)}</span>
+            </div>
+
+            <div class="lic-v5-pending-title-row">
+              <span class="lic-v5-pending-icon">${iconifySvg(item.icon)}</span>
+              <h4>${esc(item.name)}</h4>
+            </div>
+
+            <div class="lic-v5-location-box">
+              <span class="ui-icon" data-iconify="map-pin"></span>
+              <div>
+                <span>DÓNDE CONSEGUIRLA</span>
+                <strong>${esc(item.obtainLocation)}</strong>
+              </div>
+            </div>
+
+            <div class="lic-v5-exam-steps">${stepsHtml}</div>
+
+            <p class="lic-v5-pending-desc">${esc(item.notes)}</p>
+
+            <div class="lic-v5-pending-foot">
+              <span>${esc(item.obtainNpc)}</span>
+              <span class="lic-v5-card-cta">Ver detalles <span class="ui-icon" data-iconify="chevron-right"></span></span>
+            </div>
+          </article>`;
+      })
+      .join("");
+
+    renderCameraIcons();
+  }
+
+  function openOwnedLicenseModal(itemId) {
+    const licState = getLicensesState();
+    const item = LICENSES_CATALOG.find((x) => x.id === itemId);
+    const modal = document.getElementById("lic-detail-modal");
+    const bodyEl = document.getElementById("lic-modal-body");
+    if (!item || !modal || !bodyEl) return;
+
+    licInspectedOwnedId = item.id;
+    const licId = licState.makeLicId(item.id);
+    const pts = item.pointsKey ? licState.pointsByCarnet[item.pointsKey] : null;
+    const isSuspended = item.pointsKey && pts <= 0;
+    const statusLabel = isSuspended ? "SUSPENDIDA · SIN PUNTOS" : "EN VIGOR · VERIFICADA";
+
+    const iconWrap = document.getElementById("lic-modal-icon");
+    const eyebrowEl = document.getElementById("lic-modal-eyebrow");
+    const titleEl = document.getElementById("lic-modal-title");
+    if (iconWrap) iconWrap.innerHTML = iconifySvg(item.icon);
+    if (eyebrowEl) eyebrowEl.textContent = `${item.category} · ${item.shortTag}`;
+    if (titleEl) titleEl.textContent = item.name;
+
+    if (item.simple) {
+      bodyEl.innerHTML = `
+        <div class="lic-v5-police-check-box">
+          <div class="lic-v5-police-id-block">
+            <span>ID DE LICENCIA (COMPROBACIÓN POLICIAL)</span>
+            <strong>${esc(licId)}</strong>
+          </div>
+          <span class="lic-v5-status-chip">${esc(statusLabel)}</span>
+        </div>
+
+        <div class="lic-v5-detail-table">
+          <div class="lic-v5-detail-row"><span>Titular</span><strong>${esc(licState.fullName)}</strong></div>
+          <div class="lic-v5-detail-row"><span>ID / Citizen</span><strong>${esc(licState.citizenId)}</strong></div>
+          <div class="lic-v5-detail-row"><span>Estado</span><strong>${esc(statusLabel)}</strong></div>
+          <div class="lic-v5-detail-row"><span>Ámbito</span><strong>${esc(item.restrictions)}</strong></div>
+        </div>
+
+        <p class="lic-v5-modal-note">${esc(item.notes)}</p>`;
+    } else {
+      const pointsHtml = item.pointsKey
+        ? (() => {
+            const segs = [];
+            for (let i = 0; i < 12; i++) {
+              let c = "lic-v5-points-seg";
+              if (i < pts) {
+                c += " filled";
+                if (pts <= 3) c += " crit";
+                else if (pts <= 6) c += " warn";
+              }
+              segs.push(`<span class="${c}"></span>`);
+            }
+            return `
+              <div class="lic-v5-points-panel">
+                <div class="lic-v5-points-top">
+                  <strong>Puntos restantes de este carnet (${esc(item.name)})</strong>
+                  <span>${pts} / 12 pts</span>
+                </div>
+                <div class="lic-v5-points-segments">${segs.join("")}</div>
+                <p class="lic-v5-modal-note">${
+                  pts <= 0
+                    ? "Este carnet ha agotado sus puntos. Acude a comisaría o al centro correspondiente para regularizarlo."
+                    : pts <= 6
+                      ? "Atención: saldo de puntos reducido en este carnet."
+                      : "Saldo de puntos en regla para circular."
+                }</p>
+              </div>`;
+          })()
+        : "";
+
+      bodyEl.innerHTML = `
+        <div class="lic-v5-police-check-box">
+          <div class="lic-v5-police-id-block">
+            <span>ID DE LICENCIA (COMPROBACIÓN POLICIAL)</span>
+            <strong>${esc(licId)}</strong>
+          </div>
+          <span class="lic-v5-status-chip${isSuspended ? " is-alert" : ""}">${esc(statusLabel)}</span>
+        </div>
+
+        ${pointsHtml}
+
+        <div class="lic-v5-detail-table">
+          <div class="lic-v5-detail-row"><span>Titular</span><strong>${esc(licState.fullName)}</strong></div>
+          <div class="lic-v5-detail-row"><span>ID / Citizen</span><strong>${esc(licState.citizenId)}</strong></div>
+          <div class="lic-v5-detail-row"><span>Vigencia</span><strong>${esc(statusLabel)}</strong></div>
+          <div class="lic-v5-detail-row"><span>Caducidad / Revisión</span><strong>${esc(item.expiryLabel)}</strong></div>
+          <div class="lic-v5-detail-row"><span>Alcance / Categoría</span><strong>${esc(item.restrictions)}</strong></div>
+          <div class="lic-v5-detail-row"><span>Ubicación de trámite</span><strong>${esc(item.obtainLocation)}</strong></div>
+        </div>
+
+        <p class="lic-v5-modal-note">${esc(item.notes)}</p>`;
+    }
+
+    modal.hidden = false;
+    renderCameraIcons();
+  }
+
+  function openPendingLicenseModal(itemId) {
+    const item = LICENSES_CATALOG.find((x) => x.id === itemId);
+    const modal = document.getElementById("lic-guide-modal");
+    const bodyEl = document.getElementById("lic-guide-body");
+    if (!item || !modal || !bodyEl) return;
+
+    licInspectedPendingId = item.id;
+    const iconWrap = document.getElementById("lic-guide-icon");
+    const eyebrowEl = document.getElementById("lic-guide-eyebrow");
+    const titleEl = document.getElementById("lic-guide-title");
+    if (iconWrap) iconWrap.innerHTML = iconifySvg(item.icon);
+    if (eyebrowEl) eyebrowEl.textContent = `POR SACAR · ${item.category}`;
+    if (titleEl) titleEl.textContent = item.name;
+
+    bodyEl.innerHTML = `
+      <div class="lic-v5-police-check-box">
+        <div class="lic-v5-police-id-block">
+          <span>UBICACIÓN DONDE SE CONSIGUE</span>
+          <strong>${esc(item.obtainLocation)}</strong>
+        </div>
+        <span class="lic-v5-status-chip">${esc(item.costLabel)}</span>
+      </div>
+
+      <div class="lic-v5-detail-table">
+        <div class="lic-v5-detail-row"><span>Cómo se obtiene</span><strong>${esc(item.obtainSteps.join(" + "))}</strong></div>
+        <div class="lic-v5-detail-row"><span>Atención en puesto</span><strong>${esc(item.obtainNpc)}</strong></div>
+        <div class="lic-v5-detail-row"><span>Coste / Trámite</span><strong>${esc(item.costLabel)}</strong></div>
+        <div class="lic-v5-detail-row"><span>Cobertura</span><strong>${esc(item.restrictions)}</strong></div>
+      </div>
+
+      <p class="lic-v5-modal-note">${esc(item.notes)}</p>`;
+
+    modal.hidden = false;
+    renderCameraIcons();
+  }
+
+  function closeLicenseModals() {
+    licInspectedOwnedId = null;
+    licInspectedPendingId = null;
+    document.getElementById("lic-detail-modal")?.setAttribute("hidden", "");
+    document.getElementById("lic-guide-modal")?.setAttribute("hidden", "");
+  }
+
+  function setLicensesPage(pageName) {
+    licActivePage = pageName === "pending" ? "pending" : "wallet";
+    const licensesScreen = document.getElementById("licenses-app");
+    if (!licensesScreen) return;
+
+    licensesScreen.querySelectorAll("[data-lic-page]").forEach((tab) => {
+      const active = tab.dataset.licPage === licActivePage;
+      tab.classList.toggle("active", active);
+      tab.setAttribute("aria-selected", String(active));
+    });
+
+    const pWallet = document.getElementById("lic-page-wallet");
+    const pPending = document.getElementById("lic-page-pending");
+    if (pWallet) pWallet.hidden = licActivePage !== "wallet";
+    if (pPending) pPending.hidden = licActivePage !== "pending";
+
+    const licState = getLicensesState();
+    if (licActivePage === "wallet") {
+      renderOwnedLicensesGrid(licState);
+    } else {
+      renderPendingLicensesGrid(licState);
+    }
   }
 
   function openLicensesApp() {
@@ -3987,88 +5586,108 @@
     licensesScreen.hidden = false;
     homeButton.hidden = false;
 
-    document.querySelectorAll(".licenses-view").forEach((v) => (v.hidden = true));
-    document.getElementById("view-puntos").hidden = false;
-
-    document
-      .querySelectorAll(".expediente-item")
-      .forEach((btn) => btn.classList.remove("active"));
-    document.getElementById("btn-exp-puntos").classList.add("active");
-
-    const data = state.personalData || {};
-    const fullName = `${data.firstname || "Agente"} ${data.lastname || ""}`.trim();
-    const citizenId = data.citizenid || data.citizenId || "HPO28805";
-    const bottomText = `${fullName} • ${citizenId}`;
-
-    licensesScreen.querySelectorAll(".license-code").forEach((el) => {
-      el.textContent = bottomText;
-    });
-
-    const points = data.points !== undefined ? data.points : 8;
-    const pointsEl = document.getElementById("license-points");
-    if (pointsEl) pointsEl.textContent = `${points}/12`;
-    const expiryEl = document.getElementById("license-expiry");
-    if (expiryEl) expiryEl.textContent = data.dniExpiry || "13/10/2025";
-
-    renderPointsPanel(points);
-  }
-
-  function renderPointsPanel(points) {
-    const maxPoints = 12;
-    const valEl = document.getElementById("panel-points-value");
-    if (valEl) valEl.textContent = `${points}/${maxPoints}`;
-
-    let statusText = "";
-    if (points >= 10) statusText = `Excelente historial. Te quedan ${points} puntos.`;
-    else if (points >= 6) statusText = `Precaución. Te quedan ${points} puntos.`;
-    else if (points > 0) statusText = `Riesgo crítico. Te quedan ${points} puntos.`;
-    else statusText = "Carnet retirado por pérdida total de puntos.";
-
-    const statusEl = document.getElementById("panel-points-status");
-    if (statusEl) statusEl.textContent = statusText;
-
-    const barContainer = document.getElementById("panel-points-bar");
-    if (!barContainer) return;
-    barContainer.innerHTML = "";
-
-    for (let i = 0; i < maxPoints; i++) {
-      const segment = document.createElement("div");
-      segment.className = "points-segment";
-      if (i < points) {
-        if (points <= 3) segment.classList.add("danger");
-        else if (points <= 6) segment.classList.add("warning");
-        else segment.classList.add("active");
-      }
-      barContainer.appendChild(segment);
-    }
-  }
-
-  document.addEventListener("click", (e) => {
-    const btnExp = e.target.closest(".expediente-item");
-    if (btnExp) {
-      document
-        .querySelectorAll(".expediente-item")
-        .forEach((btn) => btn.classList.remove("active"));
-      btnExp.classList.add("active");
-      document.querySelectorAll(".licenses-view").forEach((v) => (v.hidden = true));
-      if (btnExp.id === "btn-exp-puntos")
-        document.getElementById("view-puntos").hidden = false;
-      if (btnExp.id === "btn-exp-dni") document.getElementById("view-dni").hidden = false;
-      if (btnExp.id === "btn-exp-carnets")
-        document.getElementById("view-carnets-list").hidden = false;
-      return;
+    const licState = getLicensesState();
+    const holderChip = document.getElementById("lic-holder-chip");
+    if (holderChip) {
+      holderChip.textContent = `${licState.fullName.toUpperCase()} · ${licState.citizenId}`;
     }
 
-    const carnetHeader = e.target.closest(".carnet-item-header");
-    if (carnetHeader) {
-      const carnetItem = carnetHeader.closest(".carnet-item");
-      const isExpanded = carnetItem.classList.contains("expanded");
-      document.querySelectorAll(".carnet-item").forEach((item) => {
-        item.classList.remove("expanded");
+    const ownedCount = licState.ownedSet.size;
+    const pendingCount = LICENSES_CATALOG.length - ownedCount;
+    const ownedBadge = document.getElementById("lic-wallet-tab-badge");
+    const topOwned = document.getElementById("lic-topbar-owned");
+    const topPending = document.getElementById("lic-topbar-pending");
+    if (ownedBadge) ownedBadge.textContent = String(ownedCount);
+    if (topOwned) topOwned.textContent = String(ownedCount);
+    if (topPending) topPending.textContent = String(pendingCount);
+
+    if (!licensesScreen.dataset.licV5Bound) {
+      licensesScreen.dataset.licV5Bound = "1";
+
+      licensesScreen.querySelectorAll("[data-lic-page]").forEach((tab) => {
+        tab.addEventListener("click", () => setLicensesPage(tab.dataset.licPage));
       });
-      if (!isExpanded) carnetItem.classList.add("expanded");
+
+      licensesScreen.querySelectorAll("[data-lic-wallet-filter]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          licWalletFilter = btn.dataset.licWalletFilter || "all";
+          licensesScreen.querySelectorAll("[data-lic-wallet-filter]").forEach((b) => {
+            b.classList.toggle("active", b === btn);
+          });
+          renderOwnedLicensesGrid(getLicensesState());
+        });
+      });
+
+      document.getElementById("lic-go-pending-btn")?.addEventListener("click", () => {
+        setLicensesPage("pending");
+      });
+
+      document.getElementById("lic-owned-grid")?.addEventListener("click", (e) => {
+        const card = e.target.closest("[data-lic-owned-id]");
+        if (card) openOwnedLicenseModal(card.dataset.licOwnedId);
+      });
+
+      document.getElementById("lic-pending-grid")?.addEventListener("click", (e) => {
+        const card = e.target.closest("[data-lic-pending-id]");
+        if (card) openPendingLicenseModal(card.dataset.licPendingId);
+      });
+
+      document
+        .getElementById("lic-modal-close")
+        ?.addEventListener("click", closeLicenseModals);
+      document.getElementById("lic-modal-done")?.addEventListener("click", closeLicenseModals);
+      document
+        .getElementById("lic-guide-close")
+        ?.addEventListener("click", closeLicenseModals);
+      document
+        .getElementById("lic-guide-close-btn")
+        ?.addEventListener("click", closeLicenseModals);
+
+      document.getElementById("lic-detail-modal")?.addEventListener("click", (e) => {
+        if (e.target.id === "lic-detail-modal") closeLicenseModals();
+      });
+      document.getElementById("lic-guide-modal")?.addEventListener("click", (e) => {
+        if (e.target.id === "lic-guide-modal") closeLicenseModals();
+      });
+
+      document.getElementById("lic-modal-share")?.addEventListener("click", () => {});
+      document.getElementById("lic-guide-share")?.addEventListener("click", () => {});
+
+      document.getElementById("lic-modal-copy-id")?.addEventListener("click", () => {
+        if (!licInspectedOwnedId) return;
+        const st = getLicensesState();
+        const code = st.makeLicId(licInspectedOwnedId);
+        navigator.clipboard?.writeText(code).catch(() => {});
+        showNotification({
+          appName: "Licencias",
+          icon: "copy",
+          title: "ID copiado",
+          message: `Código ${code} copiado para comprobación policial.`,
+          duration: 2500,
+        });
+      });
+
+      document.getElementById("lic-guide-gps-btn")?.addEventListener("click", () => {
+        if (!licInspectedPendingId) return;
+        const item = LICENSES_CATALOG.find((x) => x.id === licInspectedPendingId);
+        if (!item) return;
+        nui("setLicenseWaypoint", { id: item.id, location: item.obtainLocation }).catch(
+          () => {},
+        );
+        showNotification({
+          appName: "Licencias",
+          icon: "map-pin",
+          title: "Ubicación marcada",
+          message: `${item.obtainLocation} (${item.obtainNpc}).`,
+          duration: 3000,
+        });
+      });
     }
-  });
+
+    renderCameraIcons();
+    setLicensesPage("wallet");
+    renderPendingLicensesGrid(licState);
+  }
 
   const APP_HANDLERS = {
     mdt: openMdtFromDesktop,
@@ -4303,8 +5922,6 @@
   let dragOffsetX = 0;
   let dragOffsetY = 0;
   let currentHoverEl = null;
-  let lastMouseX = 0;
-  let lastMouseY = 0;
 
   function initDragAndDrop() {
     desktopAppGrid.addEventListener("mousedown", (e) => {
@@ -4319,8 +5936,6 @@
       const rect = appEl.getBoundingClientRect();
       dragOffsetX = e.clientX - rect.left;
       dragOffsetY = e.clientY - rect.top;
-      lastMouseX = e.clientX;
-      lastMouseY = e.clientY;
 
       dragClone = appEl.cloneNode(true);
       dragClone.classList.add("app-drag-clone");
@@ -4932,8 +6547,20 @@
     }
     if (data.action === "setTxAdminRestart") {
       const restartAt = Number(data.data?.restartAt);
-      txAdminRestartTime =
-        Number.isFinite(restartAt) && restartAt > 0 ? restartAt * 1000 : null;
+      const totalDurationSec = Number(
+        data.data?.totalDuration ?? data.data?.durationSec ?? data.data?.duration,
+      );
+      if (Number.isFinite(restartAt) && restartAt > 0) {
+        txAdminRestartTime = restartAt * 1000;
+        const remainingSec = Math.max(1, Math.round(restartAt - Date.now() / 1000));
+        window.txAdminStormTotalSec =
+          Number.isFinite(totalDurationSec) && totalDurationSec > 0
+            ? totalDurationSec
+            : inferStormBucketDurationSec(remainingSec);
+      } else {
+        txAdminRestartTime = null;
+        window.txAdminStormTotalSec = null;
+      }
       renderWeatherApp();
     }
 
@@ -5390,11 +7017,7 @@
           if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
           window.PhoneData.hardware.settings.brightness = val;
 
-          nui("saveHardwareData", {
-            imei: window.PhoneData.imei,
-            settings: window.PhoneData.hardware.settings,
-            installed_apps: window.PhoneData.hardware.installed_apps || [],
-          });
+          persistHardware();
         }
       } else {
         // Es multimedia, llamadas o notificaciones
@@ -5414,7 +7037,6 @@
 
   const volUpBtn = document.querySelector('.volume-button[data-action="volume-up"]');
   const volDownBtn = document.querySelector('.volume-button[data-action="volume-down"]');
-  const STEP = 2;
   let volInterval = null;
 
   const adjustAudioSliders = (direction) => {
@@ -5494,6 +7116,63 @@
     );
     volDownBtn.addEventListener("touchend", stopVolumeHold);
   }
+
+  // ================= 2 PESTAÑAS EN EL HEADER DESPLEGADO =================
+  let activeNcTab = "controls";
+
+  function syncNcTabBadge() {
+    const badge = document.getElementById("nc-tab-badge");
+    if (badge) badge.textContent = String(state.history.length);
+  }
+
+  function setActiveNcTab(tabName) {
+    activeNcTab = tabName === "notifications" ? "notifications" : "controls";
+    const controlsPage = document.getElementById("nc-page-controls");
+    const notifsPage = document.getElementById("nc-page-notifications");
+    if (controlsPage) controlsPage.hidden = activeNcTab !== "controls";
+    if (notifsPage) notifsPage.hidden = activeNcTab !== "notifications";
+
+    desktopStatusbarEl?.querySelectorAll("[data-nc-tab]").forEach((btn) => {
+      const isAct = btn.dataset.ncTab === activeNcTab;
+      btn.classList.toggle("active", isAct);
+      btn.setAttribute("aria-selected", String(isAct));
+    });
+
+    if (activeNcTab === "notifications") {
+      renderNotificationCenter();
+    }
+    syncNcTabBadge();
+  }
+
+  desktopStatusbarEl?.addEventListener("click", (e) => {
+    const tabBtn = e.target.closest("[data-nc-tab]");
+    if (tabBtn) {
+      setActiveNcTab(tabBtn.dataset.ncTab);
+      return;
+    }
+
+    const shortcutBtn = e.target.closest("[data-nc-shortcut]");
+    if (shortcutBtn) {
+      const targetTab = shortcutBtn.dataset.ncShortcut;
+      if (desktopStatusbarEl) {
+        desktopStatusbarEl.classList.remove("expanded");
+        desktopStatusbarEl.style.height = "";
+        setTimeout(syncHeaderHeight, 10);
+      }
+      openSettings();
+      if (targetTab && targetTab !== "home") {
+        setTimeout(() => setActiveSettingsTab(targetTab), 20);
+      }
+    }
+  });
+
+  const _origRenderNC = renderNotificationCenter;
+  renderNotificationCenter = function () {
+    _origRenderNC();
+    syncNcTabBadge();
+  };
+
+  setActiveNcTab("controls");
 
   updateNotificationHeader();
   renderNotificationCenter();
@@ -5859,20 +7538,6 @@
     });
   }
 
-  function updateSetupPinDots() {
-    const dots = document.querySelectorAll("#setup-pin-dots span");
-    dots.forEach((dot, index) => {
-      dot.classList.toggle("filled", index < setupPinInput.length);
-    });
-  }
-
-  function nextSetupPhase() {
-    if (setupCurrentPhase < 2) {
-      setupCurrentPhase++;
-      moveSetupMobile(setupCurrentPhase);
-    }
-  }
-
   function moveSetupMobile(phase) {
     // En móvil movemos el contenedor, en tablet (CSS Grid) no se aplica
     if (window.innerWidth <= 768) {
@@ -5954,7 +7619,6 @@
   const snakeGameover = document.getElementById("snake-gameover");
   const snakeFinalScore = document.getElementById("snake-final-score");
 
-  let snakeInterval = null;
   let GRID_SIZE = 15;
   let TILE_COUNT_X = 20;
   let TILE_COUNT_Y = 20;
@@ -6566,27 +8230,87 @@
     });
   }
 
-  // ================= LÓGICA DE LA APP NOTAS (VERSIÓN FINAL CORREGIDA) =================
+  // ================= LÓGICA DE LA APP NOTAS (STICKY NOTES CANVAS) =================
+  const NOTES_STORAGE_KEY = "dpPhone.stickyNotes.v2";
+  const STICKY_COLORS = [
+    "#f2f2f5",
+    "#f7e379",
+    "#9be7c4",
+    "#9ec5ff",
+    "#f5a3b8",
+    "#cfb4ff",
+    "#ffd29d",
+  ];
+
   let notesData = [];
   let currentNote = null;
+  let notesColorFilter = "all";
+  let notesTopZ = 20;
 
-  // Referencias al DOM
   const notesApp = document.getElementById("notes-app");
-  const notesListView = document.getElementById("notes-list-view");
-  const notesEditorView = document.getElementById("notes-editor-view");
-  const notesGrid = document.getElementById("notes-grid");
+  const notesBoard = document.getElementById("notes-grid");
+  const notesViewport = document.getElementById("notes-canvas-viewport");
+  const notesEmptyState = document.getElementById("notes-empty-state");
+  const notesEditorModal = document.getElementById("notes-editor-modal");
+  const notesEditorCard = document.getElementById("notes-editor-card");
   const noteInputTitle = document.getElementById("note-input-title");
   const noteInputContent = document.getElementById("note-input-content");
   const notesSearchInput = document.getElementById("notes-search-input");
+  const notesCountChip = document.getElementById("notes-count-chip");
+  const notesModeChip = document.getElementById("notes-canvas-mode-chip");
 
-  // --- FUNCIÓN PARA ACTUALIZAR LOS BOTONES DE LA BARRA ---
+  function normalizeStickyNote(raw, index = 0) {
+    const col = Math.max(0, index % 3);
+    const row = Math.floor(index / 3);
+    const defaultX = 24 + col * 252 + (index % 2) * 10;
+    const defaultY = 20 + row * 208 + (index % 3) * 8;
+    const color = STICKY_COLORS.includes(raw?.color) ? raw.color : "#f7e379";
+    return {
+      id: raw?.id ?? `note_${Date.now()}_${index}`,
+      title: String(raw?.title ?? ""),
+      content: String(raw?.content ?? ""),
+      color,
+      is_pinned: raw?.is_pinned === true || Number(raw?.is_pinned) === 1 ? 1 : 0,
+      x: Number.isFinite(Number(raw?.x)) ? Number(raw.x) : defaultX,
+      y: Number.isFinite(Number(raw?.y)) ? Number(raw.y) : defaultY,
+      w: Number.isFinite(Number(raw?.w)) ? Math.max(185, Number(raw.w)) : 236,
+      h: Number.isFinite(Number(raw?.h)) ? Math.max(155, Number(raw.h)) : 192,
+      z: Number.isFinite(Number(raw?.z)) ? Number(raw.z) : 10 + index,
+      updated_at: raw?.updated_at || new Date().toISOString(),
+    };
+  }
+
+  function loadLocalNotes() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(NOTES_STORAGE_KEY) || "null");
+      if (Array.isArray(parsed)) {
+        return parsed.map((n, i) => normalizeStickyNote(n, i));
+      }
+    } catch {}
+    return [];
+  }
+
+  function saveLocalNotes() {
+    try {
+      localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notesData));
+    } catch {}
+  }
+
+  function bringNoteToFront(note) {
+    notesTopZ += 1;
+    note.z = notesTopZ;
+    const cardEl = notesBoard?.querySelector(
+      `[data-note-id="${CSS.escape(String(note.id))}"]`,
+    );
+    if (cardEl) cardEl.style.zIndex = String(note.z);
+    saveLocalNotes();
+  }
+
   function updateToolbarState() {
     if (!noteInputContent) return;
-
-    document.querySelectorAll(".notes-toolbar button").forEach((btn) => {
+    document.querySelectorAll("#notes-toolbar button").forEach((btn) => {
       const cmd = btn.dataset.command;
       if (!cmd) return;
-
       if (
         [
           "bold",
@@ -6598,225 +8322,421 @@
         ].includes(cmd)
       ) {
         try {
-          if (document.queryCommandState(cmd)) {
-            btn.classList.add("active");
-          } else {
-            btn.classList.remove("active");
-          }
-        } catch (e) {
-          // Ignorar errores de comandos no soportados
-        }
+          btn.classList.toggle("active", Boolean(document.queryCommandState(cmd)));
+        } catch {}
       }
     });
   }
 
-  // 1. Renderizar notas
-  function renderNotes(filterText = "") {
-    if (!notesGrid) return;
-    notesGrid.innerHTML = "";
+  function getPlainNoteText(html) {
+    const temp = document.createElement("div");
+    temp.innerHTML = html || "";
+    return (temp.textContent || temp.innerText || "").trim();
+  }
 
-    const filteredNotes = notesData.filter((n) => {
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = n.content || "";
-      const plainText = tempDiv.textContent || tempDiv.innerText || "";
+  function arrangeNotesInGrid() {
+    if (!notesData.length) return;
+    const boardWidth = Math.max(540, notesViewport?.clientWidth || 840);
+    const cardW = 236;
+    const cardH = 192;
+    const gapX = 18;
+    const gapY = 18;
+    const cols = Math.max(1, Math.floor((boardWidth - 36 + gapX) / (cardW + gapX)));
 
-      return (
-        n.title.toLowerCase().includes(filterText.toLowerCase()) ||
-        plainText.toLowerCase().includes(filterText.toLowerCase())
-      );
+    const sorted = notesData.slice().sort((a, b) => {
+      if ((b.is_pinned || 0) !== (a.is_pinned || 0))
+        return (b.is_pinned || 0) - (a.is_pinned || 0);
+      return String(b.updated_at || "").localeCompare(String(a.updated_at || ""));
     });
 
-    if (filteredNotes.length === 0) {
-      notesGrid.innerHTML = `
-            <div class="notes-empty" id="notes-empty-state">
-                <span class="ui-icon" data-iconify="notes"></span>
-                <p>No tienes notas aún.<br>¡Crea una nueva!</p>
-            </div>
-        `;
-      if (window.iconifySvg) {
-        notesGrid.querySelectorAll("[data-iconify]").forEach((el) => {
-          el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
-        });
+    sorted.forEach((n, idx) => {
+      const c = idx % cols;
+      const r = Math.floor(idx / cols);
+      n.x = 18 + c * (cardW + gapX);
+      n.y = 18 + r * (cardH + gapY);
+      n.w = cardW;
+      n.h = cardH;
+    });
+
+    if (notesModeChip) notesModeChip.textContent = "CUADRÍCULA";
+    saveLocalNotes();
+    renderNotes(notesSearchInput?.value || "");
+  }
+
+  function renderNotes(filterText = "") {
+    if (!notesBoard) return;
+
+    const query = normalizeText((filterText || "").trim());
+    const visibleNotes = notesData.filter((n) => {
+      if (notesColorFilter !== "all" && (n.color || "#f7e379") !== notesColorFilter) {
+        return false;
       }
-      return;
+      if (!query) return true;
+      const plain = normalizeText(getPlainNoteText(n.content));
+      const title = normalizeText(n.title);
+      return title.includes(query) || plain.includes(query);
+    });
+
+    if (notesCountChip) {
+      const total = notesData.length;
+      const shown = visibleNotes.length;
+      notesCountChip.textContent =
+        shown === total
+          ? `${total} ${total === 1 ? "nota" : "notas"}`
+          : `${shown} de ${total}`;
     }
 
-    filteredNotes.forEach((note) => {
-      const card = document.createElement("div");
-      card.className = "note-card";
-      card.style.backgroundColor = note.color || "#ffffff";
+    notesBoard.innerHTML = "";
 
-      if (note.is_pinned) {
-        card.style.border = "2px solid var(--palette-monochrome-accent)";
-      }
+    if (!visibleNotes.length) {
+      if (notesEmptyState) notesEmptyState.hidden = false;
+      return;
+    }
+    if (notesEmptyState) notesEmptyState.hidden = true;
 
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = note.content || "";
-      const previewText = tempDiv.textContent || tempDiv.innerText || "";
+    const ordered = visibleNotes.slice().sort((a, b) => (a.z || 10) - (b.z || 10));
+    let maxBottom = 260;
+
+    ordered.forEach((note) => {
+      const card = document.createElement("article");
+      card.className = `sticky-note-card${note.is_pinned ? " is-pinned" : ""}`;
+      card.dataset.noteId = String(note.id);
+      card.style.left = `${note.x}px`;
+      card.style.top = `${note.y}px`;
+      card.style.width = `${note.w}px`;
+      card.style.height = `${note.h}px`;
+      card.style.zIndex = String(note.z || 10);
+      card.style.backgroundColor = note.color || "#f7e379";
+
+      maxBottom = Math.max(maxBottom, note.y + note.h + 40);
+
+      const swatchesHtml = STICKY_COLORS.map((hex) => {
+        const active = (note.color || "#f7e379") === hex ? " active" : "";
+        return `<button type="button" class="sticky-mini-swatch${active}" data-quick-color="${hex}" style="background:${hex}" title="Color de nota"></button>`;
+      }).join("");
+
+      const plainBody = getPlainNoteText(note.content);
+      const bodyHtml = plainBody
+        ? note.content
+        : `<span style="opacity:0.48;font-style:italic;">Sin contenido…</span>`;
 
       card.innerHTML = `
-            ${note.is_pinned ? `<span class="ui-icon note-card-pin" data-iconify="pin"></span>` : ""}
-            <h3>${note.title || "Sin título"}</h3>
-            <p>${previewText}</p>
-        `;
+        <div class="sticky-note-topbar" title="Arrastra para mover la nota">
+          <div class="sticky-note-grip">
+            <span class="sticky-note-grip-dots">⋮⋮</span>
+            ${
+              note.is_pinned
+                ? `<span class="sticky-note-pin-badge"><span class="ui-icon" data-iconify="pin"></span>FIJADA</span>`
+                : ""
+            }
+          </div>
+          <div class="sticky-note-controls">
+            <button type="button" class="sticky-note-btn${note.is_pinned ? " active" : ""}" data-sticky-act="pin" title="${note.is_pinned ? "Desanclar" : "Anclar"}">
+              <span class="ui-icon" data-iconify="pin"></span>
+            </button>
+            <button type="button" class="sticky-note-btn" data-sticky-act="expand" title="Expandir / Editar">
+              <span class="ui-icon" data-iconify="maximize"></span>
+            </button>
+            <button type="button" class="sticky-note-btn danger" data-sticky-act="delete" title="Eliminar">
+              <span class="ui-icon" data-iconify="trash"></span>
+            </button>
+          </div>
+        </div>
+        <div class="sticky-note-color-bar">
+          <div class="sticky-mini-swatches">${swatchesHtml}</div>
+        </div>
+        <div class="sticky-note-body" title="Haz clic para editar">
+          <h3 class="sticky-note-title">${esc(note.title || "Sin título")}</h3>
+          <div class="sticky-note-excerpt">${bodyHtml}</div>
+        </div>
+        <div class="sticky-note-resize-handle" data-sticky-resize="1" title="Arrastra para redimensionar"></div>
+      `;
 
-      card.addEventListener("click", () => openNoteEditor(note));
-      notesGrid.appendChild(card);
+      card.addEventListener("pointerdown", () => {
+        bringNoteToFront(note);
+      });
+
+      const topbar = card.querySelector(".sticky-note-topbar");
+      topbar?.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0 || e.target.closest("button")) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        bringNoteToFront(note);
+        card.classList.remove("is-expanded");
+        card.classList.add("is-dragging");
+        if (notesModeChip) notesModeChip.textContent = "LIBRE";
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const origX = note.x;
+        const origY = note.y;
+        const maxX = Math.max(10, (notesViewport?.clientWidth || 800) - note.w - 10);
+        const maxY = Math.max(10, (notesViewport?.clientHeight || 500) - 60);
+
+        const onMove = (moveEv) => {
+          const nextX = Math.min(maxX, Math.max(8, origX + (moveEv.clientX - startX)));
+          const nextY = Math.min(maxY + 220, Math.max(8, origY + (moveEv.clientY - startY)));
+          note.x = Math.round(nextX);
+          note.y = Math.round(nextY);
+          card.style.left = `${note.x}px`;
+          card.style.top = `${note.y}px`;
+        };
+
+        const onUp = () => {
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onUp);
+          card.classList.remove("is-dragging");
+          saveLocalNotes();
+        };
+
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+      });
+
+      const resizeHandle = card.querySelector(".sticky-note-resize-handle");
+      resizeHandle?.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        bringNoteToFront(note);
+        card.classList.remove("is-expanded");
+        card.classList.add("is-dragging");
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const origW = note.w;
+        const origH = note.h;
+
+        const onResizeMove = (moveEv) => {
+          note.w = Math.min(540, Math.max(185, Math.round(origW + (moveEv.clientX - startX))));
+          note.h = Math.min(440, Math.max(155, Math.round(origH + (moveEv.clientY - startY))));
+          card.style.width = `${note.w}px`;
+          card.style.height = `${note.h}px`;
+        };
+
+        const onResizeUp = () => {
+          window.removeEventListener("pointermove", onResizeMove);
+          window.removeEventListener("pointerup", onResizeUp);
+          card.classList.remove("is-dragging");
+          saveLocalNotes();
+        };
+
+        window.addEventListener("pointermove", onResizeMove);
+        window.addEventListener("pointerup", onResizeUp);
+      });
+
+      card.querySelectorAll("[data-quick-color]").forEach((swBtn) => {
+        swBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          note.color = swBtn.dataset.quickColor;
+          note.updated_at = new Date().toISOString();
+          saveLocalNotes();
+          renderNotes(notesSearchInput?.value || "");
+        });
+      });
+
+      card.querySelector('[data-sticky-act="pin"]')?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        note.is_pinned = note.is_pinned ? 0 : 1;
+        bringNoteToFront(note);
+        saveLocalNotes();
+        renderNotes(notesSearchInput?.value || "");
+      });
+
+      card.querySelector('[data-sticky-act="expand"]')?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openNoteEditor(note, { expand: true });
+      });
+
+      card.querySelector('[data-sticky-act="delete"]')?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        confirmDeleteNoteWithNotification(note);
+      });
+
+      card.querySelector(".sticky-note-body")?.addEventListener("click", () => {
+        openNoteEditor(note, { expand: false });
+      });
+
+      notesBoard.appendChild(card);
     });
 
+    notesBoard.style.minHeight = `${maxBottom}px`;
+
     if (window.iconifySvg) {
-      notesGrid.querySelectorAll("[data-iconify]").forEach((el) => {
+      notesBoard.querySelectorAll("[data-iconify]").forEach((el) => {
         el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
       });
     }
   }
 
-  // 2. Abrir editor
-  function openNoteEditor(note = null) {
+  function syncEditorModalColor(color) {
+    const bodyEl = notesEditorModal?.querySelector(".notes-modal-body");
+    if (bodyEl) bodyEl.style.backgroundColor = color;
+    document.querySelectorAll("#notes-color-palette button").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.color === color);
+    });
+  }
+
+  function openNoteEditor(note = null, { expand = false } = {}) {
     currentNote = note;
-    notesListView.hidden = true;
-    notesEditorView.hidden = false;
+    if (!notesEditorModal || !notesEditorCard) return;
 
-    document
-      .querySelectorAll(".notes-color-palette button")
-      .forEach((btn) => btn.classList.remove("active"));
-
-    if (note) {
-      noteInputTitle.value = note.title || "";
-      noteInputContent.innerHTML = note.content || "";
-
-      const colorBtn = document.querySelector(
-        `.notes-color-palette button[data-color="${note.color}"]`,
-      );
-      if (colorBtn) colorBtn.classList.add("active");
-
-      const pinBtn = document.getElementById("notes-btn-pin");
-      if (note.is_pinned) pinBtn.classList.add("active");
-      else pinBtn.classList.remove("active");
-
-      document.getElementById("notes-btn-delete").style.display = "grid";
-    } else {
-      noteInputTitle.value = "";
-      noteInputContent.innerHTML = "";
-      document.querySelector(".notes-color-palette button").classList.add("active");
-      document.getElementById("notes-btn-pin").classList.remove("active");
-      document.getElementById("notes-btn-delete").style.display = "none";
+    notesEditorCard.classList.toggle("is-expanded", Boolean(expand));
+    const headingEl = document.getElementById("notes-modal-title-heading");
+    if (headingEl) {
+      headingEl.textContent = note ? "Editar sticky note" : "Nueva sticky note";
     }
 
-    setTimeout(() => noteInputTitle.focus(), 100);
+    const activeColor =
+      note?.color || (notesColorFilter !== "all" ? notesColorFilter : "#f7e379");
+    syncEditorModalColor(activeColor);
+
+    const isPinned = Boolean(note?.is_pinned);
+    document.getElementById("notes-modal-pin")?.classList.toggle("active", isPinned);
+
+    const delBtn = document.getElementById("notes-modal-delete");
+    if (delBtn) delBtn.style.display = note ? "grid" : "none";
+
+    if (noteInputTitle) noteInputTitle.value = note?.title || "";
+    if (noteInputContent) noteInputContent.innerHTML = note?.content || "";
+
+    notesEditorModal.hidden = false;
+    if (window.iconifySvg) {
+      notesEditorModal.querySelectorAll("[data-iconify]").forEach((el) => {
+        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+      });
+    }
+
+    setTimeout(() => noteInputTitle?.focus(), 40);
   }
 
-  // 3. Cerrar editor
   function closeNoteEditor() {
-    notesListView.hidden = false;
-    notesEditorView.hidden = true;
     currentNote = null;
+    notesEditorCard?.classList.remove("is-expanded");
+    if (notesEditorModal) notesEditorModal.hidden = true;
   }
 
-  // 4. Guardar nota (usa el modal personalizado, sin confirm ni prompt)
   async function saveNote() {
-    const title = noteInputTitle.value.trim();
-    const content = noteInputContent.innerHTML.trim();
+    const title = (noteInputTitle?.value || "").trim();
+    const content = (noteInputContent?.innerHTML || "").trim();
     const color =
-      document.querySelector(".notes-color-palette button.active")?.dataset.color || "#ffffff";
-    const isPinned = document.getElementById("notes-btn-pin").classList.contains("active");
+      document.querySelector("#notes-color-palette button.active")?.dataset.color || "#f7e379";
+    const isPinned = document.getElementById("notes-modal-pin")?.classList.contains("active")
+      ? 1
+      : 0;
 
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = content;
-    if (!title && !tempDiv.textContent.trim()) {
+    if (!title && !getPlainNoteText(content)) {
       showNotification({
         appName: "Notas",
         icon: "alert-triangle",
         title: "Nota vacía",
-        message: "Escribe algo antes de guardar.",
+        message: "Escribe un título o contenido antes de guardar.",
+        duration: 3000,
       });
       return;
     }
 
-    const noteData = {
-      id: currentNote ? currentNote.id : null,
-      title: title,
-      content: content,
-      color: color,
-      is_pinned: isPinned ? 1 : 0,
-    };
+    const idx = notesData.length;
+    const col = idx % 3;
+    const row = Math.floor(idx / 3);
 
-    try {
-      const result = await nui("saveNote", noteData);
-
-      if (result) {
-        if (currentNote) {
-          const index = notesData.findIndex((n) => n.id === currentNote.id);
-          if (index !== -1) notesData[index] = { ...result, ...noteData };
-        } else {
-          notesData.unshift(result);
+    const savedNote = currentNote
+      ? {
+          ...currentNote,
+          title,
+          content,
+          color,
+          is_pinned: isPinned,
+          z: ++notesTopZ,
+          updated_at: new Date().toISOString(),
         }
+      : normalizeStickyNote(
+          {
+            id: `note_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+            title,
+            content,
+            color,
+            is_pinned: isPinned,
+            x: 24 + col * 252 + (idx % 2) * 12,
+            y: 20 + row * 208 + (idx % 3) * 10,
+            w: 236,
+            h: 192,
+            z: ++notesTopZ,
+            updated_at: new Date().toISOString(),
+          },
+          idx,
+        );
 
-        notesData.sort((a, b) => {
-          if (a.is_pinned !== b.is_pinned) return b.is_pinned - a.is_pinned;
-          return new Date(b.updated_at || Date.now()) - new Date(a.updated_at || Date.now());
-        });
-
-        showNotification({
-          appName: "Notas",
-          icon: "check",
-          title: "Guardado",
-          message: "Nota guardada correctamente.",
-        });
-        closeNoteEditor();
-        renderNotes(notesSearchInput.value);
-      }
-    } catch (e) {
-      console.error(e);
-      showNotification({
-        appName: "Notas",
-        icon: "alert-triangle",
-        title: "Error",
-        message: "No se pudo guardar la nota.",
-      });
+    if (currentNote) {
+      const existingIdx = notesData.findIndex((n) => String(n.id) === String(currentNote.id));
+      if (existingIdx !== -1) notesData[existingIdx] = savedNote;
+      else notesData.push(savedNote);
+    } else {
+      notesData.push(savedNote);
     }
+
+    saveLocalNotes();
+    nui("saveNote", savedNote).catch(() => {});
+
+    closeNoteEditor();
+    renderNotes(notesSearchInput?.value || "");
+    showNotification({
+      appName: "Notas",
+      icon: "check",
+      title: "Nota guardada",
+      message: "Tu sticky note ya está fijada en el lienzo.",
+      duration: 2500,
+    });
   }
 
-  // 5. Borrar nota (usa el modal personalizado en vez de confirm)
-  async function deleteNote() {
-    if (!currentNote) return;
+  function performDeleteNoteById(targetId) {
+    notesData = notesData.filter((n) => String(n.id) !== String(targetId));
+    saveLocalNotes();
+    nui("deleteNote", targetId).catch(() => {});
+    if (currentNote && String(currentNote.id) === String(targetId)) {
+      closeNoteEditor();
+    }
+    renderNotes(notesSearchInput?.value || "");
+    showNotification({
+      appName: "Notas",
+      icon: "trash",
+      title: "Nota eliminada",
+      message: "Se ha borrado la sticky note del lienzo.",
+      duration: 2500,
+    });
+  }
 
-    // En lugar de confirm() bloqueado, usamos una notificación con acciones
+  function confirmDeleteNoteWithNotification(note) {
+    if (!note) return;
+    const label = note.title ? `"${note.title}"` : "esta sticky note";
     showNotification({
       appName: "Notas",
       icon: "alert-triangle",
-      title: "¿Borrar nota?",
-      message: "Esta acción no se puede deshacer.",
-      duration: 10000,
+      title: "¿Eliminar nota?",
+      message: `¿Seguro que quieres eliminar ${label}?`,
+      duration: 8000,
       actions: [
         {
-          label: "Borrar",
+          label: "Eliminar",
           type: "danger",
-          action: async () => {
-            try {
-              const success = await nui("deleteNote", currentNote.id);
-              if (success) {
-                notesData = notesData.filter((n) => n.id !== currentNote.id);
-                showNotification({
-                  appName: "Notas",
-                  icon: "trash",
-                  title: "Eliminada",
-                  message: "La nota ha sido borrada.",
-                });
-                closeNoteEditor();
-                renderNotes(notesSearchInput.value);
-              }
-            } catch (e) {
-              console.error(e);
-            }
-          },
+          action: () => performDeleteNoteById(note.id),
         },
-        { label: "Cancelar", type: "secondary" },
+        {
+          label: "Cancelar",
+          type: "decline",
+          action: () => {},
+        },
       ],
     });
   }
 
-  // 6. Abrir App
+  async function deleteNote() {
+    if (!currentNote) return;
+    confirmDeleteNoteWithNotification(currentNote);
+  }
+
   async function openNotesApp() {
     if (!state.hasBooted || state.booting || phone.hidden) return;
 
@@ -6826,62 +8746,102 @@
     desktopScreen.hidden = true;
     homeButton.hidden = false;
 
-    notesApp.hidden = false;
-    notesListView.hidden = false;
-    notesEditorView.hidden = true;
+    if (notesApp) notesApp.hidden = false;
+    if (notesEditorModal) notesEditorModal.hidden = true;
 
     if (window.iconifySvg) {
-      notesApp.querySelectorAll("[data-iconify]").forEach((el) => {
+      notesApp?.querySelectorAll("[data-iconify]").forEach((el) => {
         el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
       });
     }
 
-    notesGrid.innerHTML = `<div class="notes-empty"><p>Cargando notas...</p></div>`;
+    notesData = loadLocalNotes();
     try {
-      notesData = (await nui("getNotes")) || [];
-      renderNotes();
-    } catch (e) {
-      console.error(e);
-      notesGrid.innerHTML = `<div class="notes-empty"><p>Error al cargar notas.</p></div>`;
-    }
+      const serverNotes = await nui("getNotes");
+      if (Array.isArray(serverNotes) && serverNotes.length > 0) {
+        const merged = new Map();
+        serverNotes.forEach((sn, i) =>
+          merged.set(String(sn.id ?? i), normalizeStickyNote(sn, i)),
+        );
+        notesData.forEach((ln, i) =>
+          merged.set(String(ln.id ?? i), normalizeStickyNote(ln, i)),
+        );
+        notesData = Array.from(merged.values());
+        saveLocalNotes();
+      }
+    } catch {}
+
+    notesTopZ = notesData.reduce((acc, n) => Math.max(acc, Number(n.z) || 10), 20);
+    renderNotes(notesSearchInput?.value || "");
   }
 
-  // --- EVENT LISTENERS ---
-  // Esperamos un poco a que el DOM esté listo
   setTimeout(() => {
     document
       .getElementById("notes-btn-new")
-      ?.addEventListener("click", () => openNoteEditor());
-    document.getElementById("notes-btn-back")?.addEventListener("click", closeNoteEditor);
+      ?.addEventListener("click", () => openNoteEditor(null));
+    document
+      .getElementById("notes-btn-empty-new")
+      ?.addEventListener("click", () => openNoteEditor(null));
+    document
+      .getElementById("notes-btn-auto-arrange")
+      ?.addEventListener("click", arrangeNotesInGrid);
+    document.getElementById("notes-btn-cancel")?.addEventListener("click", closeNoteEditor);
+    document.getElementById("notes-modal-close")?.addEventListener("click", closeNoteEditor);
     document.getElementById("notes-btn-save")?.addEventListener("click", saveNote);
-    document.getElementById("notes-btn-delete")?.addEventListener("click", deleteNote);
+    document.getElementById("notes-modal-delete")?.addEventListener("click", deleteNote);
 
-    document.getElementById("notes-btn-pin")?.addEventListener("click", (e) => {
+    notesEditorModal?.addEventListener("click", (e) => {
+      if (e.target === notesEditorModal) closeNoteEditor();
+    });
+
+    notesEditorModal?.querySelector(".notes-modal-body")?.addEventListener("click", (e) => {
+      if (e.target === noteInputTitle) return;
+      if (!noteInputContent) return;
+      noteInputContent.focus();
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount === 0 && noteInputContent.lastChild) {
+        const range = document.createRange();
+        range.selectNodeContents(noteInputContent);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    });
+
+    document.getElementById("notes-modal-pin")?.addEventListener("click", (e) => {
       e.currentTarget.classList.toggle("active");
     });
 
-    document.querySelectorAll(".notes-color-palette button").forEach((btn) => {
+    document.getElementById("notes-modal-expand")?.addEventListener("click", () => {
+      notesEditorCard?.classList.toggle("is-expanded");
+    });
+
+    document.querySelectorAll("#notes-color-palette button").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document
-          .querySelectorAll(".notes-color-palette button")
-          .forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
+        syncEditorModalColor(btn.dataset.color || "#f7e379");
+      });
+    });
+
+    document.querySelectorAll("[data-note-color-filter]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        notesColorFilter = btn.dataset.noteColorFilter || "all";
+        document.querySelectorAll("[data-note-color-filter]").forEach((b) => {
+          b.classList.toggle("active", b === btn);
+        });
+        renderNotes(notesSearchInput?.value || "");
       });
     });
 
     notesSearchInput?.addEventListener("input", (e) => renderNotes(e.target.value));
 
-    // Barra de herramientas
-    document.querySelectorAll(".notes-toolbar button").forEach((btn) => {
+    document.querySelectorAll("#notes-toolbar button").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         const command = btn.dataset.command;
         const value = btn.dataset.value || null;
-
-        noteInputContent.focus();
+        noteInputContent?.focus();
 
         if (command === "createLink") {
-          // Usamos un modal personalizado en vez de prompt
           const linkModal = document.getElementById("notes-link-modal");
           if (linkModal) {
             linkModal.style.display = "grid";
@@ -6891,26 +8851,23 @@
               input.focus();
             }
           }
-        } else {
+        } else if (command) {
           document.execCommand(command, false, value);
           updateToolbarState();
         }
       });
     });
 
-    // Detectar cambios en el editor para actualizar los botones
     noteInputContent?.addEventListener("keyup", updateToolbarState);
     noteInputContent?.addEventListener("mouseup", updateToolbarState);
     noteInputContent?.addEventListener("focus", updateToolbarState);
 
-    // Limpiar HTML al pegar
     noteInputContent?.addEventListener("paste", (e) => {
       e.preventDefault();
       const text = (e.originalEvent || e).clipboardData.getData("text/plain");
       document.execCommand("insertText", false, text);
     });
 
-    // Lógica del modal de enlace
     document.getElementById("notes-link-cancel")?.addEventListener("click", () => {
       document.getElementById("notes-link-modal").style.display = "none";
     });
@@ -6919,12 +8876,12 @@
       const input = document.getElementById("notes-link-input");
       const url = input ? input.value.trim() : "";
       if (url) {
-        noteInputContent.focus();
+        noteInputContent?.focus();
         document.execCommand("createLink", false, url);
       }
       document.getElementById("notes-link-modal").style.display = "none";
     });
-  }, 1000);
+  }, 400);
 
   // ================= COMUNICACIÓN: CONTACTOS, MENSAJES Y LLAMAR =================
   // Todo lo que llega de otros jugadores (nombres, mensajes...) se pinta SIEMPRE con esc().
@@ -8195,10 +10152,11 @@
   let galleryActiveAlbumId = null;
   let galleryFilteredList = [];
   let galleryCurrentIndex = -1;
-  let galleryStandalone = false;
   let galleryFilter = "all"; // "all" | "photo" | "video" | "favorites"
   let galleryViewMode = "flat"; // "flat" | "dates" | "albums"
-  let galleryLayoutMode = "uniform"; // "uniform" | "mosaic"
+  let galleryLayoutMode = "mosaic"; // "uniform" | "mosaic"
+  let gallerySortOrder = "newest"; // "newest" | "oldest"
+  let gallerySearchQuery = "";
 
   let editingAlbumId = null;
   let selectedAlbumColor = "#e5a93c";
@@ -8209,7 +10167,6 @@
   const cameraApp = document.getElementById("camera-app");
   const cameraView = document.getElementById("camera-view");
   const cameraGalleryView = document.getElementById("camera-gallery-view");
-  const cameraGalleryGrid = document.getElementById("camera-gallery-grid");
 
   const galleryApp = document.getElementById("gallery-app");
   const galleryScrollBodyEl = document.getElementById("gallery-scroll-body");
@@ -8226,6 +10183,16 @@
   const galleryBtnCopyEl = document.getElementById("gallery-btn-copy");
   const galleryBtnFavoriteEl = document.getElementById("gallery-btn-favorite");
   const galleryFullscreenEl = document.getElementById("gallery-fullscreen-overlay");
+
+  document.getElementById("gallery-search")?.addEventListener("input", (e) => {
+    gallerySearchQuery = e.target.value || "";
+    renderGallery();
+  });
+
+  document.getElementById("gallery-sort-toggle")?.addEventListener("click", () => {
+    gallerySortOrder = gallerySortOrder === "newest" ? "oldest" : "newest";
+    renderGallery();
+  });
   const galleryFullscreenStageEl = document.getElementById("gallery-fullscreen-stage");
 
   function renderCameraIcons() {
@@ -8236,9 +10203,12 @@
       galleryApp?.querySelectorAll("[data-iconify]").forEach((el) => {
         el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
       });
-      document.getElementById("gallery-fullscreen-overlay")?.querySelectorAll("[data-iconify]").forEach((el) => {
-        el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
-      });
+      document
+        .getElementById("gallery-fullscreen-overlay")
+        ?.querySelectorAll("[data-iconify]")
+        .forEach((el) => {
+          el.innerHTML = window.iconifySvg(el.dataset.iconify, "iconify-svg");
+        });
     }
   }
 
@@ -8261,12 +10231,32 @@
   }
 
   const MONTHS_SHORT_ES = [
-    "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
-    "JUL", "AGO", "SEP", "OCT", "NOV", "DIC",
+    "ENE",
+    "FEB",
+    "MAR",
+    "ABR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AGO",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DIC",
   ];
   const MONTHS_FULL_ES = [
-    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
-    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
+    "ENERO",
+    "FEBRERO",
+    "MARZO",
+    "ABRIL",
+    "MAYO",
+    "JUNIO",
+    "JULIO",
+    "AGOSTO",
+    "SEPTIEMBRE",
+    "OCTUBRE",
+    "NOVIEMBRE",
+    "DICIEMBRE",
   ];
 
   function getGalleryBucket(rawDate) {
@@ -8473,7 +10463,8 @@
     fwd5Btn.innerHTML = `<span class="ui-icon" data-iconify="tabler:rewind-forward-5"></span>`;
     fwd5Btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const dur = Number.isFinite(vid.duration) && vid.duration > 0 ? vid.duration : vid.currentTime + 5;
+      const dur =
+        Number.isFinite(vid.duration) && vid.duration > 0 ? vid.duration : vid.currentTime + 5;
       vid.currentTime = Math.min(dur, vid.currentTime + 5);
     });
 
@@ -8576,9 +10567,7 @@
       volSlider.value = String(pct);
       volTooltip.textContent = String(pct);
       const iconName = pct === 0 ? "akar-icons:sound-off" : "akar-icons:sound-on";
-      muteBtn.innerHTML = window.iconifySvg
-        ? window.iconifySvg(iconName, "iconify-svg")
-        : "";
+      muteBtn.innerHTML = window.iconifySvg ? window.iconifySvg(iconName, "iconify-svg") : "";
     };
 
     muteBtn.addEventListener("click", (e) => {
@@ -8661,9 +10650,7 @@
       }
       syncTime();
       const iconName = paused ? "player-play" : "player-pause";
-      playBtn.innerHTML = window.iconifySvg
-        ? window.iconifySvg(iconName, "iconify-svg")
-        : "";
+      playBtn.innerHTML = window.iconifySvg ? window.iconifySvg(iconName, "iconify-svg") : "";
     };
 
     const togglePlay = (e) => {
@@ -8732,7 +10719,9 @@
       galleryViewerCarouselEl.appendChild(thumbBtn);
     });
 
-    const activeThumb = galleryViewerCarouselEl.querySelector(".gallery-carousel-thumb.active");
+    const activeThumb = galleryViewerCarouselEl.querySelector(
+      ".gallery-carousel-thumb.active",
+    );
     activeThumb?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }
 
@@ -9036,7 +11025,6 @@
     desktopScreen.hidden = true;
     homeButton.hidden = false;
 
-    galleryStandalone = false;
     cameraApp.hidden = false;
     cameraView.hidden = false;
     if (cameraGalleryView) cameraGalleryView.hidden = true;
@@ -9056,7 +11044,6 @@
     desktopScreen.hidden = true;
     homeButton.hidden = false;
 
-    galleryStandalone = true;
     closeGalleryViewer();
     if (galleryApp) {
       galleryApp.hidden = false;
@@ -9146,7 +11133,8 @@
         nui("getGalleryPhotos", { imei: window.PhoneData?.imei }),
         nui("getGalleryAlbums", { imei: window.PhoneData?.imei }),
       ]);
-      cameraPhotos = Array.isArray(photos) ? photos : [];
+      const rawPhotos = Array.isArray(photos) ? photos : [];
+      cameraPhotos = rawPhotos;
       galleryAlbums = Array.isArray(albums) ? albums : [];
       renderGallery();
     } catch (e) {
@@ -9213,6 +11201,16 @@
       card.appendChild(img);
     }
 
+    const hoverCaption = document.createElement("div");
+    hoverCaption.className = "gallery-card-hover-caption";
+    const favTagHtml = isItemFavorite(item)
+      ? `<span class="gallery-card-fav-tag" title="Favorito"><span class="ui-icon" data-iconify="heart-filled"></span></span>`
+      : "";
+    hoverCaption.innerHTML = `
+      <span class="gallery-card-hover-date">${esc(formatGalleryTimestamp(item.date))}</span>
+      ${favTagHtml}`;
+    card.appendChild(hoverCaption);
+
     return card;
   }
 
@@ -9239,24 +11237,59 @@
   function renderGallery() {
     if (!galleryGroupsEl) return;
 
-    const sortedAll = cameraPhotos
-      .filter((item) => Boolean(String(item?.image_url || "").trim()))
-      .slice()
-      .sort((a, b) => {
-        const da = parseGalleryDate(a?.date)?.getTime() ?? 0;
-        const db = parseGalleryDate(b?.date)?.getTime() ?? 0;
-        if (db !== da) return db - da;
-        return (Number(b?.id) || 0) - (Number(a?.id) || 0);
-      });
+    const allValid = cameraPhotos.filter((item) =>
+      Boolean(String(item?.image_url || "").trim()),
+    );
+    const sortedAll = allValid.slice().sort((a, b) => {
+      const da = parseGalleryDate(a?.date)?.getTime() ?? 0;
+      const db = parseGalleryDate(b?.date)?.getTime() ?? 0;
+      const diff = gallerySortOrder === "oldest" ? da - db : db - da;
+      if (diff !== 0) return diff;
+      return gallerySortOrder === "oldest"
+        ? (Number(a?.id) || 0) - (Number(b?.id) || 0)
+        : (Number(b?.id) || 0) - (Number(a?.id) || 0);
+    });
 
+    const qNorm = normalizeText(gallerySearchQuery.trim());
     const filtered = sortedAll.filter((item) => {
       const video = isVideoUrl(item.image_url);
-      if (galleryFilter === "favorites") return isItemFavorite(item);
-      if (galleryFilter === "video") return video;
-      if (galleryFilter === "photo") return !video;
+      if (galleryFilter === "favorites" && !isItemFavorite(item)) return false;
+      if (galleryFilter === "video" && !video) return false;
+      if (galleryFilter === "photo" && video) return false;
+      if (qNorm) {
+        const dateText = normalizeText(formatGalleryTimestamp(item.date));
+        const bucketText = normalizeText(getGalleryBucket(item.date).title);
+        const typeText = video ? "video pelicula clip" : "foto imagen captura";
+        if (
+          !dateText.includes(qNorm) &&
+          !bucketText.includes(qNorm) &&
+          !typeText.includes(qNorm)
+        ) {
+          return false;
+        }
+      }
       return true;
     });
     galleryFilteredList = filtered;
+
+    const modeChip = document.getElementById("gallery-active-mode-chip");
+    if (modeChip) {
+      const filterName =
+        galleryFilter === "favorites"
+          ? "FAVORITOS"
+          : galleryFilter === "video"
+            ? "VÍDEOS"
+            : galleryFilter === "photo"
+              ? "FOTOS"
+              : "TODO";
+      const layoutName = galleryLayoutMode === "mosaic" ? "MOSAICO" : "CUADRÍCULA";
+      modeChip.textContent = `${filterName} · ${layoutName}`;
+    }
+
+    const sortLabel = document.getElementById("gallery-sort-label");
+    if (sortLabel) {
+      sortLabel.textContent = gallerySortOrder === "oldest" ? "Antiguos" : "Recientes";
+    }
 
     if (galleryTotalCountEl) {
       const count = filtered.length;
@@ -9326,12 +11359,35 @@
         }
       }
 
+      const customAlbums = galleryAlbums.filter((a) => !a.is_default);
+      const totalFoldersCount = 1 + customAlbums.length;
+
+      const buildCoverStripHtml = (itemsList) => {
+        const slots = [0, 1, 2].map((sIdx) => {
+          const media = itemsList[sIdx];
+          if (!media || !media.image_url) {
+            return `<div class="gallery-folder-cover-slot"><span class="ui-icon" data-iconify="photo"></span></div>`;
+          }
+          if (isVideoUrl(media.image_url)) {
+            return `<div class="gallery-folder-cover-slot"><video src="${esc(media.image_url)}" preload="metadata" muted playsinline></video></div>`;
+          }
+          return `<div class="gallery-folder-cover-slot"><img src="${esc(media.image_url)}" alt="" loading="lazy" referrerpolicy="no-referrer" /></div>`;
+        });
+        return `<div class="gallery-folder-cover">${slots.join("")}<span class="gallery-folder-accent-line" aria-hidden="true"></span></div>`;
+      };
+
       const toolbar = document.createElement("div");
       toolbar.className = "gallery-albums-toolbar";
       toolbar.innerHTML = `
         <div class="gallery-albums-heading-group">
-          <span class="gallery-albums-heading">Álbumes</span>
-          <span class="gallery-albums-sub">Carpetas y álbumes compartidos</span>
+          <div>
+            <div class="gallery-eyebrow">ORGANIZACIÓN · CARPETAS Y ÁLBUMES</div>
+            <div class="gallery-albums-sub-row">
+              <span class="gallery-albums-heading">Álbumes y Carpetas</span>
+              <span class="gallery-album-summary-chip">${totalFoldersCount} ${totalFoldersCount === 1 ? "CARPETA" : "CARPETAS"}</span>
+              <span class="gallery-album-summary-chip">${customAlbums.length} ${customAlbums.length === 1 ? "ÁLBUM PERSONAL" : "ÁLBUMES PERSONALES"}</span>
+            </div>
+          </div>
         </div>
         <button type="button" class="gallery-create-album-btn" id="gallery-btn-create-album">
           <span class="ui-icon" data-iconify="folder-plus"></span>
@@ -9344,27 +11400,34 @@
 
       const defaultCard = document.createElement("div");
       defaultCard.className = "gallery-folder-card";
-      defaultCard.style.setProperty("--folder-color", "#d0d0d0");
+      defaultCard.style.setProperty("--folder-color", "#ffffff");
       defaultCard.innerHTML = `
-        <button type="button" class="gallery-folder-open-area">
-          <div class="gallery-folder-top">
-            <span class="gallery-folder-icon-wrap"><span class="ui-icon" data-iconify="folder"></span></span>
-            <span class="gallery-folder-count">${filtered.length}</span>
-          </div>
-          <div class="gallery-folder-title">CARPETA POR DEFAULT</div>
-          <p class="gallery-folder-desc">Todas las fotos y vídeos de tu galería.</p>
-          <div class="gallery-folder-badges"><span class="gallery-folder-tag">Por defecto</span></div>
-        </button>`;
-      defaultCard.querySelector(".gallery-folder-open-area")?.addEventListener("click", () => {
-        galleryActiveAlbumId = "default";
-        renderGallery();
-      });
+        ${buildCoverStripHtml(filtered)}
+        <div class="gallery-folder-body">
+          <button type="button" class="gallery-folder-open-area">
+            <div class="gallery-folder-top">
+              <span class="gallery-folder-icon-wrap"><span class="ui-icon" data-iconify="folder"></span></span>
+              <span class="gallery-folder-count-pill">${filtered.length} ${filtered.length === 1 ? "ARCHIVO" : "ARCHIVOS"}</span>
+            </div>
+            <div class="gallery-folder-title">CARPETA POR DEFAULT</div>
+            <p class="gallery-folder-desc">Todas las fotos y vídeos capturados en el dispositivo.</p>
+            <div class="gallery-folder-badges"><span class="gallery-folder-tag">SISTEMA · PRINCIPAL</span></div>
+          </button>
+        </div>`;
+      defaultCard
+        .querySelectorAll(".gallery-folder-open-area, .gallery-folder-cover")
+        .forEach((el) => {
+          el.addEventListener("click", () => {
+            galleryActiveAlbumId = "default";
+            renderGallery();
+          });
+        });
       foldersGrid.appendChild(defaultCard);
 
-      const customAlbums = galleryAlbums.filter((a) => !a.is_default);
       customAlbums.forEach((alb) => {
         const ids = Array.isArray(alb.media_ids) ? alb.media_ids.map(Number) : [];
-        const countInFilter = filtered.filter((it) => ids.includes(Number(it.id))).length;
+        const itemsInAlbum = filtered.filter((it) => ids.includes(Number(it.id)));
+        const countInFilter = itemsInAlbum.length;
         const isCollab = alb.is_collaborative === true || Number(alb.is_collaborative) === 1;
 
         const card = document.createElement("div");
@@ -9372,23 +11435,28 @@
         card.style.setProperty("--folder-color", alb.color || "#e5a93c");
 
         const badges = [];
-        if (isCollab) badges.push(`<span class="gallery-folder-tag">Colaboradora</span>`);
-        if (alb.shared_from) badges.push(`<span class="gallery-folder-tag">Compartida</span>`);
+        if (isCollab) badges.push(`<span class="gallery-folder-tag">COLABORADOR</span>`);
+        if (alb.shared_from) badges.push(`<span class="gallery-folder-tag">COMPARTIDO</span>`);
+        if (!badges.length)
+          badges.push(`<span class="gallery-folder-tag">ÁLBUM PERSONAL</span>`);
 
         card.innerHTML = `
-          <button type="button" class="gallery-folder-open-area">
-            <div class="gallery-folder-top">
-              <span class="gallery-folder-icon-wrap"><span class="ui-icon" data-iconify="folder"></span></span>
-              <span class="gallery-folder-count">${countInFilter}</span>
-            </div>
-            <div class="gallery-folder-title">${esc(alb.title)}</div>
-            <p class="gallery-folder-desc">${esc(alb.description || "Sin descripción")}</p>
-            ${badges.length ? `<div class="gallery-folder-badges">${badges.join("")}</div>` : ""}
-          </button>
+          ${buildCoverStripHtml(itemsInAlbum)}
+          <div class="gallery-folder-body">
+            <button type="button" class="gallery-folder-open-area">
+              <div class="gallery-folder-top">
+                <span class="gallery-folder-icon-wrap"><span class="ui-icon" data-iconify="folder"></span></span>
+                <span class="gallery-folder-count-pill">${countInFilter} ${countInFilter === 1 ? "ARCHIVO" : "ARCHIVOS"}</span>
+              </div>
+              <div class="gallery-folder-title">${esc(alb.title)}</div>
+              <p class="gallery-folder-desc">${esc(alb.description || "Sin descripción")}</p>
+              <div class="gallery-folder-badges">${badges.join("")}</div>
+            </button>
+          </div>
           <div class="gallery-folder-actions">
             <button type="button" class="gallery-folder-collab-toggle${isCollab ? " active" : ""}" title="Permitir que el álbum sea colaborador">
               <span class="ui-icon" data-iconify="users-plus"></span>
-              <span>${isCollab ? "Colaborador: ON" : "Colaborador"}</span>
+              <span>${isCollab ? "Colab: ON" : "Colab"}</span>
             </button>
             <div class="gallery-folder-mini-btns">
               <button type="button" class="gallery-folder-mini-btn" data-alb-act="share" title="Compartir álbum">
@@ -9403,23 +11471,34 @@
             </div>
           </div>`;
 
+        card
+          .querySelectorAll(".gallery-folder-open-area, .gallery-folder-cover")
+          .forEach((el) => {
+            el.addEventListener("click", () => {
+              galleryActiveAlbumId = alb.id;
+              renderGallery();
+            });
+          });
+
         card.querySelector(".gallery-folder-open-area")?.addEventListener("click", () => {
           galleryActiveAlbumId = alb.id;
           renderGallery();
         });
 
-        card.querySelector(".gallery-folder-collab-toggle")?.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          const nextCollab = !isCollab;
-          const ok = await nui("setAlbumCollaborative", {
-            albumId: alb.id,
-            collaborative: nextCollab,
+        card
+          .querySelector(".gallery-folder-collab-toggle")
+          ?.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            const nextCollab = !isCollab;
+            const ok = await nui("setAlbumCollaborative", {
+              albumId: alb.id,
+              collaborative: nextCollab,
+            });
+            if (ok !== false) {
+              alb.is_collaborative = nextCollab ? 1 : 0;
+              renderGallery();
+            }
           });
-          if (ok !== false) {
-            alb.is_collaborative = nextCollab ? 1 : 0;
-            renderGallery();
-          }
-        });
 
         card.querySelector('[data-alb-act="share"]')?.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -9445,7 +11524,9 @@
       });
 
       galleryGroupsEl.appendChild(foldersGrid);
-      toolbar.querySelector("#gallery-btn-create-album")?.addEventListener("click", () => openAlbumModal(null));
+      toolbar
+        .querySelector("#gallery-btn-create-album")
+        ?.addEventListener("click", () => openAlbumModal(null));
       renderCameraIcons();
       return;
     }
@@ -9562,24 +11643,6 @@
     openGalleryApp();
   }
 
-  function backFromGallery() {
-    if (!galleryViewerEl?.hidden) {
-      closeGalleryViewer();
-      return;
-    }
-    if (galleryApp) galleryApp.hidden = true;
-    returnToDesktop();
-  }
-
-  function closeCameraApp() {
-    galleryStandalone = false;
-    closeGalleryViewer();
-    if (galleryApp) galleryApp.hidden = true;
-    if (cameraApp) cameraApp.hidden = true;
-    exitCameraMode();
-    returnToDesktop();
-  }
-
   const ZOOM_MIN = 0.5;
   const ZOOM_TICK_GAP = 5; // px por cada paso de 0.1 en la regla
   const ZOOM_DIAL_HIDE_MS = 1300;
@@ -9607,7 +11670,6 @@
   let isRecordingVideo = false;
   let isSavingVideo = false;
   let recordingTicker = null;
-  let recordingElapsedSec = 0;
 
   window.dpCameraBusy = () => isRecordingVideo || isSavingVideo;
 
@@ -9636,11 +11698,7 @@
       if (!window.PhoneData.hardware) window.PhoneData.hardware = {};
       if (!window.PhoneData.hardware.settings) window.PhoneData.hardware.settings = {};
       window.PhoneData.hardware.settings.camera = payload;
-      nui("saveHardwareData", {
-        imei: window.PhoneData.imei,
-        settings: window.PhoneData.hardware.settings,
-        installed_apps: window.PhoneData.hardware.installed_apps || [],
-      }).catch(() => {});
+      persistHardware().catch(() => {});
     }
   }
 
@@ -9694,7 +11752,6 @@
     cameraCaptureMode = saved.captureMode === "video" ? "video" : "photo";
     isRecordingVideo = false;
     isSavingVideo = false;
-    recordingElapsedSec = 0;
     if (recordingTicker) {
       clearInterval(recordingTicker);
       recordingTicker = null;
@@ -9743,12 +11800,9 @@
 
     if (!isRecordingVideo) {
       isRecordingVideo = true;
-      recordingElapsedSec = 0;
       applyCameraButtonsState();
       nui("cameraVideoStart").catch(() => {});
-      recordingTicker = setInterval(() => {
-        recordingElapsedSec += 1;
-      }, 1000);
+      recordingTicker = setInterval(() => {}, 1000);
     } else {
       isRecordingVideo = false;
       if (recordingTicker) {
@@ -9818,12 +11872,6 @@
 
   function toggleCameraGrid() {
     cameraGridEnabled = !cameraGridEnabled;
-    applyCameraButtonsState();
-    saveCameraCachedState();
-  }
-
-  function toggleCameraTimer() {
-    cameraTimerEnabled = !cameraTimerEnabled;
     applyCameraButtonsState();
     saveCameraCachedState();
   }
@@ -10137,19 +12185,26 @@
     document.querySelectorAll("#gallery-album-colors .gallery-color-swatch").forEach((sw) => {
       sw.addEventListener("click", () => {
         selectedAlbumColor = sw.dataset.color || "#e5a93c";
-        document.querySelectorAll("#gallery-album-colors .gallery-color-swatch").forEach((b) => {
-          b.classList.toggle("active", b === sw);
-        });
+        document
+          .querySelectorAll("#gallery-album-colors .gallery-color-swatch")
+          .forEach((b) => {
+            b.classList.toggle("active", b === sw);
+          });
       });
     });
 
-    document.getElementById("gallery-album-modal-close")?.addEventListener("click", closeAlbumModal);
-    document.getElementById("gallery-album-modal-cancel")?.addEventListener("click", closeAlbumModal);
+    document
+      .getElementById("gallery-album-modal-close")
+      ?.addEventListener("click", closeAlbumModal);
+    document
+      .getElementById("gallery-album-modal-cancel")
+      ?.addEventListener("click", closeAlbumModal);
 
     document.getElementById("gallery-album-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const title = document.getElementById("gallery-album-title-input")?.value.trim() || "";
-      const description = document.getElementById("gallery-album-desc-input")?.value.trim() || "";
+      const description =
+        document.getElementById("gallery-album-desc-input")?.value.trim() || "";
       if (!title) return;
 
       if (editingAlbumId) {
@@ -10183,8 +12238,12 @@
       }
     });
 
-    document.getElementById("gallery-share-album-close")?.addEventListener("click", closeShareAlbumModal);
-    document.getElementById("gallery-share-album-cancel")?.addEventListener("click", closeShareAlbumModal);
+    document
+      .getElementById("gallery-share-album-close")
+      ?.addEventListener("click", closeShareAlbumModal);
+    document
+      .getElementById("gallery-share-album-cancel")
+      ?.addEventListener("click", closeShareAlbumModal);
 
     document.querySelectorAll("[data-share-mode]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -10195,33 +12254,36 @@
       });
     });
 
-    document.getElementById("gallery-share-album-form")?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const targetNumber = document.getElementById("gallery-share-target-input")?.value.trim() || "";
-      if (!sharingAlbumId || !targetNumber) return;
+    document
+      .getElementById("gallery-share-album-form")
+      ?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const targetNumber =
+          document.getElementById("gallery-share-target-input")?.value.trim() || "";
+        if (!sharingAlbumId || !targetNumber) return;
 
-      const res = await nui("shareGalleryAlbum", {
-        albumId: sharingAlbumId,
-        targetNumber,
-        mode: selectedShareMode,
+        const res = await nui("shareGalleryAlbum", {
+          albumId: sharingAlbumId,
+          targetNumber,
+          mode: selectedShareMode,
+        });
+        if (res && res.ok) {
+          showNotification({
+            appName: "Galería",
+            icon: "check",
+            title: "Invitación enviada",
+            message: `Se envió la invitación del álbum a ${targetNumber}.`,
+          });
+          closeShareAlbumModal();
+        } else {
+          showNotification({
+            appName: "Galería",
+            icon: "alert-triangle",
+            title: "No se pudo compartir",
+            message: res?.message || "Comprueba el número de SIM del jugador.",
+          });
+        }
       });
-      if (res && res.ok) {
-        showNotification({
-          appName: "Galería",
-          icon: "check",
-          title: "Invitación enviada",
-          message: `Se envió la invitación del álbum a ${targetNumber}.`,
-        });
-        closeShareAlbumModal();
-      } else {
-        showNotification({
-          appName: "Galería",
-          icon: "alert-triangle",
-          title: "No se pudo compartir",
-          message: res?.message || "Comprueba el número de SIM del jugador.",
-        });
-      }
-    });
 
     document.getElementById("gallery-invite-reject")?.addEventListener("click", async () => {
       if (pendingAlbumInvite) {
@@ -10254,4 +12316,101 @@
       document.getElementById("gallery-invite-modal")?.setAttribute("hidden", "");
     });
   }, 1000);
+
+  // ================= INTERACTIVIDAD EXTRA PANEL CONTROL Y SONIDO (TRI-FOLD + GPS + ZONAS) =================
+  (function bindNcV3Extras() {
+    const foldLabels = {
+      single: "1 PANEL",
+      dual: "2 PANELES",
+      tri: "PANORÁMICO 3X",
+    };
+
+    desktopStatusbarEl?.addEventListener("click", (e) => {
+      const foldBtn = e.target.closest("[data-nc-fold]");
+      if (foldBtn) {
+        const mode = foldBtn.dataset.ncFold || "tri";
+        desktopStatusbarEl.querySelectorAll("[data-nc-fold]").forEach((b) => {
+          b.classList.toggle("active", b === foldBtn);
+        });
+        const lbl = document.getElementById("nc-fold-mode-label");
+        if (lbl) lbl.textContent = foldLabels[mode] || "PANORÁMICO 3X";
+        if (phone) {
+          phone.dataset.foldMode = mode;
+        }
+        return;
+      }
+
+      const gpsBtn = e.target.closest("#nc-btn-gps");
+      if (gpsBtn) {
+        const next = gpsBtn.getAttribute("aria-pressed") !== "true";
+        gpsBtn.setAttribute("aria-pressed", String(next));
+        showNotification({
+          appName: "Sistema",
+          icon: "map-pin",
+          title: "GPS",
+          message: next ? "Localización GPS activada." : "Localización GPS desactivada.",
+          duration: 2400,
+        });
+        return;
+      }
+
+      const btBtn = e.target.closest("#nc-btn-bluetooth");
+      if (btBtn) {
+        const next = btBtn.getAttribute("aria-pressed") !== "true";
+        btBtn.setAttribute("aria-pressed", String(next));
+        showNotification({
+          appName: "Sistema",
+          icon: "wifi",
+          title: "Enlace cercano",
+          message: next ? "Enlace inalámbrico activo." : "Enlace inalámbrico desactivado.",
+          duration: 2400,
+        });
+        return;
+      }
+
+      const vibBtn = e.target.closest("#nc-btn-vibrate");
+      if (vibBtn) {
+        const next = vibBtn.getAttribute("aria-pressed") !== "true";
+        vibBtn.setAttribute("aria-pressed", String(next));
+        const toggleVib = document.getElementById("toggle-vibrate-calls");
+        if (toggleVib) toggleVib.checked = next;
+        showNotification({
+          appName: "Sonido",
+          icon: "activity",
+          title: "Vibración",
+          message: next ? "Vibración háptica activada." : "Vibración háptica desactivada.",
+          duration: 2400,
+        });
+        return;
+      }
+
+      if (e.target.closest("#nc-btn-open-sound")) {
+        desktopStatusbarEl.classList.remove("expanded");
+        desktopStatusbarEl.style.height = "";
+        setTimeout(syncHeaderHeight, 10);
+        openSettings();
+        setTimeout(() => setActiveSettingsTab("sounds"), 30);
+        return;
+      }
+
+      const zoneChip = e.target.closest("[data-nc-zone]");
+      if (zoneChip) {
+        const zoneName = zoneChip.dataset.ncZone || "Los Santos";
+        desktopStatusbarEl.querySelectorAll("[data-nc-zone]").forEach((b) => {
+          b.classList.toggle("active", b === zoneChip);
+        });
+        if (typeof generateWeatherData === "function") {
+          generateWeatherData(zoneName);
+          if (typeof renderWeatherApp === "function") renderWeatherApp();
+        }
+        showNotification({
+          appName: "Tiempo",
+          icon: "cloud",
+          title: "Estación meteorológica",
+          message: `Zona seleccionada: ${zoneName}.`,
+          duration: 2400,
+        });
+      }
+    });
+  })();
 })();

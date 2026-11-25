@@ -483,7 +483,7 @@
       width: 24,
       height: 24,
     },
-    "palette": {
+    palette: {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 21a9 9 0 0 1 0-18c4.97 0 9 3.582 9 8c0 1.06-.474 2.078-1.318 2.828c-.844.75-1.989 1.172-3.182 1.172h-2.5a2 2 0 0 0-1 3.75a1.3 1.3 0 0 1-1 2.25"/><path d="M8.5 10.5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0m4-3m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0m4 3m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></g>',
       width: 24,
       height: 24,
@@ -508,7 +508,7 @@
       width: 24,
       height: 24,
     },
-    "volume": {
+    volume: {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M15 8a5 5 0 0 1 0 8m2.7-11a9 9 0 0 1 0 14"/><path d="M6 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2l3.5-4.5A.8.8 0 0 1 11 5v14a.8.8 0 0 1-1.5.5z"/></g>',
       width: 24,
       height: 24,
@@ -518,12 +518,12 @@
       width: 24,
       height: 24,
     },
-    "cpu": {
+    cpu: {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="14" height="14" x="5" y="5" rx="1"/><path d="M9 9h6v6H9zm-6 1h2m-2 4h2m5-11v2m4-2v2m7 5h-2m2 4h-2m-5 7v-2m-4 2v-2"/></g>',
       width: 24,
       height: 24,
     },
-    "sliders": {
+    sliders: {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M14 6m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M4 6h8m4 0h4M8 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M4 12h2m4 0h10M17 18m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M4 18h11m4 0h1"/></g>',
       width: 24,
       height: 24,
@@ -533,12 +533,12 @@
       width: 24,
       height: 24,
     },
-    "typography": {
+    typography: {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M4 20h3m7 0h7M6.9 15h6.9m-3.6-8.7L16 20M5 20l6-16h2l7 16"/></g>',
       width: 24,
       height: 24,
     },
-    "database": {
+    database: {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6a8 3 0 0 0 16 0V6"/><path d="M4 12v6a8 3 0 0 0 16 0v-6"/></g>',
       width: 24,
       height: 24,
@@ -553,7 +553,7 @@
       width: 24,
       height: 24,
     },
-    "hash": {
+    hash: {
       body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 9h14M5 15h14M11 4L7 20M17 4l-4 16"/>',
       width: 24,
       height: 24,
@@ -563,7 +563,7 @@
       width: 24,
       height: 24,
     },
-    "layers": {
+    layers: {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="m12 4l8 4l-8 4l-8-4z"/><path d="m4 12l8 4l8-4"/><path d="m4 16l8 4l8-4"/></g>',
       width: 24,
       height: 24,
@@ -586,6 +586,16 @@
   });
 
   Object.assign(window.DPPhoneIconify, {
+    compass: {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="9"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></g>',
+      width: 24,
+      height: 24,
+    },
+    mountain: {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M3 20l7-11 4.5 6.5L17.5 11 21 20H3z"/><path d="M13 13.5l2.5-3.5L18 14"/></g>',
+      width: 24,
+      height: 24,
+    },
     "sun-low": {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 5v.01M17 7v.01M19 12v.01M17 17v.01M12 19v.01M7 17v.01M5 12v.01M7 7v.01"/></g>',
       width: 24,
@@ -596,7 +606,7 @@
       width: 24,
       height: 24,
     },
-    "maximize": {
+    maximize: {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2m8-16h2a2 2 0 0 1 2 2v2m-4 12h2a2 2 0 0 0 2-2v-2"/></g>',
       width: 24,
       height: 24,

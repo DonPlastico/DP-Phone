@@ -5,9 +5,6 @@ Config = {
     -- Tiempo en segundos que tarda en encenderse el teléfono al iniciarlo
     bootDurationSeconds = 2,
 
-    -- ⚠️ La API key de Fivemanage ya NO va aquí (este archivo lo reciben todos los jugadores).
-    --    Ahora está en server/sv_config.lua, que solo lee el servidor.
-
     -- Tiempo en milisegundos que debes mantener pulsada una app para entrar en el modo edición (mover/borrar apps)
     desktopLongPressTime = 600,
 
@@ -157,4 +154,23 @@ Config = {
         speedLeftRight = 8.0,
         speedUpDown = 8.0
     }
+}
+
+ServerConfig = {
+    -- API Key de Fivemanage para pedir URLs de subida de un solo uso
+    fivemanageAPIKey = 'IVfZfVdaVeu0wmHoveB7wcoAFpFnqLtP',
+
+    -- Solo se guardan en la galería fotos/vídeos que empiecen por alguna de estas direcciones
+    allowedImagePrefixes = {'https://r2.fivemanage.com/'},
+
+    -- PIN: intentos fallidos antes de bloquear el móvil y segundos de bloqueo (se duplica cada vez)
+    pinMaxAttempts = 5,
+    pinLockSeconds = 60,
+
+    -- Víbora: puntuación máxima posible por segundo jugado (10 pts por manzana; 2 manzanas/seg ya es imposible)
+    snakeMaxPointsPerSecond = 20,
+    snakeMaxScore = 20000,
+
+    -- Grupos/permisos de QBCore que cuentan como admin (para cambiar la cobertura con el evento de apagón)
+    adminPermissions = {'god', 'admin'}
 }

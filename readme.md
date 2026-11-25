@@ -217,12 +217,83 @@ exports['DP-Phone']:SendPhoneNotification(targetPlayerId, title, message, appNam
 ### Estructura de Directorios
 ```text
 DP-Phone/
-├── client/          # Lógica de cliente (animaciones, cámara, eventos UI)
-├── server/          # Lógica de servidor (DB, items, SIM, exports)
-├── web/             # NUI (HTML, CSS, JS, imágenes, iconos)
-├── stream/          # Modelos 3D (.ytyp del móvil y la tablet)
-├── config.lua       # Configuración global
-└── fxmanifest.lua   # Manifiesto
+├── 📁 client
+│   └── 📄 cl_main.lua
+├── 📁 server
+│   ├── 📄 sv_config.lua
+│   └── 📄 sv_main.lua
+├── 📁 stream
+│   ├── 📄 Movil.ytyp
+│   ├── 📄 Tablet.ytyp
+│   ├── 📄 movil.ydr
+│   ├── 📄 movil_amarillo.ydr
+│   ├── 📄 movil_azul.ydr
+│   ├── 📄 movil_azul_claro.ydr
+│   ├── 📄 movil_azul_oscuro.ydr
+│   ├── 📄 movil_blanco.ydr
+│   ├── 📄 movil_cian.ydr
+│   ├── 📄 movil_coral.ydr
+│   ├── 📄 movil_fucsia.ydr
+│   ├── 📄 movil_gris.ydr
+│   ├── 📄 movil_morado.ydr
+│   ├── 📄 movil_naranja.ydr
+│   ├── 📄 movil_negro.ydr
+│   ├── 📄 movil_plateado.ydr
+│   ├── 📄 movil_rojo.ydr
+│   ├── 📄 movil_rojo_oscuro.ydr
+│   ├── 📄 movil_rosa.ydr
+│   ├── 📄 movil_verde.ydr
+│   ├── 📄 movil_verde_azulado.ydr
+│   ├── 📄 movil_verde_lima.ydr
+│   ├── 📄 movil_verde_oliva.ydr
+│   ├── 📄 tablet.ydr
+│   ├── 📄 tablet_amarillo.ydr
+│   ├── 📄 tablet_azul.ydr
+│   ├── 📄 tablet_azul_claro.ydr
+│   ├── 📄 tablet_azul_oscuro.ydr
+│   ├── 📄 tablet_blanco.ydr
+│   ├── 📄 tablet_cian.ydr
+│   ├── 📄 tablet_coral.ydr
+│   ├── 📄 tablet_fucsia.ydr
+│   ├── 📄 tablet_morado.ydr
+│   ├── 📄 tablet_naranja.ydr
+│   ├── 📄 tablet_negro.ydr
+│   ├── 📄 tablet_plateado.ydr
+│   ├── 📄 tablet_rojo.ydr
+│   ├── 📄 tablet_rojo_oscuro.ydr
+│   ├── 📄 tablet_rosa.ydr
+│   ├── 📄 tablet_verde.ydr
+│   ├── 📄 tablet_verde_azulado.ydr
+│   ├── 📄 tablet_verde_lima.ydr
+│   └── 📄 tablet_verde_oliva.ydr
+├── 📁 web
+│   ├── 📁 images
+│   │   ├── 📁 backgrounds
+│   │   │   ├── 🖼️ bg_0.webp
+│   │   │   ├── 🖼️ bg_1.webp
+│   │   │   ├── 🖼️ bg_10.webp
+│   │   │   ├── 🖼️ bg_11.webp
+│   │   │   ├── 🖼️ bg_2.webp
+│   │   │   ├── 🖼️ bg_3.webp
+│   │   │   ├── 🖼️ bg_4.webp
+│   │   │   ├── 🖼️ bg_5.webp
+│   │   │   ├── 🖼️ bg_6.webp
+│   │   │   ├── 🖼️ bg_7.webp
+│   │   │   ├── 🖼️ bg_8.webp
+│   │   │   └── 🖼️ bg_9.webp
+│   │   ├── 🖼️ bspd-logo.webp
+│   │   ├── 🖼️ ems-logo.webp
+│   │   ├── 🖼️ ifruit-logo.webp
+│   │   └── 🖼️ lspd-logo.webp
+│   ├── 📁 js
+│   │   ├── 📄 Apps.js
+│   │   ├── 📄 iconify.js
+│   │   └── 📄 script.js
+│   ├── 🌐 index.html
+│   └── 🎨 styles.css
+├── 📄 config.lua
+├── 📄 fxmanifest.lua
+└── 📝 readme.md
 ```
 </details>
 
