@@ -2444,4 +2444,3 @@ lib.callback.register('dp-phone:server:respondGalleryAlbumInvite', function(sour
         albumId = newAlbumId
     }
 end)
-

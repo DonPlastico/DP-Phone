@@ -385,6 +385,29 @@ local function clearSavedScreens()
     end
 end
 
+-- Historial de apps abiertas en segundo plano por IMEI (persistido en KVP)
+local function getRecentAppsKey(imei)
+    return 'dp-phone:recents:' .. tostring(imei or 'none')
+end
+
+local function clearSavedRecents()
+    local keys = {}
+    local handle = StartFindKvp('dp-phone:recents:')
+    if handle ~= -1 then
+        local key
+        repeat
+            key = FindKvp(handle)
+            if key then
+                keys[#keys + 1] = key
+            end
+        until not key
+        EndFindKvp(handle)
+    end
+    for _, key in ipairs(keys) do
+        DeleteResourceKvp(key)
+    end
+end
+
 -- ==========================================
 -- ABRIR / CERRAR DEVICE
 -- ==========================================
@@ -454,13 +477,21 @@ end
 -- ==========================================
 local controlThreadActive = false
 
-local BLOCKED_CONTROLS = {1, 2, -- mirar con el ratón
+local BLOCKED_CONTROLS = {1, 2, -- mirar con el ratón (cursor NUI)
 24, 25, 257, 263, 264, 140, 141, 142, 143, -- disparar, apuntar y cuerpo a cuerpo
 14, 15, 16, 17, 37, 99, 100, 115, 116, 261, 262, -- rueda / scroll de armas
-68, 69, 70, 91, 92, 114, 330, 331, -- disparar desde vehículos
-157, 158, 159, 160, 161, 162, 163, 164, 165, -- cambiar de arma con 1-9 (para marcar números)
+68, 69, 70, 91, 92, 114, 330, 331, -- disparar / acciones desde vehículos
+157, 158, 159, 160, 161, 162, 163, 164, 165, -- teclas 1-9 (armas)
+36, -- agacharse (Duck)
+44, 45, -- cobertura / recargar
+73, -- X (cancelar animaciones / agacharse en muchos scripts)
 199, 200, 202 -- menú de pausa (ESC lo gestiona la interfaz y cierra el móvil)
 }
+
+-- Controles que SÍ dejamos libres cuando el dispositivo está visible:
+--   · Moverse (WASD): 30, 31, 32, 33, 34, 35
+--   · Correr (Sprint / Shift): 21
+--   · Saltar (Espacio): 22
 
 -- Aplica el modo de entrada: si no se está escribiendo, el juego recibe teclado y ratón a la vez que el móvil
 local function applyInputMode()
@@ -479,10 +510,14 @@ local function startControlThread()
 
     CreateThread(function()
         while isPhoneOpen do
+            local ped = cache.ped
             for i = 1, #BLOCKED_CONTROLS do
                 DisableControlAction(0, BLOCKED_CONTROLS[i], true)
             end
-            DisablePlayerFiring(cache.ped, true)
+            DisablePlayerFiring(ped, true)
+            if IsPedDucking(ped) then
+                SetPedDucking(ped, false)
+            end
             Wait(0)
         end
         controlThreadActive = false
@@ -554,10 +589,20 @@ local function openDevice(isTablet)
     local lastScreenKey = 'dp-phone:last-screen:' .. (PhoneData.imei or "none")
     local lastScreen = GetResourceKvpString(lastScreenKey) or 'desktop'
 
+    local recentsRaw = GetResourceKvpString(getRecentAppsKey(PhoneData.imei))
+    local recentApps = {}
+    if recentsRaw and recentsRaw ~= '' then
+        local okRec, decodedRec = pcall(json.decode, recentsRaw)
+        if okRec and type(decodedRec) == 'table' then
+            recentApps = decodedRec
+        end
+    end
+
     SendNUIMessage({
         action = 'openPhone',
         data = {
             lastScreen = lastScreen,
+            recentApps = recentApps,
             phoneData = PhoneData,
             skipBoot = skipBoot,
             imei = PhoneData.imei
@@ -615,6 +660,7 @@ RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
     hasLoadedUi = false
     bootedPhones = {}
     clearSavedScreens()
+    clearSavedRecents()
     SendNUIMessage({
         action = 'resetBoot'
     })
@@ -758,6 +804,7 @@ AddEventHandler("onResourceStart", function(resource)
         SetNuiFocus(false, false)
         bootedPhones = {}
         clearSavedScreens()
+        clearSavedRecents()
         SendNUIMessage({
             action = 'resetBoot'
         })
@@ -1258,6 +1305,17 @@ RegisterNUICallback('cameraFacing', function(data, cb)
         local zoom = tonumber(data.zoom) or phoneCamZoomTarget
         phoneCamZoomTarget = clamp(zoom, getMinCamZoom(), getMaxCamZoom())
     end
+end)
+
+RegisterNUICallback('saveRecentApps', function(data, cb)
+    local imei = type(data) == 'table' and data.imei or nil
+    local list = type(data) == 'table' and type(data.apps) == 'table' and data.apps or nil
+    if not imei or not list then
+        cb(false)
+        return
+    end
+    SetResourceKvp(getRecentAppsKey(imei), json.encode(list))
+    cb(true)
 end)
 
 -- ---------- Voz (pma-voice va en el cliente; SaltyChat lo gestiona el servidor) ----------

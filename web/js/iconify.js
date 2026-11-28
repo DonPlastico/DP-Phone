@@ -578,6 +578,36 @@
       width: 24,
       height: 24,
     },
+    coins: {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="9" cy="9" r="6"/><path d="M12.5 14.5A6 6 0 1 0 15 6.5"/><path d="M9 6.5v5m-1.5-3.5h2a1.5 1.5 0 0 1 0 3h-1a1.5 1.5 0 0 0 0 3h2"/></g>',
+      width: 24,
+      height: 24,
+    },
+    apple: {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 6.5c1.5-1.5 4.2-1.8 6-.3 1.8 1.5 2 4.6.6 7.5-1.1 2.3-2.6 4.8-4.6 5.2-.9.2-1.5-.3-2-.3s-1.1.5-2 .3c-2-.4-3.5-2.9-4.6-5.2-1.4-2.9-1.2-6 .6-7.5 1.8-1.5 4.5-1.2 6 .3z"/><path d="M12 6.5c0-2 1-3.5 2.5-4"/></g>',
+      width: 24,
+      height: 24,
+    },
+    bolt: {
+      body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3L4 14h7l-2 7 9-11h-7l2-7z"/>',
+      width: 24,
+      height: 24,
+    },
+    skull: {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12 4c4.418 0 8 3.358 8 7.5c0 1.901-.755 3.637-2 4.96l0 2.54a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1l0-2.54c-1.245-1.322-2-3.058-2-4.96c0-4.142 3.582-7.5 8-7.5z"/><path d="M10 17v3m4-3v3"/><circle cx="9" cy="11" r="1" fill="currentColor"/><circle cx="15" cy="11" r="1" fill="currentColor"/></g>',
+      width: 24,
+      height: 24,
+    },
+    bed: {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M3 7v11m0-4h18m0 4v-8a2 2 0 0 0-2-2h-8v6"/><circle cx="7" cy="10" r="1"/></g>',
+      width: 24,
+      height: 24,
+    },
+    trophy: {
+      body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4v2a3 3 0 0 0 3 3m10-5h3v2a3 3 0 0 1-3 3"/></g>',
+      width: 24,
+      height: 24,
+    },
     "hard-drive": {
       body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6.01 18h.01M10.01 18h.01"/><path d="M2 15l2.2-7.3A2 2 0 0 1 6.1 6h11.8a2 2 0 0 1 1.9 1.7L22 15"/></g>',
       width: 24,

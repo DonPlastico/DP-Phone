@@ -220,7 +220,6 @@ DP-Phone/
 ├── 📁 client
 │   └── 📄 cl_main.lua
 ├── 📁 server
-│   ├── 📄 sv_config.lua
 │   └── 📄 sv_main.lua
 ├── 📁 stream
 │   ├── 📄 Movil.ytyp
@@ -286,7 +285,46 @@ DP-Phone/
 │   │   ├── 🖼️ ifruit-logo.webp
 │   │   └── 🖼️ lspd-logo.webp
 │   ├── 📁 js
-│   │   ├── 📄 Apps.js
+│   │   ├── 📁 apps
+│   │   │   ├── 📄 a-domicilio.js
+│   │   │   ├── 📄 ajustes.js
+│   │   │   ├── 📄 archivos.js
+│   │   │   ├── 📄 asistencia.js
+│   │   │   ├── 📄 ayuntamiento.js
+│   │   │   ├── 📄 banco.js
+│   │   │   ├── 📄 bawsaq.js
+│   │   │   ├── 📄 bufete.js
+│   │   │   ├── 📄 calculadora.js
+│   │   │   ├── 📄 camara.js
+│   │   │   ├── 📄 comms.js
+│   │   │   ├── 📄 contactos.js
+│   │   │   ├── 📄 correo.js
+│   │   │   ├── 📄 cripto.js
+│   │   │   ├── 📄 cupido.js
+│   │   │   ├── 📄 darkchat.js
+│   │   │   ├── 📄 documentos.js
+│   │   │   ├── 📄 dynasty8.js
+│   │   │   ├── 📄 ems.js
+│   │   │   ├── 📄 eventos.js
+│   │   │   ├── 📄 fusion.js
+│   │   │   ├── 📄 galeria.js
+│   │   │   ├── 📄 garaje.js
+│   │   │   ├── 📄 licencias.js
+│   │   │   ├── 📄 llamar.js
+│   │   │   ├── 📄 mdt.js
+│   │   │   ├── 📄 mensajes.js
+│   │   │   ├── 📄 mi-salud.js
+│   │   │   ├── 📄 notas.js
+│   │   │   ├── 📄 rockola.js
+│   │   │   ├── 📄 social.js
+│   │   │   ├── 📄 taller.js
+│   │   │   ├── 📄 taxi.js
+│   │   │   ├── 📄 tiempo.js
+│   │   │   ├── 📄 tienda.js
+│   │   │   ├── 📄 tribunal.js
+│   │   │   ├── 📄 trivial.js
+│   │   │   ├── 📄 vibora.js
+│   │   │   └── 📄 weazel-news.js
 │   │   ├── 📄 iconify.js
 │   │   └── 📄 script.js
 │   ├── 🌐 index.html

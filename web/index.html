@@ -279,7 +279,7 @@
                       </span>
                       <span class="qs-tile-label">Silencio</span>
                     </button>
-                    <button class="qs-tile nc-v2-tile" type="button" aria-pressed="false">
+                    <button class="qs-tile nc-v2-tile" type="button" aria-pressed="false" aria-label="No molestar">
                       <span class="qs-tile-icon">
                         <svg
                           class="nc-svg"
@@ -465,6 +465,276 @@
                     <span>Abrir Ajustes Completos</span>
                     <span class="ui-icon" data-iconify="chevron-right"></span>
                   </button>
+                </div>
+
+                <!-- MASCOTA VIRTUAL EN EL 50% INFERIOR DEL HEADER -->
+                <div class="nc-pet-dock" id="nc-pet-dock" aria-label="Mascota virtual">
+                  <div class="nc-pet-card" id="nc-pet-card">
+                    <!-- Columna 1: Escenario de Mascota + Cama + Nivel/Monedas -->
+                    <div class="nc-pet-stage-col">
+                      <div class="nc-pet-avatar-box" id="nc-pet-avatar-box">
+                        <div
+                          class="nc-pet-bed-prop"
+                          id="nc-pet-bed-prop"
+                          title="Cama actual"></div>
+                        <div class="nc-pet-sprite" id="nc-pet-sprite" aria-hidden="true"></div>
+                        <span class="nc-pet-zzz" id="nc-pet-zzz" hidden>Zzz</span>
+                        <span class="nc-pet-dead-tag" id="nc-pet-dead-tag" hidden>KO</span>
+                      </div>
+                      <div class="nc-pet-bed-label" id="nc-pet-bed-label">
+                        Cama Básica (1.0x)
+                      </div>
+                      <div class="nc-pet-stage-meta">
+                        <span class="nc-pet-lvl-badge" id="nc-pet-level-badge">NV. 1</span>
+                        <span class="nc-pet-coins-pill" title="Monedas de mascota">
+                          <span class="ui-icon" data-iconify="coins"></span>
+                          <strong id="nc-pet-coins">60</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Columna 2: Nombre, Estado, 5 Barras reales y Acciones -->
+                    <div class="nc-pet-main-col">
+                      <div class="nc-pet-top-row">
+                        <div class="nc-pet-name-group">
+                          <span class="nc-v3-eyebrow">IFRUIT PET · CUIDADO Y ARCADE</span>
+                          <div class="nc-pet-title-line">
+                            <strong id="nc-pet-name">ANTOÑITO</strong>
+                            <span class="nc-pet-mood-tag" id="nc-pet-mood-tag">Activo</span>
+                          </div>
+                        </div>
+                        <div class="nc-pet-top-actions">
+                          <button
+                            type="button"
+                            class="nc-pet-mini-link"
+                            id="nc-pet-open-settings-btn"
+                            title="Ajustes y Tienda completa">
+                            <span class="ui-icon" data-iconify="settings"></span>
+                            <span>Gestionar</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="nc-pet-bars-grid">
+                        <div class="nc-pet-stat-row">
+                          <span
+                            class="nc-pet-stat-lbl"
+                            title="Vida (se cura pasivamente con Comida y Agua altas)">
+                            <span class="ui-icon" data-iconify="heart"></span>
+                            <span>Vida</span>
+                          </span>
+                          <div class="nc-pet-bar-track">
+                            <span
+                              class="nc-pet-bar-fill is-health"
+                              id="nc-pet-bar-health"
+                              style="width: 100%"></span>
+                          </div>
+                          <strong class="nc-pet-stat-val" id="nc-pet-val-health">100%</strong>
+                        </div>
+                        <div class="nc-pet-stat-row">
+                          <span
+                            class="nc-pet-stat-lbl"
+                            title="Energía (necesaria para jugar; se regenera durmiendo)">
+                            <span class="ui-icon" data-iconify="bolt"></span>
+                            <span>Energía</span>
+                          </span>
+                          <div class="nc-pet-bar-track">
+                            <span
+                              class="nc-pet-bar-fill is-energy"
+                              id="nc-pet-bar-energy"
+                              style="width: 85%"></span>
+                          </div>
+                          <strong class="nc-pet-stat-val" id="nc-pet-val-energy">85%</strong>
+                        </div>
+                        <div class="nc-pet-stat-row">
+                          <span class="nc-pet-stat-lbl" title="Alimentación sólida">
+                            <span class="ui-icon" data-iconify="apple"></span>
+                            <span>Comida</span>
+                          </span>
+                          <div class="nc-pet-bar-track">
+                            <span
+                              class="nc-pet-bar-fill is-hunger"
+                              id="nc-pet-bar-hunger"
+                              style="width: 80%"></span>
+                          </div>
+                          <strong class="nc-pet-stat-val" id="nc-pet-val-hunger">80%</strong>
+                        </div>
+                        <div class="nc-pet-stat-row">
+                          <span class="nc-pet-stat-lbl" title="Hidratación">
+                            <span class="ui-icon" data-iconify="droplet"></span>
+                            <span>Agua</span>
+                          </span>
+                          <div class="nc-pet-bar-track">
+                            <span
+                              class="nc-pet-bar-fill is-water"
+                              id="nc-pet-bar-water"
+                              style="width: 80%"></span>
+                          </div>
+                          <strong class="nc-pet-stat-val" id="nc-pet-val-water">80%</strong>
+                        </div>
+                        <div class="nc-pet-stat-row is-full-span">
+                          <span
+                            class="nc-pet-stat-lbl"
+                            title="Ánimo (sube jugando en el arcade)">
+                            <span class="ui-icon" data-iconify="sparkles"></span>
+                            <span>Ánimo</span>
+                          </span>
+                          <div class="nc-pet-bar-track">
+                            <span
+                              class="nc-pet-bar-fill is-fun"
+                              id="nc-pet-bar-fun"
+                              style="width: 85%"></span>
+                          </div>
+                          <strong class="nc-pet-stat-val" id="nc-pet-val-fun">85%</strong>
+                        </div>
+                      </div>
+
+                      <div class="nc-pet-actions-bar">
+                        <button
+                          type="button"
+                          class="nc-pet-action-pill"
+                          data-pet-act="feed"
+                          title="Alimentar con comida de tu inventario">
+                          <span class="ui-icon" data-iconify="apple"></span>
+                          <span>Comer</span>
+                          <span class="nc-pet-pill-count" id="nc-pet-food-count">3</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="nc-pet-action-pill"
+                          data-pet-act="water"
+                          title="Dar agua de tu inventario">
+                          <span class="ui-icon" data-iconify="droplet"></span>
+                          <span>Agua</span>
+                          <span class="nc-pet-pill-count" id="nc-pet-water-count">3</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="nc-pet-action-pill"
+                          data-pet-act="care"
+                          title="Usar botiquín o desfibrilador">
+                          <span class="ui-icon" data-iconify="heart"></span>
+                          <span id="nc-pet-care-label">Curar</span>
+                          <span class="nc-pet-pill-count" id="nc-pet-med-count">1</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="nc-pet-action-pill"
+                          data-pet-act="play"
+                          id="nc-pet-play-btn"
+                          title="Iniciar partida arcade (requiere energía)">
+                          <span class="ui-icon" data-iconify="device-gamepad-2"></span>
+                          <span>Jugar</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="nc-pet-action-pill"
+                          data-pet-act="sleep"
+                          id="nc-pet-sleep-btn"
+                          title="Acostar/Despertar para regenerar energía">
+                          <span class="ui-icon" data-iconify="moon"></span>
+                          <span id="nc-pet-sleep-label">Dormir</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="nc-pet-shop-btn"
+                          data-pet-act="shop"
+                          title="Tienda (56 artículos)">
+                          <span class="ui-icon" data-iconify="shopping-bag"></span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Columna 3: Minijuego Arcade estilo / Sky Jump + Tienda filtrable de 56 objetos -->
+                    <div class="nc-pet-side-panel" id="nc-pet-side-panel">
+                      <div class="nc-pet-side-tabs">
+                        <button
+                          type="button"
+                          class="nc-pet-side-tab active"
+                          data-pet-side="game">
+                          Arcade
+                        </button>
+                        <button type="button" class="nc-pet-side-tab" data-pet-side="shop">
+                          Tienda (56)
+                        </button>
+                      </div>
+
+                      <!-- Vista Minijuego Arcade real (Canvas interactivo: Sky/Coin Catcher con niveles) -->
+                      <div class="nc-pet-minigame-box" id="nc-pet-minigame-box">
+                        <div class="nc-pet-mg-hud">
+                          <span class="nc-pet-mg-chip" id="nc-pet-mg-lvl">FASE 1</span>
+                          <span class="nc-pet-mg-chip" id="nc-pet-mg-goal">0/6 🪙</span>
+                          <span class="nc-pet-mg-chip" id="nc-pet-mg-lives">♥♥♥</span>
+                        </div>
+                        <div class="nc-pet-mg-canvas-wrap" id="nc-pet-mg-canvas-wrap">
+                          <canvas id="nc-pet-mg-canvas" width="260" height="96"></canvas>
+                          <div class="nc-pet-mg-overlay" id="nc-pet-mg-overlay">
+                            <strong id="nc-pet-mg-ov-title">COIN DASH</strong>
+                            <span id="nc-pet-mg-ov-desc"
+                              >Esquiva bombas [X] y recoge monedas [O]. Coste: 12%
+                              energía.</span
+                            >
+                            <button
+                              type="button"
+                              class="nc-pet-mg-start-btn"
+                              id="nc-pet-mg-start-btn">
+                              Iniciar Partida
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Vista Tienda rápida con filtro de categorías -->
+                      <div class="nc-pet-shop-box" id="nc-pet-shop-box" hidden>
+                        <div class="nc-pet-shop-cats" id="nc-pet-shop-cats">
+                          <button
+                            type="button"
+                            class="nc-pet-cat-pill active"
+                            data-pet-cat="all">
+                            Todo
+                          </button>
+                          <button type="button" class="nc-pet-cat-pill" data-pet-cat="food">
+                            Comida
+                          </button>
+                          <button type="button" class="nc-pet-cat-pill" data-pet-cat="drink">
+                            Bebida
+                          </button>
+                          <button type="button" class="nc-pet-cat-pill" data-pet-cat="med">
+                            Salud
+                          </button>
+                          <button type="button" class="nc-pet-cat-pill" data-pet-cat="bed">
+                            Camas
+                          </button>
+                          <button type="button" class="nc-pet-cat-pill" data-pet-cat="skin">
+                            Aspectos
+                          </button>
+                        </div>
+                        <div class="nc-pet-shop-list" id="nc-pet-shop-list"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Estado cuando la mascota está descansando fuera del panel -->
+                  <div class="nc-pet-away-banner" id="nc-pet-away-banner" hidden>
+                    <div class="nc-pet-away-left">
+                      <span class="ui-icon" data-iconify="moon"></span>
+                      <div>
+                        <strong id="nc-pet-away-title"
+                          >ANTOÑITO está descansando fuera del panel</strong
+                        >
+                        <span
+                          >Llámalo de vuelta cuando quieras seguir cuidándolo o jugando.</span
+                        >
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      class="nc-pet-call-back-btn"
+                      id="nc-pet-call-back-btn">
+                      <span class="ui-icon" data-iconify="bell"></span>
+                      <span>Llamar a ANTOÑITO</span>
+                    </button>
+                  </div>
                 </div>
               </section>
 
@@ -753,6 +1023,17 @@
 
                 <div class="settings-nav-group">
                   <span class="settings-group-label">SISTEMA</span>
+                  <button
+                    class="setting-item"
+                    data-settings-tab="pet"
+                    data-keywords="mascota virtual monedas tienda hambre cuidar">
+                    <span class="setting-icon" data-iconify="heart"></span>
+                    <div class="setting-text">
+                      <strong>Mascota Virtual</strong>
+                      <span>Nombre, alertas, monedas y tienda</span>
+                    </div>
+                    <span class="setting-arrow" data-iconify="corner-down-right"></span>
+                  </button>
 
                   <button
                     class="setting-item"
@@ -3029,12 +3310,36 @@
           </div>
         </div>
 
+        <!-- GESTOR / CARRUSEL DE APPS EN SEGUNDO PLANO (ESTILO MÓVIL) -->
+        <section
+          id="recents-switcher"
+          class="recents-switcher"
+          aria-label="Apps en segundo plano"
+          hidden>
+          <div
+            class="recents-active-banner"
+            id="recents-active-banner"
+            aria-live="polite"></div>
+          <div class="recents-carousel" id="recents-carousel" role="list"></div>
+          <div class="recents-footer">
+            <button type="button" class="recents-clear-all-pill" id="recents-clear-all-btn">
+              <span class="ui-icon" data-iconify="x"></span>
+              <span>Cerrar todo</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- ZONA INFERIOR PARA DESLIZAR HACIA ARRIBA Y VER APPS EN SEGUNDO PLANO -->
+        <div
+          id="recents-swipe-zone"
+          class="recents-swipe-zone"
+          title="Desliza hacia arriba para ver apps en segundo plano"></div>
+
         <button
           id="home-button"
           class="home-button"
           type="button"
-          aria-label="Volver al escritorio"
-          hidden></button>
+          aria-label="Volver al escritorio"></button>
       </div>
 
       <span id="dev-badge" class="dev-badge" hidden
@@ -3051,7 +3356,48 @@
     </div>
 
     <script src="js/iconify.js"></script>
-    <script src="js/Apps.js"></script>
+    <!-- Núcleo: debe cargarse antes que las apps -->
     <script src="js/script.js"></script>
+    <!-- Código compartido de Mensajes / Llamar / Contactos -->
+    <script src="js/apps/comms.js"></script>
+    <!-- Apps: el orden de estas líneas es el orden del escritorio y de la tienda -->
+    <script src="js/apps/ajustes.js"></script>
+    <script src="js/apps/tienda.js"></script>
+    <script src="js/apps/mensajes.js"></script>
+    <script src="js/apps/llamar.js"></script>
+    <script src="js/apps/contactos.js"></script>
+    <script src="js/apps/correo.js"></script>
+    <script src="js/apps/social.js"></script>
+    <script src="js/apps/darkchat.js"></script>
+    <script src="js/apps/camara.js"></script>
+    <script src="js/apps/galeria.js"></script>
+    <script src="js/apps/rockola.js"></script>
+    <script src="js/apps/eventos.js"></script>
+    <script src="js/apps/vibora.js"></script>
+    <script src="js/apps/fusion.js"></script>
+    <script src="js/apps/trivial.js"></script>
+    <script src="js/apps/archivos.js"></script>
+    <script src="js/apps/documentos.js"></script>
+    <script src="js/apps/notas.js"></script>
+    <script src="js/apps/tiempo.js"></script>
+    <script src="js/apps/calculadora.js"></script>
+    <script src="js/apps/banco.js"></script>
+    <script src="js/apps/bawsaq.js"></script>
+    <script src="js/apps/cripto.js"></script>
+    <script src="js/apps/garaje.js"></script>
+    <script src="js/apps/asistencia.js"></script>
+    <script src="js/apps/taxi.js"></script>
+    <script src="js/apps/ayuntamiento.js"></script>
+    <script src="js/apps/dynasty8.js"></script>
+    <script src="js/apps/a-domicilio.js"></script>
+    <script src="js/apps/mi-salud.js"></script>
+    <script src="js/apps/cupido.js"></script>
+    <script src="js/apps/mdt.js"></script>
+    <script src="js/apps/ems.js"></script>
+    <script src="js/apps/taller.js"></script>
+    <script src="js/apps/tribunal.js"></script>
+    <script src="js/apps/bufete.js"></script>
+    <script src="js/apps/weazel-news.js"></script>
+    <script src="js/apps/licencias.js"></script>
   </body>
 </html>
